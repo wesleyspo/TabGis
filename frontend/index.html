@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TabGis — Basemap SP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- ── Topbar ──────────────────────────────────────── -->
+      <header class="topbar">
+        <!-- Brand -->
+        <div class="topbar-brand">
+          <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+            <line x1="9" y1="3" x2="9" y2="18"/>
+            <line x1="15" y1="6" x2="15" y2="21"/>
+          </svg>
+          <div class="brand-text">
+            <span class="brand-name">TabGis</span>
+          </div>
+        </div>
+
+        <div class="topbar-scroll">
+          <button id="btn-home" class="nav-btn" style="margin: 0 10px; border: none; background: transparent; padding: 6px;" title="Visão inicial (Capital)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; color: var(--text-secondary);">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            </svg>
+          </button>
+
+          <button id="btn-operacao" class="nav-btn" style="margin-left: 0; border: 1px solid var(--border-input); background: var(--bg-section); height: 32px;" title="Painel de Operação">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6"/>
+              <line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/>
+              <line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            <span data-i18n="UI_BTN_OPERATION">Operação</span>
+          </button>
+        </div>
+
+        <div style="display: flex; align-items: center; height: 100%;">
+          <!-- ── Secção: Filtros ──────────────────────────── -->
+          <details class="panel-section" style="border-left: 1px solid var(--border);">
+            <summary class="section-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <span data-i18n="UI_MENU_FILTERS">Filtros</span>
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </summary>
+
+            <div class="section-body">
+              <div class="field-group">
+                <label class="field-label" data-i18n="UI_FILTER_MUNI_LABEL">Municípios</label>
+                <div class="select-wrapper">
+                  <select id="search-municipio">
+                    <option value="">Carregando…</option>
+                  </select>
+                  <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+              </div>
+
+              <div class="field-group" style="margin-top: 12px;">
+                <label class="field-label" data-i18n="UI_FILTER_NEIGHBORHOOD_LABEL">Bairros</label>
+                <div class="select-wrapper">
+                  <select id="search-bairro">
+                    <option value="">Selecione um município primeiro…</option>
+                  </select>
+                  <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <!-- ── Secção: Camadas ─────────────────────────── -->
+          <details class="panel-section">
+            <summary class="section-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+              </svg>
+              <span data-i18n="UI_MENU_LAYERS">Camadas</span>
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </summary>
+
+            <div class="section-body">
+              <p class="layer-group-label" data-i18n="UI_LAYER_GROUP_BACKGROUND">Imagem de fundo</p>
+              <div class="toggle-row">
+                <span class="toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                  </svg>
+                  <span data-i18n="UI_LAYER_SAT_ONLINE">Satélite online</span>
+                  <span class="badge badge-online">Esri</span>
+                </span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="satellite_online" />
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </label>
+              </div>
+
+              <div class="toggle-row">
+                <span class="toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                  </svg>
+                  <span data-i18n="UI_LAYER_SAT_LOCAL">Satélite local</span>
+                  <span class="badge badge-local">MBTiles</span>
+                </span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="satellite_local" />
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </label>
+              </div>
+
+              <div class="toggle-row">
+                <span class="toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                  </svg>
+                  <span data-i18n="UI_LAYER_OSM_ROADS">Vias</span>
+                </span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="vias_alvo_sp" />
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </label>
+              </div>
+
+              <p class="layer-group-label" style="margin-top:12px;" data-i18n="UI_LAYER_GROUP_ADMIN">Limites administrativos</p>
+              <div class="toggle-row">
+                <span class="toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  </svg>
+                  <span data-i18n="UI_LAYER_ADMIN_LIMITS">Limites Municipais</span>
+                </span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="municipios_sp" checked />
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </label>
+              </div>
+
+              <div class="layer-complex-row">
+                <div class="layer-complex-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <div class="layer-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 3h7l1 9 1 3h7"/>
+                      <path d="M16 3l2 9H9"/>
+                    </svg>
+                    <span data-i18n="UI_LAYER_ADMIN_MUNI">Municípios</span>
+                  </div>
+                </div>
+                <div class="layer-complex-labels" style="display: flex; justify-content: flex-end; gap: 14px; font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; padding-right: 2px;">
+                  <span style="width: 36px; text-align: center;">Visível</span>
+                  <div class="control-divider" style="height: 12px; align-self: center;"></div>
+                  <span style="width: 172px; text-align: center;">Selecionável</span>
+                </div>
+                <div class="layer-controls">
+                  <label class="toggle-switch" title="Visível">
+                    <input type="checkbox" id="municipios_alvo_sp" checked />
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  </label>
+                  <div class="control-divider"></div>
+                  <div class="pill-group">
+                    <label class="pill-btn" title="OMS"><input type="checkbox" id="sel_muni_oms" checked/><span>OMS</span></label>
+                    <label class="pill-btn" title="MWM"><input type="checkbox" id="sel_muni_mwm" checked/><span>MWM</span></label>
+                    <label class="pill-btn" title="GIS"><input type="checkbox" id="sel_muni_gis" checked/><span>GIS</span></label>
+                    <label class="pill-btn" title="Landbase"><input type="checkbox" id="sel_muni_land"/><span>LAND</span></label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="layer-complex-row">
+                <div class="layer-complex-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <div class="layer-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    <span data-i18n="UI_LAYER_ADMIN_NEIGHBORHOOD">Bairros</span>
+                  </div>
+                </div>
+                <div class="layer-complex-labels" style="display: flex; justify-content: flex-end; gap: 14px; font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; padding-right: 2px;">
+                  <span style="width: 36px; text-align: center;">Visível</span>
+                  <div class="control-divider" style="height: 12px; align-self: center;"></div>
+                  <span style="width: 172px; text-align: center;">Selecionável</span>
+                </div>
+                <div class="layer-controls">
+                  <label class="toggle-switch" title="Visível">
+                    <input type="checkbox" id="bairros_alvo_sp" />
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  </label>
+                  <div class="control-divider"></div>
+                  <div class="pill-group">
+                    <label class="pill-btn" title="OMS"><input type="checkbox" id="sel_bairros_oms" checked/><span>OMS</span></label>
+                    <label class="pill-btn" title="MWM"><input type="checkbox" id="sel_bairros_mwm" checked/><span>MWM</span></label>
+                    <label class="pill-btn" title="GIS"><input type="checkbox" id="sel_bairros_gis" checked/><span>GIS</span></label>
+                    <label class="pill-btn" title="Landbase"><input type="checkbox" id="sel_bairros_land"/><span>LAND</span></label>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </details>
+        </div>
+
+        <!-- ── Status bar ─────────────────────────────────── -->
+        <div class="topbar-footer" style="margin-left: 0;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p class="status" id="status">Carregando mapa…</p>
+        </div>
+
+        <!-- ── Configurações (Engrenagem) ───────────────────── -->
+        <details class="config-dropdown" style="position: relative; margin-left: 10px; margin-right: 18px;">
+          <summary class="nav-btn" style="padding: 0; display: inline-flex; height: 32px; width: 32px; align-items: center; justify-content: center; list-style: none; margin: 0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px; margin: 0;">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </summary>
+          <div class="section-body" style="right: 0; left: auto; min-width: 220px; top: calc(100% + 14px);">
+            <div class="field-group">
+              <label class="field-label">Idioma</label>
+              <div class="select-wrapper">
+                <select id="select-language">
+                  <option value="en">English</option>
+                  <option value="pt" selected>Português</option>
+                  <option value="es">Español</option>
+                  <option value="it">Italiano</option>
+                </select>
+                <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </div>
+            </div>
+            <div style="margin-top: 16px;">
+              <button id="btn-open-translations" class="nav-btn" style="width: 100%; justify-content: center; background: var(--accent); color: #fff; border-color: var(--accent);">Gerenciar Traduções</button>
+            </div>
+          </div>
+        </details>
+      </header>
+
+      <!-- ── Container Principal (Left Panel + Mapa) ─────── -->
+      <main class="main-content">
+        <!-- ── Painel Esquerdo (Operação) ───────────────────── -->
+        <aside id="left-panel" class="left-panel">
+          <div class="panel-header">
+            <h3 data-i18n="UI_BTN_OPERATION">Operação</h3>
+            <button id="btn-close-operacao" class="close-btn" title="Fechar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="panel-body">
+            <p class="text-muted" style="font-size: 13px; text-align: center; margin-top: 40px;">
+              Lista de objetos e ferramentas de rede aparecerá aqui.
+            </p>
+          </div>
+        </aside>
+
+        <!-- ── Mapa ───────────────────────────────────────── -->
+        <section id="map"></section>
+      </main>
+      
+      <!-- ── Modal Traduções ────────────────────────────── -->
+      <div id="modal-translations" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+          <div class="panel-header">
+            <h3>Traduções do Sistema (Config)</h3>
+            <button id="btn-close-translations" class="close-btn" title="Fechar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="table-container">
+              <table class="translation-table">
+                <thead>
+                  <tr>
+                    <th>Chave (ID)</th>
+                    <th>English (en)</th>
+                    <th>Português (pt)</th>
+                    <th>Español (es)</th>
+                    <th>Italiano (it)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Menus e Navegação -->
+                  <tr>
+                    <td>UI_BTN_HOME_TITLE</td>
+                    <td><input type="text" class="table-input" value="Initial View (Capital)"></td>
+                    <td><input type="text" class="table-input" value="Visão inicial (Capital)"></td>
+                    <td><input type="text" class="table-input" value="Vista inicial (Capital)"></td>
+                    <td><input type="text" class="table-input" value="Vista iniziale (Capitale)"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_MENU_FILTERS</td>
+                    <td><input type="text" class="table-input" value="Filters"></td>
+                    <td><input type="text" class="table-input" value="Filtros"></td>
+                    <td><input type="text" class="table-input" value="Filtros"></td>
+                    <td><input type="text" class="table-input" value="Filtri"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_MENU_LAYERS</td>
+                    <td><input type="text" class="table-input" value="Layers"></td>
+                    <td><input type="text" class="table-input" value="Camadas"></td>
+                    <td><input type="text" class="table-input" value="Capas"></td>
+                    <td><input type="text" class="table-input" value="Livelli"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_BTN_OPERATION</td>
+                    <td><input type="text" class="table-input" value="Operation"></td>
+                    <td><input type="text" class="table-input" value="Operação"></td>
+                    <td><input type="text" class="table-input" value="Operación"></td>
+                    <td><input type="text" class="table-input" value="Operazione"></td>
+                  </tr>
+
+                  <!-- Filtros -->
+                  <tr>
+                    <td>UI_FILTER_MUNI_LABEL</td>
+                    <td><input type="text" class="table-input" value="Municipalities"></td>
+                    <td><input type="text" class="table-input" value="Municípios"></td>
+                    <td><input type="text" class="table-input" value="Municipios"></td>
+                    <td><input type="text" class="table-input" value="Comuni"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_FILTER_MUNI_PLACEHOLDER</td>
+                    <td><input type="text" class="table-input" value="Filter municipalities..."></td>
+                    <td><input type="text" class="table-input" value="Filtrar municípios…"></td>
+                    <td><input type="text" class="table-input" value="Filtrar municipios…"></td>
+                    <td><input type="text" class="table-input" value="Filtra comuni…"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_FILTER_NEIGHBORHOOD_LABEL</td>
+                    <td><input type="text" class="table-input" value="Neighborhoods"></td>
+                    <td><input type="text" class="table-input" value="Bairros"></td>
+                    <td><input type="text" class="table-input" value="Barrios"></td>
+                    <td><input type="text" class="table-input" value="Quartieri"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_FILTER_NEIGHBORHOOD_PLACEHOLDER</td>
+                    <td><input type="text" class="table-input" value="Filter neighborhoods..."></td>
+                    <td><input type="text" class="table-input" value="Filtrar bairros…"></td>
+                    <td><input type="text" class="table-input" value="Filtrar barrios…"></td>
+                    <td><input type="text" class="table-input" value="Filtra quartieri…"></td>
+                  </tr>
+
+                  <!-- Camadas (Layers) -->
+                  <tr>
+                    <td>UI_LAYER_GROUP_BACKGROUND</td>
+                    <td><input type="text" class="table-input" value="Background Image"></td>
+                    <td><input type="text" class="table-input" value="Imagem de fundo"></td>
+                    <td><input type="text" class="table-input" value="Imagen de fondo"></td>
+                    <td><input type="text" class="table-input" value="Immagine di sfondo"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_LAYER_SAT_ONLINE</td>
+                    <td><input type="text" class="table-input" value="Online Satellite"></td>
+                    <td><input type="text" class="table-input" value="Satélite online"></td>
+                    <td><input type="text" class="table-input" value="Satélite en línea"></td>
+                    <td><input type="text" class="table-input" value="Satellite online"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_LAYER_SAT_LOCAL</td>
+                    <td><input type="text" class="table-input" value="Local Satellite"></td>
+                    <td><input type="text" class="table-input" value="Satélite local"></td>
+                    <td><input type="text" class="table-input" value="Satélite local"></td>
+                    <td><input type="text" class="table-input" value="Satellite locale"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_LAYER_GROUP_ADMIN</td>
+                    <td><input type="text" class="table-input" value="Administrative Boundaries"></td>
+                    <td><input type="text" class="table-input" value="Limites administrativos"></td>
+                    <td><input type="text" class="table-input" value="Límites administrativos"></td>
+                    <td><input type="text" class="table-input" value="Confini amministrativi"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_LAYER_ADMIN_LIMITS</td>
+                    <td><input type="text" class="table-input" value="Municipal Boundaries"></td>
+                    <td><input type="text" class="table-input" value="Limites Municipais"></td>
+                    <td><input type="text" class="table-input" value="Límites Municipales"></td>
+                    <td><input type="text" class="table-input" value="Confini Comunali"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_LAYER_ADMIN_MUNI</td>
+                    <td><input type="text" class="table-input" value="Municipalities"></td>
+                    <td><input type="text" class="table-input" value="Municípios"></td>
+                    <td><input type="text" class="table-input" value="Municipios"></td>
+                    <td><input type="text" class="table-input" value="Comuni"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_LAYER_ADMIN_NEIGHBORHOOD</td>
+                    <td><input type="text" class="table-input" value="Neighborhoods"></td>
+                    <td><input type="text" class="table-input" value="Bairros"></td>
+                    <td><input type="text" class="table-input" value="Barrios"></td>
+                    <td><input type="text" class="table-input" value="Quartieri"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_LAYER_GROUP_OSM</td>
+                    <td><input type="text" class="table-input" value="OSM Roads"></td>
+                    <td><input type="text" class="table-input" value="Vias OSM"></td>
+                    <td><input type="text" class="table-input" value="Vías OSM"></td>
+                    <td><input type="text" class="table-input" value="Strade OSM"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_LAYER_OSM_ROADS</td>
+                    <td><input type="text" class="table-input" value="Roads"></td>
+                    <td><input type="text" class="table-input" value="Vias"></td>
+                    <td><input type="text" class="table-input" value="Vías"></td>
+                    <td><input type="text" class="table-input" value="Strade"></td>
+                  </tr>
+
+                  <!-- Status e Painéis -->
+                  <tr>
+                    <td>UI_STATUS_LANG_PREFIX</td>
+                    <td><input type="text" class="table-input" value="Session language changed to:"></td>
+                    <td><input type="text" class="table-input" value="Idioma da sessão alterado para:"></td>
+                    <td><input type="text" class="table-input" value="Idioma de la sesión cambiado a:"></td>
+                    <td><input type="text" class="table-input" value="Lingua della sessione impostata su:"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_STATUS_LOADING</td>
+                    <td><input type="text" class="table-input" value="Loading map..."></td>
+                    <td><input type="text" class="table-input" value="Carregando mapa…"></td>
+                    <td><input type="text" class="table-input" value="Cargando mapa…"></td>
+                    <td><input type="text" class="table-input" value="Caricamento mappa…"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_PANEL_OP_TITLE</td>
+                    <td><input type="text" class="table-input" value="Operation Panel"></td>
+                    <td><input type="text" class="table-input" value="Painel de Operação"></td>
+                    <td><input type="text" class="table-input" value="Panel de Operación"></td>
+                    <td><input type="text" class="table-input" value="Pannello Operativo"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_PANEL_OP_EMPTY</td>
+                    <td><input type="text" class="table-input" value="Network tools will appear here."></td>
+                    <td><input type="text" class="table-input" value="Ferramentas de rede aparecerão aqui."></td>
+                    <td><input type="text" class="table-input" value="Herramientas de red aparecerán aquí."></td>
+                    <td><input type="text" class="table-input" value="Gli strumenti di rete appariranno qui."></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+              <button class="nav-btn" style="background: var(--accent); color: #fff; border-color: var(--accent);" onclick="alert('Funcionalidade de guardar carece de backend.')">Guardar Alterações</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="./main.js"></script>
+  </body>
+</html>

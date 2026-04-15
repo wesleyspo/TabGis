@@ -1,0 +1,50 @@
+# Definição dos nossos serviços (containers)
+services:
+  # Serviço do Banco de Dados com PostGIS e pgRouting
+  postgis:
+    image: pgrouting/pgrouting:latest # Imagem que já inclui PostgreSQL, PostGIS e pgRouting
+    container_name: tabgis_postgis
+    restart: always
+    environment:
+      - POSTGRES_USER=tabgis
+      - POSTGRES_PASSWORD=tabgis # Mude para uma senha forte em produção!
+      - POSTGRES_DB=tabgis
+    ports:
+      - "5433:5432" # Expõe a porta do PostgreSQL para o servidor host
+    volumes:
+      - postgis-data:/var/lib/postgresql/data # Volume para persistir os dados do banco
+
+  # Serviço do GeoServer para servir os mapas
+  geoserver:
+    image: kartoza/geoserver:2.25.1 # Imagem popular e confiável do GeoServer
+    container_name: tabgis_geoserver
+    restart: always
+    environment: 
+      - GEOSERVER_ADMIN_USER=tabgis
+      - GEOSERVER_ADMIN_PASSWORD=tabgis # <-- MUDE PARA UMA SENHA SEGURA DE SUA ESCOLHA
+    
+    ports:
+      - "8080:8080" # Expõe a porta do GeoServer
+    volumes:
+      - geoserver-data:/opt/geoserver/data_dir # Volume para persistir os dados e configurações do GeoServer
+    depends_on:
+      - postgis # Garante que o PostGIS inicie antes do GeoServer
+
+  # Serviço do nosso Backend (API com Node.js)
+  backend:
+    build: ./backend # Diz ao Docker para construir a imagem a partir da pasta ./backend
+    container_name: tabgis_backend
+    restart: always
+    ports:
+      - "3000:3000" # Expõe a porta da nossa API
+    volumes:
+      - ./backend:/app # Mapeia a pasta local 'backend' para a pasta '/app' no container
+      - /app/node_modules # Macete: Não mapeia a node_modules para evitar conflitos de SO
+    depends_on:
+      - postgis # A API depende do banco de dados para funcionar
+
+# Definição dos volumes nomeados para persistência de dados
+# Isso garante que seus dados não sumam quando os containers forem recriados
+volumes:
+  postgis-data:
+  geoserver-data:

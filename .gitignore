@@ -1,0 +1,9 @@
+# MBTiles gerados localmente (grandes)
+data/tiles/*.mbtiles
+data/tiles/*.mbtiles.tmp
+
+# Fontes brutas (OSM, IBGE, etc.) — reproduzir localmente; ver docs/DEPLOY_POC.md
+data/raw/
+
+infra/scripts/.venv/
+node_modules/

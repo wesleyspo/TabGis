@@ -1,0 +1,2 @@
+mercantile>=1.2,<2
+requests>=2.28,<3

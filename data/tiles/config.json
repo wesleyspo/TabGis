@@ -1,0 +1,12 @@
+{
+  "options": {
+    "paths": {
+      "root": "/data"
+    }
+  },
+  "data": {
+    "sp_sat": {
+      "mbtiles": "sp_satellite.mbtiles"
+    }
+  }
+}
