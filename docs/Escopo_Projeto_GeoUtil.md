@@ -3,6 +3,7 @@
 > **Nome da solução:** TabGis
 > **Contexto académico:** Projecto de doutoramento em Geoprocessamento com IA (GeoUtil)
 > **Estado operacional detalhado:** `docs/CONTEXT_STATE.md`
+> **Código-fonte (Git):** `https://github.com/wesleyspo/TabGis.git` — marco V0 assinalado pela *tag* **`v0.1.0`** (ver também `VERSION` na raiz).
 
 ---
 
@@ -23,7 +24,8 @@ Desenvolver uma plataforma Web para gestão de activos de **utilities** (redes t
 | Base de dados espacial | PostgreSQL 15 + PostGIS 3.3 | **landbase** (áreas geográficas, topologia), **config** (parâmetros, tradução), **security** (acessos), **audit** (logs) |
 | Servidor de mapas | GeoServer (oscarfonts) | Publicação WMS/WFS a partir do PostGIS (`landbase`) |
 | Servidor de tiles raster | TileServer GL (maptiler) | MBTiles satélite offline |
-| Proxy / frontend | nginx:alpine | Serve `frontend/`, proxy `/geoserver` e `/tiles` |
+| Proxy / frontend | nginx:alpine | Serve `frontend/`, proxy `/geoserver`, `/tiles` e `/api` |
+| API de configuração / i18n | Node.js (Express) em `backend/` | `GET /api/translations/:lang` → `config.translation` no PostGIS |
 | Logs / eventos | MongoDB | `event_report`, histórico de BOTs (uso futuro) |
 | Orquestração | Docker Compose (`infra/docker-compose.yml`) | Stack local reprodutível |
 
@@ -35,7 +37,7 @@ Desenvolver uma plataforma Web para gestão de activos de **utilities** (redes t
 
 ### 3.1 Mapa geográfico
 - Basemap offline: limites IBGE (UF + municípios) + vias OSM, publicados via GeoServer WMS
-- Satélite offline: MBTiles raster (capital SP, zoom 10–16) servidos por TileServer GL
+- Satélite offline: MBTiles raster (capital SP, zoom 10–17) servidos por TileServer GL
 - Satélite online: tiles XYZ Esri (requer Internet)
 - Busca por município e bairro via WFS (GeoServer)
 - Identificação de feições ao clique (GetFeatureInfo WMS)
@@ -65,7 +67,7 @@ Desenvolver uma plataforma Web para gestão de activos de **utilities** (redes t
 | Bairros municípios-alvo | ✅ Operacional | `landbase.bairros_alvo_sp` → GeoServer |
 | Vias municípios-alvo | ✅ Operacional | `landbase.vias_alvo_sp` → GeoServer |
 | Satélite online (Esri XYZ) | ✅ Operacional | Requer Internet |
-| Satélite offline MBTiles | ✅ Operacional | Zoom 10–16, 763 MB, capital SP; upgrade para zoom 17 aprovado |
+| Satélite offline MBTiles | ✅ Operacional | Zoom 10–17 (~3 GB), capital SP |
 | Frontend web | ✅ Operacional | `http://homeserver:8088/` |
 
 ### 4.2 Recorte operacional prioritário

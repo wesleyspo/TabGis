@@ -3,6 +3,16 @@
 Guia único para subir a stack, carregar o landbase do **Estado de São Paulo** e expor o frontend.
 Complementa os runbooks de dados em `docs/RUNBOOK_BASEMAP_SP_ESTADO.md`.
 
+### Onde o código está versionado
+
+| O quê | Onde |
+|--------|------|
+| **Repositório Git** | `https://github.com/wesleyspo/TabGis.git` |
+| **Versão actual do marco V0** | **v0.1.0** (*tag* Git) + ficheiro `VERSION` na raiz |
+| **Cópia no servidor** | Caminho local do projecto (ex.: `/home/wesley/projects/TabGis` no homeserver) |
+
+Detalhes de SemVer, *tags* e o que fica fora do Git (MBTiles, `data/raw/`) estão em `docs/CONTEXT_STATE.md` → secção **Versionamento e código-fonte**.
+
 ---
 
 ## 0. Acesso remoto — outro notebook via Cursor SSH
@@ -68,8 +78,10 @@ docker compose -f infra/docker-compose.yml up -d
 ## 2. Subir serviços
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d
+docker compose -f infra/docker-compose.yml up -d --build
 ```
+
+> Na primeira vez ou após alterar `backend/`, use `--build` para construir a imagem do serviço `api`.
 
 Serviços iniciados:
 
@@ -78,13 +90,25 @@ Serviços iniciados:
 | `db` | PostgreSQL + PostGIS | 5432 |
 | `geoserver` | WMS / WFS | 8080 |
 | `tileserver` | MBTiles raster (satélite local) | 8081 |
-| `web` | nginx — frontend + proxy | 8088 |
+| `api` | Node/Express — traduções (`/api/translations/:lang`) | 3000 |
+| `web` | nginx — frontend + proxy `/geoserver`, `/tiles`, `/api` | 8088 |
 | `mongodb` | Logs (uso futuro) | 27017 |
 
 > **Ordem de startup importante:** o `web` (nginx) deve ser iniciado **depois** do `tileserver`. Se recriares o `tileserver` individualmente, reinicia o `web` em seguida:
 > ```bash
 > docker compose -f infra/docker-compose.yml restart tileserver web
 > ```
+
+### Schemas `config` / `landbase` e traduções (API)
+
+Se a base for nova ou faltarem tabelas `config.*`, aplicar (na raiz do projecto):
+
+```bash
+docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/01_init_schemas.sql
+docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/02_populate_translations.sql
+```
+
+Reiniciar o `api` após alterações relevantes na BD: `docker compose -f infra/docker-compose.yml restart api`.
 
 ---
 

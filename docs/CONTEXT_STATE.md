@@ -19,6 +19,34 @@
 
 ---
 
+## Versionamento e código-fonte
+
+| Artefacto | Local / URL |
+|-----------|-------------|
+| **Repositório Git (remoto)** | `https://github.com/wesleyspo/TabGis.git` |
+| **Cópia de trabalho (homeserver)** | `/home/wesley/projects/TabGis` |
+| **Release V0 (POC completo)** | **v0.1.0** — *tag* anotada Git |
+| **Ficheiro de versão** | `VERSION` na raiz (ex.: `0.1.0`) |
+
+O código da aplicação (frontend, `infra/`, `backend/`, SQL, documentação) está versionado neste repositório Git. A linha temporal oficial é o histórico de *commits* em `main`; marcos estáveis assinalam-se com *tags* `vMAJOR.MINOR.PATCH` (SemVer). Dados pesados e artefactos gerados localmente **não** entram no Git — ver `.gitignore` (`data/raw/`, `*.mbtiles`, `*.mbtiles.tmp`, etc.).
+
+Comandos úteis no homeserver:
+
+```bash
+git describe --tags --always     # tag actual ou commit abreviado
+git tag -l 'v*'                  # listar releases
+git show v0.1.0 --no-patch       # nota da tag V0
+```
+
+Para publicar alterações no remoto (após `git commit`):
+
+```bash
+git push origin main
+git push origin v0.1.0           # ou: git push origin --tags
+```
+
+---
+
 ## Stack Docker — estado actual (todos healthy)
 
 | Container | Imagem | Porta host | Função |
@@ -26,14 +54,15 @@
 | `infra-db-1` | `postgis/postgis:15-3.3` | **5432** | PostgreSQL + PostGIS |
 | `infra-geoserver-1` | `oscarfonts/geoserver:latest` | **8080** | WMS / WFS / SLD |
 | `infra-tileserver-1` | `maptiler/tileserver-gl:latest` | **8081** | MBTiles raster (satélite local) |
-| `infra-web-1` | `nginx:alpine` | **8088** | Frontend + proxy `/geoserver` + proxy `/tiles` |
+| `infra-web-1` | `nginx:alpine` | **8088** | Frontend + proxy `/geoserver`, `/tiles`, `/api` |
+| `infra-api-1` | build `backend/` (Node) | **3000** | API REST — traduções `GET /api/translations/:lang` (acesso directo; em uso normal via `:8088/api/`) |
 | `infra-mongodb-1` | `mongo:latest` | **27017** | Logs / event_report (uso futuro) |
 
 ### Portas de acesso (de outro notebook na mesma rede ou via SSH tunnel)
 
 | Serviço | URL directa | Observação |
 |---------|-------------|------------|
-| **Frontend (recomendado)** | `http://homeserver:8088/` | nginx — same-origin para WMS, WFS, tiles |
+| **Frontend (recomendado)** | `http://homeserver:8088/` | nginx — same-origin para WMS, WFS, tiles e `/api` |
 | GeoServer UI | `http://homeserver:8080/geoserver/web` | Admin directo |
 | TileServer | `http://homeserver:8081/` | Acesso directo (diagnóstico) |
 | PostGIS | `homeserver:5432` | Só admin / psql |
@@ -134,10 +163,10 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 ### Comportamento da camada no frontend
 
 - O toggle **Satélite local** faz fetch a `/tiles/data/sp_sat.json` antes de activar a camada.
-- Se o TileServer responder → activa, mostra `"Satélite local activo — capital SP, zoom 10–16"`.
+- Se o TileServer responder → activa, mostra mensagem de satélite local activo (capital SP, zoom nativo 10–17).
 - Se falhar → desactiva toggle, mostra mensagem com instrução de remediação.
 - 404s de tiles fora da bbox são silenciados (cobertura parcial é comportamento normal).
-- `minNativeZoom: 10` / `maxNativeZoom: 16` em `main.js` — Leaflet faz upscale acima e abaixo do intervalo.
+- `minNativeZoom: 10` / `maxNativeZoom: 17` em `main.js` — Leaflet faz upscale acima e abaixo do intervalo.
 
 ---
 
@@ -147,7 +176,8 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 |---------|--------|
 | `frontend/index.html` | Markup — topbar horizontal, painel esquerdo "Operação" (split screen 50/50), secções `<details>` dropdown, checkboxes, ícones SVG |
 | `frontend/styles.css` | Design-system — layout flex dinâmico, tokens CSS (`--bg-*`, `--accent`, `--radius-*`), Inter font |
-| `frontend/main.js` | Lógica Leaflet — WMS, MBTiles, WFS (checkboxes dinâmicos), restrição visual (`maxBounds`), GetFeatureInfo |
+| `frontend/main.js` | Lógica Leaflet — WMS, MBTiles, WFS, GetFeatureInfo; i18n via `fetch` a `/api/translations/:lang` e atributos `data-i18n` |
+| `backend/server.js` | API Express — lê `config.translation` + `config.language` no PostGIS |
 
 - **Tipografia:** Inter (Google Fonts CDN) — requer Internet para carregar a fonte; fallback `system-ui`
 - **Modo recomendado (`:8088`):** `main.js` resolve GeoServer como `window.location.origin + '/geoserver'` (same-origin, sem CORS)
