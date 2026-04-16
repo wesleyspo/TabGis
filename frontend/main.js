@@ -48,7 +48,7 @@ function getGeoserverBase() {
 
 const geoserverBase = getGeoserverBase();
 
-/** Último mapa de traduções carregado (para detalhe de ordem mock). */
+/** Último mapa de traduções carregado (i18n em painéis dinâmicos). */
 let i18nCache = {};
 
 /** Rótulo i18n com fallback (ex.: busca no mapa antes do fetch completar). */
@@ -185,6 +185,9 @@ const viasAlvoLayer = L.tileLayer.wms(geoserverWms, {
   styles: "base_sp_vias_zoom_scales",
   version: "1.1.1",
 });
+
+/** Marcadores de ordens (cor = estado, raio ≈ tipo, traço ≈ equipa) */
+const workOrderMarkersGroup = L.layerGroup().addTo(map);
 
 // Camadas ativas por defeito ao iniciar (apenas limites municipais e municípios)
 municipiosLayer.addTo(map);
@@ -515,7 +518,8 @@ function visibleQueryLayers() {
 
 /** Escapa caracteres HTML para exibição segura em innerHTML/popup */
 function escapeHtml(s) {
-  return s
+  const t = s == null ? "" : String(s);
+  return t
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -678,6 +682,8 @@ function toggleLeftPanel() {
     // Se o painel está sendo aberto, foca na capital de modo que fique bem enquadrada nos 50%
     if (isOpening) {
       setHomeView();
+      loadWorkOrdersFromApi();
+      loadTeamsFromApi();
     }
   }, 300);
 }
@@ -707,92 +713,807 @@ btnCloseOperacao.addEventListener("click", toggleLeftPanel);
       const on = panel.getAttribute("data-panel") === id;
       panel.classList.toggle("active", on);
     });
+
+    if (id === "usr") loadUsersFromApi();
+    if (id === "oms") loadWorkOrdersFromApi();
+    if (id === "mwm") loadTeamsFromApi();
+    if (id === "aud") loadAuditArchiveFromApi();
   });
 })();
 
-/** Dados mock para detalhe de ordem (OMS) — alinhar depois a operations.work_order. */
-const ORDER_MOCK_DETAIL = {
-  "1": {
-    code: "ORD-2026-0142",
-    categoryKey: "UI_OP_CAT_REPAIR",
-    desc: "Subestação — inspecção de isoladores e termografia (mock).",
-    prio: "P1",
-    created: "2026-04-10 11:20",
-    team: "EQ-ALPHA",
-  },
-  "2": {
-    code: "ORD-2026-0143",
-    categoryKey: "UI_OP_CAT_COMPLAINT",
-    desc: "Reclamação cliente — interrupção parcial de BT; prioridade atendimento (mock).",
-    prio: "P2",
-    created: "2026-04-11 09:00",
-    team: "EQ-BETA",
-  },
-  "3": {
-    code: "TSK-2026-0088",
-    categoryKey: "UI_OP_CAT_TASK",
-    desc: "Leitura de campo e conferência de medidor inteligente (mock).",
-    prio: "P3",
-    created: "2026-04-12 14:45",
-    team: "EQ-ALPHA",
-  },
-  "4": {
-    code: "EVT-2026-0004",
-    categoryKey: "UI_OP_CAT_EVENT",
-    desc: "Manobra programada — alimentador 12; comunicação a clientes (mock).",
-    prio: "P2",
-    created: "2026-04-08 16:00",
-    team: "EQ-GAMA",
-  },
+const ORDER_CATEGORY_I18N = {
+  repair: "UI_OP_CAT_REPAIR",
+  complaint: "UI_OP_CAT_COMPLAINT",
+  task: "UI_OP_CAT_TASK",
+  event: "UI_OP_CAT_EVENT",
 };
+
+const ORDER_STATUS_I18N = {
+  open: "UI_OP_ORDER_OPEN",
+  in_progress: "UI_OP_ORDER_PROGRESS",
+  scheduled: "UI_OP_ORDER_SCHEDULED",
+  planned: "UI_OP_ORDER_PLANNED",
+};
+
+const ORDER_TYPE_I18N = {
+  repair: "UI_OT_TYPE_REPAIR",
+  maintenance: "UI_OT_TYPE_MAINTENANCE",
+  inspection: "UI_OT_TYPE_INSPECTION",
+  emergency: "UI_OT_TYPE_EMERGENCY",
+  restoration: "UI_OT_TYPE_RESTORATION",
+  incident: "UI_OT_TYPE_INCIDENT",
+};
+
+let selectedWorkOrderId = null;
+let pocLockUserId = null;
+
+function orderCategoryLabel(category) {
+  const key = ORDER_CATEGORY_I18N[category];
+  return (key && i18nCache[key]) || category || "—";
+}
+
+function orderStatusLabel(status) {
+  const key = ORDER_STATUS_I18N[status];
+  return (key && i18nCache[key]) || status || "—";
+}
+
+function orderTypeLabel(orderType) {
+  const t = orderType || "";
+  const key = ORDER_TYPE_I18N[t];
+  return (key && i18nCache[key]) || t || "—";
+}
+
+function orderStatusBadgeClass(status) {
+  if (status === "open") return "mock-badge mock-badge--warn";
+  if (status === "planned") return "mock-badge mock-badge--muted";
+  return "mock-badge mock-badge--ok";
+}
+
+function workOrderMarkerFillColor(status) {
+  const s = (status || "").toLowerCase();
+  if (s === "open") return "#f59e0b";
+  if (s === "in_progress") return "#22c55e";
+  if (s === "planned") return "#94a3b8";
+  if (s === "scheduled") return "#3b82f6";
+  return "#64748b";
+}
+
+function workOrderMarkerRadius(orderType) {
+  const t = (orderType || "").toLowerCase();
+  if (t === "emergency") return 11;
+  if (t === "repair") return 9;
+  if (t === "incident") return 8;
+  if (t === "maintenance") return 7;
+  if (t === "inspection") return 6;
+  if (t === "restoration") return 8;
+  return 7;
+}
+
+function workOrderTeamStrokeColor(teamId) {
+  if (teamId == null) return "#e2e8f0";
+  const hues = [12, 48, 175, 265, 320];
+  const h = hues[Math.abs(Number(teamId)) % hues.length];
+  return `hsl(${h} 72% 52%)`;
+}
+
+function rebuildWorkOrderMarkers(rows) {
+  workOrderMarkersGroup.clearLayers();
+  rows.forEach((r) => {
+    const lat = r.focus_lat != null ? parseFloat(r.focus_lat) : NaN;
+    const lng = r.focus_lng != null ? parseFloat(r.focus_lng) : NaN;
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+    const fill = workOrderMarkerFillColor(r.status);
+    const rad = workOrderMarkerRadius(r.order_type || r.category);
+    const stroke = workOrderTeamStrokeColor(r.assigned_team_id);
+    const m = L.circleMarker([lat, lng], {
+      radius: rad,
+      color: stroke,
+      weight: 2,
+      fillColor: fill,
+      fillOpacity: 0.82,
+    });
+    const code = r.order_code || `#${r.id}`;
+    m.bindPopup(
+      `<strong>${escapeHtml(code)}</strong><br/>${escapeHtml(r.summary || "")}<br/><span class="mock-hint">${escapeHtml(
+        r.team_code || ""
+      )}</span>`
+    );
+    m.addTo(workOrderMarkersGroup);
+  });
+}
+
+/**
+ * «Ir para» a partir da ordem: centra o mapa, desliga municípios-alvo e activa bairros + vias.
+ */
+function focusOperationalMapOnWorkOrder(lat, lng) {
+  const latNum = parseFloat(lat);
+  const lngNum = parseFloat(lng);
+  if (Number.isNaN(latNum) || Number.isNaN(lngNum)) {
+    setStatus(uiText("UI_OP_STATUS_ORDER_MAP_NO_COORD", "Esta ordem não tem coordenadas de foco."));
+    return;
+  }
+  map.setView([latNum, lngNum], 14);
+  const cbMuni = document.getElementById("municipios_alvo_sp");
+  const cbBairros = document.getElementById("bairros_alvo_sp");
+  const cbVias = document.getElementById("vias_alvo_sp");
+  if (cbMuni) cbMuni.checked = false;
+  if (map.hasLayer(municipiosAlvoLayer)) map.removeLayer(municipiosAlvoLayer);
+  if (cbBairros) cbBairros.checked = true;
+  if (cbVias) cbVias.checked = true;
+  if (!map.hasLayer(bairrosAlvoLayer)) bairrosAlvoLayer.addTo(map);
+  if (!map.hasLayer(viasAlvoLayer)) viasAlvoLayer.addTo(map);
+  setStatus(
+    uiText(
+      "UI_OP_STATUS_ORDER_MAP_FOCUS",
+      "Vista operacional: bairros e vias activos; municípios-alvo desligados."
+    )
+  );
+}
+
+function woIconBool(titleTrue, titleFalse, value) {
+  const on = !!value;
+  const sym = on ? "●" : "○";
+  const title = on ? titleTrue : titleFalse;
+  const cls = on ? "wo-ico wo-ico--on" : "wo-ico wo-ico--off";
+  return `<span class="${cls}" title="${escapeHtml(title)}">${sym}</span>`;
+}
+
+function woFlagsCell(r) {
+  const tS = uiText("UI_TT_FLAG_SAFETY", "Risco de segurança");
+  const tSf = uiText("UI_TT_FLAG_SAFETY_OFF", "Sem indicação de risco de segurança");
+  const tC = uiText("UI_TT_FLAG_CRITICAL", "Infra-estrutura crítica");
+  const tCf = uiText("UI_TT_FLAG_CRITICAL_OFF", "Fora de perfil de infra crítica");
+  return `<span class="wo-flag-group">${woIconBool(tS, tSf, r.flag_safety_risk)}${woIconBool(
+    tC,
+    tCf,
+    r.flag_critical_infra
+  )}</span>`;
+}
+
+/** Contador compacto: símbolo + valor (tooltip no contentor). */
+function woCounter(sym, title, value) {
+  const v = value != null && value !== "" && !Number.isNaN(Number(value)) ? String(value) : "—";
+  return `<span class="wo-ctr" title="${escapeHtml(title)}"><span class="wo-ctr-sym" aria-hidden="true">${sym}</span><span class="wo-ctr-val">${escapeHtml(v)}</span></span>`;
+}
+
+function formatStartCompact(iso) {
+  if (iso == null) return "—";
+  const s = String(iso).replace("T", " ").replace(/\.\d{3}Z?$/, "");
+  return s.slice(5, 16).replace(" ", "\u00a0");
+}
+
+function orderTypeAbbr(orderType) {
+  const t = (orderType || "").toLowerCase();
+  if (!t) return "—";
+  return t.slice(0, 3).toUpperCase();
+}
+
+function woPriPosCell(r) {
+  const pri = r.priority != null && String(r.priority).trim() !== "" ? String(r.priority).trim() : "—";
+  const priTitle = uiText("UI_TT_PRIORITY_LETTER", "Prioridade operacional (P1…)");
+  const posTitle = uiText("UI_TT_POS_SCORE", "POS / peso numérico para triagem");
+  const posVal = r.priority_score != null ? String(r.priority_score) : "—";
+  return `<span class="wo-pripos"><abbr class="wo-pri-abbr" title="${escapeHtml(priTitle)}">${escapeHtml(pri)}</abbr><span class="wo-pos-wrap" title="${escapeHtml(posTitle)}"><span class="wo-pos-ic" aria-hidden="true">⌖</span><span class="wo-pos-val">${escapeHtml(posVal)}</span></span></span>`;
+}
+
+function woCallbackPhonesCell(r) {
+  const humOn = !!r.flag_customer_callback;
+  const autoOn = !!r.callback_auto;
+  const th = uiText("UI_TT_CALLBACK_HUM", "Callback humano (operador / contacto directo)");
+  const ta = uiText("UI_TT_CALLBACK_AUTO", "Callback automático (IVR, SMS, BOT)");
+  return `<span class="wo-cb-row"><span class="wo-cb wo-cb--hum ${humOn ? "wo-cb--on" : ""}" title="${escapeHtml(th)}">☎</span><span class="wo-cb wo-cb--auto ${autoOn ? "wo-cb--on" : ""}" title="${escapeHtml(ta)}">⚙</span></span>`;
+}
+
+async function resolvePocLockUserId() {
+  if (pocLockUserId != null) return pocLockUserId;
+  try {
+    const res = await fetch("/api/users");
+    if (!res.ok) return null;
+    const users = await res.json();
+    const op = users.find((u) => u.username === "operador1");
+    pocLockUserId = op ? op.id : users[0]?.id ?? null;
+    return pocLockUserId;
+  } catch {
+    return null;
+  }
+}
+
+function setOmsStatusMessage(msg, isError) {
+  const el = document.getElementById("oms-orders-status");
+  if (!el) return;
+  el.textContent = msg;
+  el.hidden = !msg;
+  el.style.color = isError ? "var(--danger, #f87171)" : "";
+}
+
+function setUsrStatusMessage(msg, isError) {
+  const el = document.getElementById("usr-panel-status");
+  if (!el) return;
+  el.textContent = msg;
+  el.hidden = !msg;
+  el.style.color = isError ? "var(--danger, #f87171)" : "";
+}
+
+async function loadWorkOrdersFromApi() {
+  const tbody = document.getElementById("oms-orders-tbody");
+  if (!tbody) return;
+  setOmsStatusMessage(i18nCache.UI_OP_STATUS_LOADING_ORDERS || "A carregar ordens…", false);
+  try {
+    const res = await fetch("/api/work-orders");
+    if (!res.ok) throw new Error("bad response");
+    const rows = await res.json();
+    tbody.innerHTML = "";
+    rows.forEach((r) => {
+      const tr = document.createElement("tr");
+      tr.className = "order-row-api";
+      tr.setAttribute("data-order-id", String(r.id));
+      tr.setAttribute("data-priority", r.priority != null ? String(r.priority) : "—");
+      tr.setAttribute(
+        "data-created",
+        r.created_at ? String(r.created_at).replace("T", " ").slice(0, 16) : "—"
+      );
+      tr.setAttribute("data-team", r.team_code ? `${r.team_code} — ${r.team_name || ""}`.trim() : "—");
+      tr.setAttribute("data-owner", r.owner_username || "—");
+      tr.setAttribute("data-locked", r.locked_by_username || "—");
+      tr.setAttribute("role", "button");
+      tr.tabIndex = 0;
+      const statusSpan = document.createElement("span");
+      statusSpan.className = orderStatusBadgeClass(r.status);
+      statusSpan.textContent = orderStatusLabel(r.status);
+      const lat = r.focus_lat != null ? parseFloat(r.focus_lat) : NaN;
+      const lng = r.focus_lng != null ? parseFloat(r.focus_lng) : NaN;
+      const hasPos = !Number.isNaN(lat) && !Number.isNaN(lng);
+      const mapBtn = hasPos
+        ? `<button type="button" class="mock-btn-ir mock-btn-wo-map" data-lat="${lat}" data-lng="${lng}" title="${escapeHtml(
+            uiText("UI_OP_GO_MAP_ORDER", "Ir para o mapa (bairros e vias)")
+          )}">${i18nCache.UI_OP_GO_MAP || "Ir para"}</button>`
+        : `<span class="mock-hint">—</span>`;
+      const affTitle = uiText("UI_TT_AFFECTED", "Número de clientes afectados (decisório)");
+      const compTitle = uiText("UI_TT_COMPLAINTS", "Reclamações ligadas a esta ordem");
+      const hoursTitle = uiText("UI_TT_HOURS_OPEN", "Tempo em curso (horas desde o início)");
+      const mun = r.municipality_name || "—";
+      const bai = r.neighborhood_name || "—";
+      const loc = mun === "—" && bai === "—" ? "—" : `${mun} · ${bai}`;
+      tr.innerHTML = `
+        <td>${escapeHtml(r.order_code)}</td>
+        <td class="wo-start">${escapeHtml(formatStartCompact(r.start_time || r.created_at))}</td>
+        <td class="wo-icon-cell">${woCounter("⏱", hoursTitle, r.hours_open)}</td>
+        <td><abbr title="${escapeHtml(orderTypeLabel(r.order_type))}">${escapeHtml(orderTypeAbbr(r.order_type))}</abbr></td>
+        <td class="wo-ellipsis" title="${escapeHtml(r.organization_label || "")}">${escapeHtml(r.organization_label || "—")}</td>
+        <td class="wo-ellipsis" title="${escapeHtml(loc)}">${escapeHtml(loc)}</td>
+        <td class="wo-ellipsis">${escapeHtml(r.equipment_code || "—")}</td>
+        <td class="wo-icon-cell">${woCounter("⌂", affTitle, r.affected_customers_count)}</td>
+        <td class="wo-icon-cell">${woCounter("◆", compTitle, r.complaints_linked_count)}</td>
+        <td class="wo-icon-cell">${woFlagsCell(r)}</td>
+        <td class="wo-pripos-cell">${woPriPosCell(r)}</td>
+        <td class="wo-icon-cell">${woCallbackPhonesCell(r)}</td>
+        <td>${escapeHtml(r.team_code || "—")}</td>
+        <td>${escapeHtml(r.owner_username || "—")}</td>
+        <td data-col="status"></td>
+        <td class="wo-summary-cell">${escapeHtml(r.summary || "—")}</td>
+        <td><button type="button" class="mock-btn-open-order" data-i18n="UI_OP_OPEN_DETAIL">${i18nCache.UI_OP_OPEN_DETAIL || "Folha"}</button></td>
+        <td>${mapBtn}</td>
+      `;
+      const statusTd = tr.querySelector('td[data-col="status"]');
+      if (statusTd) statusTd.appendChild(statusSpan);
+      tbody.appendChild(tr);
+    });
+    rebuildWorkOrderMarkers(rows);
+    setOmsStatusMessage(
+      rows.length ? "" : i18nCache.UI_OP_NO_ORDERS || "Sem ordens na base.",
+      false
+    );
+    const lang = document.getElementById("select-language")?.value || "pt";
+    loadTranslations(lang);
+  } catch {
+    setOmsStatusMessage(
+      "Falha ao carregar ordens. Verifique o serviço API e a base de dados (ver docs/DEPLOY_POC.md).",
+      true
+    );
+  }
+}
+
+function formatTs(iso) {
+  if (iso == null) return "—";
+  return String(iso).replace("T", " ").replace(/\.\d{3}Z?$/, "").slice(0, 16);
+}
+
+function teamStatusBadgeClass(status) {
+  const s = (status || "").toLowerCase();
+  if (s === "active") return "mock-badge mock-badge--ok";
+  if (s === "standby") return "mock-badge mock-badge--warn";
+  return "mock-badge mock-badge--muted";
+}
+
+function teamStatusLabel(status) {
+  const s = (status || "").toLowerCase();
+  if (s === "active") return i18nCache.UI_OP_STATUS_ACTIVE || "Activa";
+  if (s === "standby") return i18nCache.UI_OP_STATUS_STANDBY || "Stand-by";
+  return status || "—";
+}
+
+function setTeamsStatusMessage(msg, isError) {
+  const el = document.getElementById("teams-panel-status");
+  if (!el) return;
+  el.textContent = msg;
+  el.hidden = !msg;
+  el.style.color = isError ? "var(--danger, #f87171)" : "";
+}
+
+function setAuditStatusMessage(msg, isError) {
+  const el = document.getElementById("audit-panel-status");
+  if (!el) return;
+  el.textContent = msg;
+  el.hidden = !msg;
+  el.style.color = isError ? "var(--danger, #f87171)" : "";
+}
+
+async function loadTeamsFromApi() {
+  const tbody = document.getElementById("teams-tbody");
+  if (!tbody) return;
+  setTeamsStatusMessage(i18nCache.UI_OP_STATUS_LOADING_TEAMS || "A carregar equipas…", false);
+  try {
+    const res = await fetch("/api/teams");
+    if (!res.ok) throw new Error("bad response");
+    const rows = await res.json();
+    tbody.innerHTML = "";
+    rows.forEach((r) => {
+      const tr = document.createElement("tr");
+      const lat = r.lat != null ? parseFloat(r.lat) : NaN;
+      const lng = r.lng != null ? parseFloat(r.lng) : NaN;
+      const hasPos = !Number.isNaN(lat) && !Number.isNaN(lng);
+      const statusSpan = document.createElement("span");
+      statusSpan.className = teamStatusBadgeClass(r.status);
+      statusSpan.textContent = teamStatusLabel(r.status);
+      const mapBtn = hasPos
+        ? `<button type="button" class="mock-btn-ir" data-i18n="UI_OP_GO_MAP" data-lat="${lat}" data-lng="${lng}">${i18nCache.UI_OP_GO_MAP || "Ir para"}</button>`
+        : `<span class="mock-hint">—</span>`;
+      tr.innerHTML = `
+        <td>${escapeHtml(r.team_code)}</td>
+        <td>${escapeHtml(r.leader_name || "—")}</td>
+        <td>${escapeHtml(r.skill || "—")}</td>
+        <td>${escapeHtml(r.team_type || "—")}</td>
+        <td>${escapeHtml(r.owner_org || "—")}</td>
+        <td>${escapeHtml(formatTs(r.last_coordinate_at))}</td>
+        <td>${escapeHtml(formatTs(r.last_updated_at))}</td>
+        <td>${escapeHtml(r.zone || "—")}</td>
+        <td>${escapeHtml(r.member_count != null ? String(r.member_count) : "—")}</td>
+        <td></td>
+        <td>${mapBtn}</td>
+      `;
+      tr.querySelector("td:nth-child(10)").appendChild(statusSpan);
+      tbody.appendChild(tr);
+    });
+    setTeamsStatusMessage(rows.length ? "" : i18nCache.UI_OP_NO_TEAMS || "Sem equipas registadas.", false);
+    const lang = document.getElementById("select-language")?.value || "pt";
+    loadTranslations(lang);
+  } catch {
+    setTeamsStatusMessage(
+      "Falha ao carregar equipas. Verifique o serviço API (ver docs/DEPLOY_POC.md).",
+      true
+    );
+  }
+}
+
+async function loadAuditArchiveFromApi() {
+  const tbody = document.getElementById("audit-archive-tbody");
+  if (!tbody) return;
+  setAuditStatusMessage(i18nCache.UI_OP_STATUS_LOADING_AUDIT || "A carregar arquivo…", false);
+  try {
+    const res = await fetch("/api/audit/operations-archive?limit=50");
+    if (!res.ok) throw new Error("bad response");
+    const rows = await res.json();
+    tbody.innerHTML = "";
+    if (rows.length === 0) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="4" class="mock-hint">${escapeHtml(i18nCache.UI_OP_AUD_EMPTY || "Nenhum registo de arquivo pré-delete.")}</td>`;
+      tbody.appendChild(tr);
+    } else {
+      rows.forEach((r) => {
+        const tr = document.createElement("tr");
+        const tbl = r.source_schema && r.source_table ? `${r.source_schema}.${r.source_table}` : "—";
+        tr.innerHTML = `
+          <td><code>${escapeHtml(tbl)}</code></td>
+          <td>${escapeHtml(r.source_id)}</td>
+          <td>${escapeHtml(formatTs(r.archived_at))}</td>
+          <td>${escapeHtml(r.archive_reason || "—")}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    setAuditStatusMessage("", false);
+  } catch {
+    setAuditStatusMessage(
+      "Falha ao carregar arquivo de auditoria. Verifique a API (ver docs/DEPLOY_POC.md).",
+      true
+    );
+  }
+}
+
+async function loadUsersFromApi() {
+  const tbody = document.getElementById("users-tbody");
+  if (!tbody) return;
+  setUsrStatusMessage(i18nCache.UI_OP_STATUS_LOADING_USERS || "A carregar utilizadores…", false);
+  try {
+    const res = await fetch("/api/users");
+    if (!res.ok) throw new Error("bad response");
+    const rows = await res.json();
+    tbody.innerHTML = "";
+    rows.forEach((u) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(u.username)}</td>
+        <td>${escapeHtml(u.email || "—")}</td>
+        <td>${escapeHtml(u.access_type || "—")}</td>
+        <td>${escapeHtml(u.status || "—")}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    setUsrStatusMessage("", false);
+  } catch {
+    setUsrStatusMessage(
+      'Falha ao carregar utilizadores. Verifique API (ver docs/DEPLOY_POC.md).',
+      true
+    );
+  }
+}
+
+function setOrderSheetFetchStatus(msg, isError) {
+  const el = document.getElementById("wo-sheet-fetch-status");
+  if (!el) return;
+  el.textContent = msg;
+  el.hidden = !msg;
+  el.style.color = isError ? "var(--danger, #f87171)" : "";
+}
+
+function closeOrderSheetModal() {
+  const modal = document.getElementById("modal-order-sheet");
+  if (!modal) return;
+  modal.style.display = "none";
+  modal.setAttribute("aria-hidden", "true");
+}
+
+async function openOrderSheetModal(orderId) {
+  const modal = document.getElementById("modal-order-sheet");
+  if (!modal) return;
+  selectedWorkOrderId = String(orderId);
+  modal.style.display = "flex";
+  modal.setAttribute("aria-hidden", "false");
+  setOrderSheetFetchStatus(i18nCache.UI_OP_STATUS_LOADING_SHEET || "A carregar folha…", false);
+  const sub = document.getElementById("wo-sheet-code-sub");
+  if (sub) sub.textContent = "";
+  try {
+    const res = await fetch(`/api/work-orders/${orderId}`);
+    if (!res.ok) throw new Error("fetch fail");
+    const data = await res.json();
+    const o = data.order;
+    if (sub) sub.textContent = o.order_code || `#${o.id}`;
+    document.getElementById("wo-sheet-summary").value = o.summary || "";
+    document.getElementById("wo-sheet-description").value = o.description || "";
+    document.getElementById("wo-sheet-status").value = o.status || "open";
+    document.getElementById("wo-sheet-priority").value = o.priority || "";
+    document.getElementById("wo-sheet-order-type").value = o.order_type || "incident";
+    document.getElementById("wo-sheet-org").value = o.organization_label || "";
+    document.getElementById("wo-sheet-municipality").value = o.municipality_name || "";
+    document.getElementById("wo-sheet-neighborhood").value = o.neighborhood_name || "";
+    document.getElementById("wo-sheet-equipment").value = o.equipment_code || "";
+    document.getElementById("wo-sheet-feeder").value = o.feeder_code || "";
+    document.getElementById("wo-sheet-affected").value =
+      o.affected_customers_count != null ? String(o.affected_customers_count) : "0";
+    document.getElementById("wo-sheet-prio-score").value =
+      o.priority_score != null ? String(o.priority_score) : "";
+    document.getElementById("wo-sheet-lat").value = o.focus_lat != null ? String(o.focus_lat) : "";
+    document.getElementById("wo-sheet-lng").value = o.focus_lng != null ? String(o.focus_lng) : "";
+    document.getElementById("wo-sheet-flag-safety").checked = !!o.flag_safety_risk;
+    document.getElementById("wo-sheet-flag-crit").checked = !!o.flag_critical_infra;
+    document.getElementById("wo-sheet-flag-cb").checked = !!o.flag_customer_callback;
+    const meta = document.getElementById("wo-sheet-readonly-meta");
+    if (meta) {
+      meta.textContent = `${uiText("UI_OP_SHEET_META_TEAM", "Equipa")}: ${o.team_code || "—"} · ${uiText(
+        "UI_OP_DETAIL_OWNER",
+        "Responsável"
+      )}: ${o.owner_username || "—"} · ${uiText("UI_OP_DETAIL_LOCKED_BY", "Bloqueio")}: ${
+        o.locked_by_username || "—"
+      } · ${uiText("UI_OP_DETAIL_CREATED", "Criada")}: ${formatTs(o.created_at)} · ${uiText(
+        "UI_OP_COL_COMPLAINTS",
+        "Recl."
+      )}: ${o.complaints_linked_count ?? "—"}`;
+    }
+    const ttbody = document.getElementById("wo-sheet-tasks-tbody");
+    if (ttbody) {
+      ttbody.innerHTML = "";
+      (data.tasks || []).forEach((t) => {
+        const tr = document.createElement("tr");
+        const st = (t.status || "").toLowerCase();
+        const canStart = st !== "in_progress" && st !== "completed";
+        const canComplete = st === "in_progress" || st === "open" || st === "scheduled";
+        const canReopen = st === "completed";
+        tr.innerHTML = `
+          <td>${escapeHtml(String(t.sequence_no))}</td>
+          <td>${escapeHtml(t.summary || "—")}</td>
+          <td>${escapeHtml(t.status || "—")}</td>
+          <td>${escapeHtml(t.notes || "—")}</td>
+          <td class="wo-task-actions">
+            <button type="button" class="mock-btn mock-btn--xs wo-task-patch" data-task-id="${t.id}" data-new-status="in_progress" ${canStart ? "" : "disabled"}>${escapeHtml(
+          i18nCache.UI_OP_TASK_START || "Em curso"
+        )}</button>
+            <button type="button" class="mock-btn mock-btn--xs wo-task-patch" data-task-id="${t.id}" data-new-status="completed" ${canComplete ? "" : "disabled"}>${escapeHtml(
+          i18nCache.UI_OP_TASK_DONE || "Concluir"
+        )}</button>
+            <button type="button" class="mock-btn mock-btn--xs wo-task-patch" data-task-id="${t.id}" data-new-status="open" ${canReopen ? "" : "disabled"}>${escapeHtml(
+          i18nCache.UI_OP_TASK_REOPEN || "Reabrir"
+        )}</button>
+          </td>`;
+        ttbody.appendChild(tr);
+      });
+      if (!data.tasks?.length) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="5" class="mock-hint">${escapeHtml(
+          i18nCache.UI_OP_TASKS_EMPTY || "Sem tarefas registadas."
+        )}</td>`;
+        ttbody.appendChild(tr);
+      }
+    }
+    const ctbody = document.getElementById("wo-sheet-complaints-tbody");
+    if (ctbody) {
+      ctbody.innerHTML = "";
+      (data.complaints || []).forEach((c) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${escapeHtml(c.complaint_ref || "—")}</td>
+          <td>${escapeHtml(c.channel || "—")}</td>
+          <td>${escapeHtml(c.caller_name || "—")}</td>
+          <td>${escapeHtml(c.status || "—")}</td>
+          <td>${escapeHtml(c.summary || "—")}</td>
+          <td>${escapeHtml(formatTs(c.received_at))}</td>`;
+        ctbody.appendChild(tr);
+      });
+      if (!data.complaints?.length) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="6" class="mock-hint">${escapeHtml(
+          i18nCache.UI_OP_COMPLAINTS_EMPTY || "Sem reclamações ligadas."
+        )}</td>`;
+        ctbody.appendChild(tr);
+      }
+    }
+    setOrderSheetFetchStatus("", false);
+    const lang = document.getElementById("select-language")?.value || "pt";
+    loadTranslations(lang);
+  } catch {
+    setOrderSheetFetchStatus(
+      i18nCache.UI_OP_SHEET_LOAD_FAIL ||
+        "Falha ao carregar a folha. Aplique infra/sql/06_work_order_sheet_model.sql se ainda não aplicou.",
+      true
+    );
+  }
+}
 
 (function initOperacaoPanelActions() {
   const panels = document.querySelector(".operacao-panels");
   if (!panels) return;
 
   panels.addEventListener("click", (e) => {
+    const woMapBtn = e.target.closest(".mock-btn-wo-map");
+    if (woMapBtn) {
+      e.stopPropagation();
+      const lat = parseFloat(woMapBtn.getAttribute("data-lat") || "");
+      const lng = parseFloat(woMapBtn.getAttribute("data-lng") || "");
+      focusOperationalMapOnWorkOrder(lat, lng);
+      return;
+    }
+
     const irBtn = e.target.closest(".mock-btn-ir");
-    if (irBtn) {
+    if (irBtn && !irBtn.classList.contains("mock-btn-wo-map")) {
       const lat = parseFloat(irBtn.getAttribute("data-lat") || "");
       const lng = parseFloat(irBtn.getAttribute("data-lng") || "");
       if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
         map.setView([lat, lng], 15);
         setStatus(
           i18nCache.UI_OP_STATUS_MAP_CENTERED ||
-            "Mapa centralizado na última posição conhecida da equipa (mock)."
+            "Mapa centrado na última posição conhecida da equipa."
         );
       }
       return;
     }
 
     const openBtn = e.target.closest(".mock-btn-open-order");
-    if (!openBtn) return;
+    if (openBtn) {
+      e.stopPropagation();
+      const row = openBtn.closest(".order-row-api");
+      const id = row?.getAttribute("data-order-id");
+      if (id) openOrderSheetModal(id);
+      return;
+    }
 
-    const row = openBtn.closest(".order-row-mock");
-    const id = row && row.getAttribute("data-order-mock");
-    const detail = document.getElementById("order-detail-mock");
-    if (!detail || !id) return;
+    const row = e.target.closest(".order-row-api");
+    if (row && !e.target.closest("button")) {
+      const id = row.getAttribute("data-order-id");
+      if (id) openOrderSheetModal(id);
+    }
+  });
 
-    const data = ORDER_MOCK_DETAIL[id];
-    if (!data) return;
-
-    const setDd = (idEl, text) => {
-      const el = document.getElementById(idEl);
-      if (el) el.textContent = text;
-    };
-
-    setDd("order-detail-code", data.code);
-    const catLabel = i18nCache[data.categoryKey] || data.categoryKey;
-    setDd("order-detail-category", catLabel);
-    setDd("order-detail-desc", data.desc);
-    setDd("order-detail-prio", data.prio);
-    setDd("order-detail-created", data.created);
-    setDd("order-detail-team", data.team);
-
-    detail.hidden = false;
-    detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  panels.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const row = e.target.closest?.(".order-row-api");
+    if (!row || e.target.closest("button")) return;
+    e.preventDefault();
+    const id = row.getAttribute("data-order-id");
+    if (id) openOrderSheetModal(id);
   });
 })();
+
+document.getElementById("btn-close-order-sheet")?.addEventListener("click", closeOrderSheetModal);
+
+document.getElementById("modal-order-sheet")?.addEventListener("click", (ev) => {
+  if (ev.target.id === "modal-order-sheet") closeOrderSheetModal();
+});
+
+document.getElementById("modal-order-sheet")?.addEventListener("click", async (ev) => {
+  const patchBtn = ev.target.closest(".wo-task-patch");
+  if (patchBtn && !patchBtn.disabled) {
+    const taskId = patchBtn.getAttribute("data-task-id");
+    const newStatus = patchBtn.getAttribute("data-new-status");
+    if (!selectedWorkOrderId || !taskId || !newStatus) return;
+    try {
+      const res = await fetch(`/api/work-orders/${selectedWorkOrderId}/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error("patch task");
+      setStatus(i18nCache.UI_OP_TASK_STATUS_OK || "Tarefa actualizada.");
+      await openOrderSheetModal(selectedWorkOrderId);
+    } catch {
+      setStatus("Falha ao actualizar tarefa. Verifique a API (ver docs/DEPLOY_POC.md).");
+    }
+    return;
+  }
+
+  if (ev.target.closest("#btn-wo-add-task")) {
+    ev.preventDefault();
+    const summary = document.getElementById("wo-new-task-summary")?.value?.trim() || "";
+    if (!summary) {
+      setStatus(i18nCache.UI_OP_TASK_SUMMARY_REQUIRED || "Indique o resumo da tarefa.");
+      return;
+    }
+    const notes = document.getElementById("wo-new-task-notes")?.value?.trim() || null;
+    const status = document.getElementById("wo-new-task-status")?.value || "open";
+    if (!selectedWorkOrderId) return;
+    try {
+      const res = await fetch(`/api/work-orders/${selectedWorkOrderId}/tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ summary, notes, status }),
+      });
+      if (!res.ok) throw new Error("post task");
+      document.getElementById("wo-new-task-summary").value = "";
+      document.getElementById("wo-new-task-notes").value = "";
+      setStatus(i18nCache.UI_OP_TASK_ADDED || "Tarefa criada.");
+      await openOrderSheetModal(selectedWorkOrderId);
+      await loadWorkOrdersFromApi();
+    } catch {
+      setStatus("Falha ao criar tarefa. Verifique a API (ver docs/DEPLOY_POC.md).");
+    }
+  }
+});
+
+document.getElementById("btn-order-sheet-save")?.addEventListener("click", async () => {
+  if (!selectedWorkOrderId) return;
+  const body = {
+    summary: document.getElementById("wo-sheet-summary")?.value ?? "",
+    description: document.getElementById("wo-sheet-description")?.value ?? "",
+    status: document.getElementById("wo-sheet-status")?.value,
+    priority: document.getElementById("wo-sheet-priority")?.value || null,
+    order_type: document.getElementById("wo-sheet-order-type")?.value,
+    organization_label: document.getElementById("wo-sheet-org")?.value || null,
+    municipality_name: document.getElementById("wo-sheet-municipality")?.value || null,
+    neighborhood_name: document.getElementById("wo-sheet-neighborhood")?.value || null,
+    equipment_code: document.getElementById("wo-sheet-equipment")?.value || null,
+    feeder_code: document.getElementById("wo-sheet-feeder")?.value || null,
+    affected_customers_count: parseInt(document.getElementById("wo-sheet-affected")?.value || "0", 10),
+    priority_score: document.getElementById("wo-sheet-prio-score")?.value
+      ? parseInt(document.getElementById("wo-sheet-prio-score").value, 10)
+      : null,
+    flag_safety_risk: document.getElementById("wo-sheet-flag-safety")?.checked ?? false,
+    flag_critical_infra: document.getElementById("wo-sheet-flag-crit")?.checked ?? false,
+    flag_customer_callback: document.getElementById("wo-sheet-flag-cb")?.checked ?? false,
+  };
+  const latStr = document.getElementById("wo-sheet-lat")?.value?.trim();
+  const lngStr = document.getElementById("wo-sheet-lng")?.value?.trim();
+  if (latStr !== "") {
+    const x = parseFloat(latStr);
+    if (!Number.isNaN(x)) body.focus_lat = x;
+  }
+  if (lngStr !== "") {
+    const y = parseFloat(lngStr);
+    if (!Number.isNaN(y)) body.focus_lng = y;
+  }
+  if (body.priority_score !== null && Number.isNaN(body.priority_score)) delete body.priority_score;
+  try {
+    const res = await fetch(`/api/work-orders/${selectedWorkOrderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error("patch fail");
+    setStatus(i18nCache.UI_OP_SHEET_SAVED || "Folha guardada.");
+    await loadWorkOrdersFromApi();
+    await openOrderSheetModal(selectedWorkOrderId);
+  } catch {
+    setStatus("Falha ao guardar folha. Verifique a API (ver docs/DEPLOY_POC.md).");
+  }
+});
+
+document.getElementById("btn-order-sheet-assume-lock")?.addEventListener("click", async () => {
+  if (!selectedWorkOrderId) return;
+  const uid = await resolvePocLockUserId();
+  if (uid == null) {
+    setStatus(
+      "Não foi possível reservar edição: crie o utilizador «operador1» ou outro perfil OPERACAO em Utilizadores."
+    );
+    return;
+  }
+  try {
+    const res = await fetch(`/api/work-orders/${selectedWorkOrderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locked_by_id: uid }),
+    });
+    if (!res.ok) throw new Error("patch fail");
+    setStatus(i18nCache.UI_OP_LOCK_OK || "Edição reservada.");
+    loadWorkOrdersFromApi();
+    openOrderSheetModal(selectedWorkOrderId);
+  } catch {
+    setStatus("Falha ao reservar edição. Verifique a API (ver docs/DEPLOY_POC.md).");
+  }
+});
+
+document.getElementById("btn-order-sheet-release-lock")?.addEventListener("click", async () => {
+  if (!selectedWorkOrderId) return;
+  try {
+    const res = await fetch(`/api/work-orders/${selectedWorkOrderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locked_by_id: null }),
+    });
+    if (!res.ok) throw new Error("patch fail");
+    setStatus(i18nCache.UI_OP_LOCK_RELEASED || "Reserva de edição libertada.");
+    loadWorkOrdersFromApi();
+    openOrderSheetModal(selectedWorkOrderId);
+  } catch {
+    setStatus("Falha ao libertar edição. Verifique a API (ver docs/DEPLOY_POC.md).");
+  }
+});
+
+document.getElementById("form-new-user")?.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const form = ev.target;
+  const fd = new FormData(form);
+  const body = {
+    username: fd.get("username"),
+    email: fd.get("email") || null,
+    first_name: fd.get("first_name") || null,
+    last_name: fd.get("last_name") || null,
+    access_type: fd.get("access_type") || "CONSULTA",
+  };
+  try {
+    const res = await fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error("post fail");
+    form.reset();
+    setUsrStatusMessage(i18nCache.UI_OP_USER_CREATED || "Utilizador criado.", false);
+    loadUsersFromApi();
+  } catch {
+    setUsrStatusMessage(
+      i18nCache.UI_OP_USER_CREATE_FAIL || "Não foi possível criar (username duplicado?).",
+      true
+    );
+  }
+});
+
 
 // Lógica do Modal de Traduções (Configurações)
 const modalTranslations = document.getElementById("modal-translations");
@@ -842,6 +1563,12 @@ async function loadTranslations(lang) {
       const key = el.getAttribute("data-i18n");
       if (translations[key]) {
         el.textContent = translations[key];
+      }
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+      const key = el.getAttribute("data-i18n-placeholder");
+      if (translations[key]) {
+        el.setAttribute("placeholder", translations[key]);
       }
     });
     return translations;

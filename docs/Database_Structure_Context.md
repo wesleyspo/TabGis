@@ -1,283 +1,395 @@
-# Modelo de dados TabGis — Utilities (referência técnica)
+# TabGis — Especificação de dados (utilities)
 
-> **Diagramas (fluxos + ER):** abra no navegador o ficheiro [`Database_Structure_Context.html`](./Database_Structure_Context.html) (Mermaid, tema escuro).
-
-> **Idioma dos artefactos:** nomes de tabelas, colunas, tipos e comentários SQL em **inglês (US)**; esta especificação narrativa está em **português**.  
-> **Motor alvo:** **PostgreSQL 15+** com **PostGIS** para geometrias; não se assume sintaxe Oracle (`NUMBER`, `VARCHAR2`, `ENABLE`).
-
----
-
-## 1. Objectivo e âmbito
-
-Sistema de pós-graduação orientado ao mercado de **utilities**, com ferramentas **geográficas** e **tabulares**. O modelo cobre inicialmente **energia eléctrica**, mas deve permanecer **agnóstico** para extensão a **gás, água e esgoto, telecomunicações** (tipos e domínios parametrizados, não hard-coded apenas para electricidade).
-
-**Fluxo operacional central (OMS):** chamadas (*calls*) geram ou associam-se a **ordens** (*work orders*); ordens ligam-se a **tarefas** (*tasks*), **equipas** (*crews*), **equipamentos** (*equipments*) e **eventos de rede** (*network events*). O domínio **MWM** (mobile workforce) gere equipes, turnos, deslocamentos e trajectos em tempo quase real.
+> **Convenção deste documento:** cada entidade é uma **tabela** com colunas **Campo**, **Tipo (PostgreSQL)**, **Comentário (inglês, US)** e **Comentário (português)**. Nomes de **schemas**, **tabelas** e **campos** em **inglês**.  
+> **Motor:** PostgreSQL 15+ / PostGIS. Campos `TYPE` / `STATUS` com domínio fechado exigem **tabela de controlo** correspondente (cadastro + auditoria), conforme regra global do modelo.  
+> **Diagramas:** [`Database_Structure_Context.html`](./Database_Structure_Context.html).
 
 ---
 
-## 2. Princípios de modelagem
+## 1. Partição de schemas (definição do modelo)
 
-| Princípio | Descrição |
-|-----------|-----------|
-| **Multi-utilitário** | Códigos de domínio (`utility_type`: electric, gas, water, sewer, telecom) em entidades relevantes ou via organização; *lookups* (`*_type_id`, `*_status_id`) partilháveis entre domínios quando o significado for idêntico. |
-| **Rastreio por evento** | Toda entidade de negócio mutável possui referência a um **evento de alteração** (`event_id` → tabela canónica de eventos) para encadeamento temporal e auditoria de UI. |
-| **Tipos auditáveis** | Onde o rascunho original indica **TYPE** genérico, prevê-se **tabela de domínio** (ex.: `ref.equipment_type`, `ref.order_type`) com versão/validade se necessário, e registo de alterações via `event_id` + histórico. |
-| **Auditoria por domínio** | Para além de `event_id`, tabelas **analógicas de auditoria** (append-only) ou **JSONB archive** antes de `DELETE` (padrão já adoptado em `audit.operations_row_archive` para `operations.*`). |
-| **Georreferenciação** | Preferir `geometry(Point, 4326)` ou `geography` em PostGIS em vez de pares `LAT`/`LONG` soltos; manter `location_description` para texto livre quando a feição ainda não estiver amarrada. |
-| **Campos calculados** | Métricas derivadas (CHI, ETR, prioridade, *flags* de IA sobre texto de chamadas) podem ser **colunas materializadas**, **vistas** ou **tabelas de agregação** refrescadas por job — evitar duplicar lógica crítica só em colunas sem documentação da fórmula. |
+| Schema | Conteúdo |
+|--------|------------|
+| **`gis`** | **Consumidores** (*consumers*) e **equipamentos** (*equipment*) da rede — dados espaciais e cadastro de ativos / pontos de entrega. |
+| **`oms`** | **Chamadas** (*calls*), **feedbacks** de contato, **ordens** (*work orders*), **tarefas** (*tasks*), **eventos de rede** (*network events*), **interrupções ao consumidor** (*customer interruptions*). |
+| **`mwm`** | **Equipas** (*crews*), **turnos**, **atribuição equipa–ordem**, **trajectos** (tempo real / histórico). |
 
----
-
-## 3. Organização de schemas (alvo)
-
-| Schema | Função |
-|--------|--------|
-| `landbase` | Dados geográficos de apoio (já existente: divisões, vias, recortes). |
-| `config` | Parâmetros, traduções, idiomas (já existente). |
-| `security` | Utilizadores e perfis (já existente). |
-| `audit` | Históricos, *login*, arquivo pré-`DELETE` (já existente; extensível por domínio). |
-| `ref` *(proposto)* | *Lookups* estáveis: tipos de equipamento, níveis de rede, estados de ligação, canais de chamada, tipos de contrato, etc. |
-| `customer` *(proposto)* | Contratos, titulares, localizações de serviço. |
-| `asset` ou `network` *(proposto)* | Equipamentos e relações hierárquicas na rede. |
-| `oms` *(proposto)* | Chamadas, *feedbacks*, ordens, tarefas, eventos de rede, interrupções ao cliente. |
-| `operations` | **POC actual:** `team`, `work_order`, `team_order_displacement`, `team_route` — subconjunto mínimo alinhado ao painel Operação até migração para o modelo completo `oms`/`mwm`. |
+**Schemas já existentes no projecto (fora desta partição):** `landbase` (fundo cartográfico), `config`, `security`, `audit`. A POC `operations.*` é subconjunto temporário até alinhar DDL com `oms` / `mwm`.
 
 ---
 
-## 4. Domínio — Clientes (`customer.*`)
+## 2. Dependências entre entidades (FK lógicas)
 
-Representa o ponto de entrega / titular contratual ligado à rede.
-
-### 4.1 Entidade: `customer.service_account` (proposta)
-
-| Coluna (EN) | Tipo PostgreSQL sugerido | Obrig. | Notas |
-|-------------|--------------------------|--------|--------|
-| `id` | `BIGSERIAL` | PK | |
-| `event_id` | `BIGINT` | FK → `audit.domain_event` ou equivalente | Toda alteração rastreada. |
-| `account_number` | `VARCHAR(30)` | UQ | Identificador comercial. |
-| `status_id` | `SMALLINT` | FK `ref.account_status` | Cadastro activo, suspenso, cortado, etc. |
-| `customer_type_id` | `SMALLINT` | FK `ref.customer_type` | Residencial, comercial, industrial… |
-| `equipment_id` | `VARCHAR(30)` | FK lógico → `network.equipment` | Ponto de rede servido. |
-| `parent_equipment_id` | `VARCHAR(30)` | FK lógico | Equipamento “pai” na alimentação. |
-| `last_name` | `VARCHAR(64)` | | |
-| `first_name` | `VARCHAR(64)` | | |
-| `email` | `VARCHAR(255)` | | |
-| `identity_document_type` | `VARCHAR(16)` | | Ex.: CPF, RG, NIF — *lookup* opcional. |
-| `identity_document_number` | `VARCHAR(32)` | | |
-| `contract_type_id` | `SMALLINT` | FK `ref.contract_type` | Consumo / largura de banda / kWh / canais — parametrizado. |
-| `first_connection_date` | `DATE` | | Primeira ligação à rede. |
-| `connection_start_date` | `DATE` | | Início da ligação actual (pode diferir da primeira). |
-| `connection_end_date` | `DATE` | | Desligamento. |
-| `street_type` | `VARCHAR(64)` | | |
-| `street_name` | `VARCHAR(64)` | | |
-| `house_number` | `VARCHAR(10)` | | |
-| `apartment_number` | `VARCHAR(10)` | | |
-| `postal_code` | `VARCHAR(10)` | | |
-| `city` | `VARCHAR(30)` | | |
-| `state` | `VARCHAR(30)` | | |
-| `primary_phone` | `VARCHAR(16)` | | |
-| `secondary_phone` | `VARCHAR(16)` | | |
-| `description` | `VARCHAR(80)` | | |
-| `smart_meter` | `BOOLEAN` | | Substitui `NUMBER(1,0)`. |
-| `location_description` | `VARCHAR(80)` | | Endereço textual completo. |
-| `geom` | `geometry(Point, 4326)` | | Preferível a `lat`/`long` separados. |
-| `accepts_proactive_contact` | `BOOLEAN` | | Equivalente ao conceito “CPA” / comunicação proactiva. |
-| `utility_type` | `VARCHAR(16)` | | electric, gas, water, sewer, telecom. |
-
-**Remoções / generalizações:** campos exclusivos de um único sector devem migrar para `JSONB attributes` ou tabelas filhas por utility, para não poluir o núcleo.
+| Origem | Campo | Destino | Notas |
+|--------|-------|---------|--------|
+| `gis.equipment` | `parent_equipment_id` | `gis.equipment.id` | Hierarquia de alimentação (opcional). |
+| `gis.consumer` | `equipment_id` | `gis.equipment.id` | Equipamento que serve o ponto de entrega. |
+| `gis.consumer` | `parent_equipment_id` | `gis.equipment.id` | Equipamento “pai” na topologia. |
+| `oms.call` | `consumer_id` | `gis.consumer.id` | Opcional até resolução cadastral. |
+| `oms.call` | `work_order_id` | `oms.work_order.id` | Chamada gera ou associa ordem. |
+| `oms.call_feedback` | `call_id` | `oms.call.id` | Nulo se contato exclusivamente proactivo. |
+| `oms.work_order` | `equipment_id` | `gis.equipment.id` | Equipamento afetado. |
+| `oms.work_order` | `owner_id` | `security.users.id` | Utilizador responsável pela ordem (POC). |
+| `oms.work_order` | `locked_by_id` | `security.users.id` | Utilizador que detém bloqueio de edição (POC). |
+| `oms.task` | `work_order_id` | `oms.work_order.id` | |
+| `oms.task` | `equipment_id` | `gis.equipment.id` | |
+| `oms.task` | `parent_task_id` | `oms.task.id` | Hierarquia de tarefas. |
+| `oms.network_event` | `work_order_id` | `oms.work_order.id` | |
+| `oms.network_event` | `task_id` | `oms.task.id` | Opcional. |
+| `oms.network_event` | `equipment_id` | `gis.equipment.id` | |
+| `oms.customer_interruption` | `consumer_id` | `gis.consumer.id` | |
+| `mwm.crew_order_assignment` | `crew_id` | `mwm.crew.id` | |
+| `mwm.crew_order_assignment` | `work_order_id` | `oms.work_order.id` | |
+| `mwm.crew_order_assignment` | `task_id` | `oms.task.id` | Opcional. |
+| `mwm.crew_shift` | `crew_id` | `mwm.crew.id` | |
+| `mwm.crew_route_daily` | `crew_id` | `mwm.crew.id` | |
+| `mwm.crew_route_history` | `crew_id` | `mwm.crew.id` | |
+| Todas as tabelas de negócio abaixo | `event_id` | `audit.domain_event.id` | Última alteração rastreada (ver §8). |
 
 ---
 
-## 5. Domínio — Equipamentos (`network.equipment` proposta)
+## 3. Schema `gis`
 
-| Coluna (EN) | Tipo sugerido | Notas |
-|-------------|---------------|--------|
-| `id` | `BIGSERIAL` ou `VARCHAR(30)` UQ | Alinhar com identificadores legados se existirem. |
-| `event_id` | `BIGINT` | |
-| `equipment_type_id` | `SMALLINT` | FK `ref.equipment_type`. |
-| `network_type_id` | `SMALLINT` | Primário, secundário, transmissão… |
-| `network_level_id` | `SMALLINT` | Aéreo, subterrâneo, subaquático, interior… |
-| `connection_status_0` … `_3` | `SMALLINT` | FK `ref.connection_state` — fases/conductores; na POC podem mapear A/B/C. |
-| `normal_connection_status_0` … `_3` | `SMALLINT` | Estado “esperado” para comparação. |
-| `monitoring_status_id` | `SMALLINT` | Ligado, desligado, sem comunicação. |
-| `parent_equipment_id` | `VARCHAR(30)` | |
-| `location_description` | `VARCHAR(80)` | |
-| `geom` | `geometry(Point, 4326)` ou `geometry` mais rica | Poste, trecho, etc. |
+### 3.1 `gis.consumer` (consumidor / conta contratual)
 
----
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `event_id` | `BIGINT` | FK to `audit.domain_event`; last change tracking. | FK evento de alteração; rastreio da última mudança. |
+| `account_number` | `VARCHAR(30)` | Unique commercial account identifier. | Identificador único da conta comercial. |
+| `status_id` | `SMALLINT` | FK to controlled status table (active, suspended, etc.). | FK tabela de estados possíveis do cadastro. |
+| `type_id` | `SMALLINT` | FK to controlled consumer type table; audited. | FK tabela de **TYPE**; cadastro e auditoria obrigatórios. |
+| `equipment_id` | `VARCHAR(30)` | Served network equipment identifier (FK to `gis.equipment` by business key or id). | ID do equipamento de rede servido. |
+| `parent_equipment_id` | `VARCHAR(30)` | Upstream feeding equipment identifier. | ID do equipamento que alimenta (pai). |
+| `last_name` | `VARCHAR(64)` | Customer last name. | Apelido / nome de família. |
+| `first_name` | `VARCHAR(64)` | Customer first name. | Primeiro nome. |
+| `email` | `VARCHAR(255)` | Contact email. | E-mail de contacto. |
+| `identity_document_type` | `VARCHAR(16)` | ID document type (CPF, RG, etc.). | Tipo de documento de identidade. |
+| `identity_document_number` | `VARCHAR(32)` | ID document number. | Número do documento. |
+| `contract_type_id` | `SMALLINT` | FK to contract type (consumption tier, Mbps, kWh, channels). | FK tipo de contrato; tabela de controle. |
+| `first_connection_date` | `DATE` | First grid connection date. | Data da primeira ligação à rede. |
+| `connection_start_date` | `DATE` | Start of current connection period. | Início do período de ligação actual. |
+| `connection_end_date` | `DATE` | Grid disconnection date; nullable. | Data de desligamento da rede. |
+| `street_type` | `VARCHAR(64)` | Street type prefix. | Tipo de logradouro. |
+| `street_name` | `VARCHAR(64)` | Street name. | Nome da via. |
+| `house_number` | `VARCHAR(10)` | Street number. | Número. |
+| `apartment_number` | `VARCHAR(10)` | Apartment / unit. | Apartamento / unidade. |
+| `postal_code` | `VARCHAR(10)` | Postal code. | Código postal. |
+| `city` | `VARCHAR(30)` | City. | Cidade. |
+| `state` | `VARCHAR(30)` | State / region. | Estado / região. |
+| `primary_phone_number` | `VARCHAR(16)` | Primary phone. | Telefone principal. |
+| `secondary_phone_number` | `VARCHAR(16)` | Secondary phone. | Telefone secundário. |
+| `description` | `VARCHAR(80)` | Short free-text description. | Descrição curta. |
+| `smart_meter` | `BOOLEAN` | Smart meter installed flag. | Indicador de medidor inteligente. |
+| `location_desc` | `VARCHAR(80)` | Full address text. | Endereço completo em texto. |
+| `geom` | `geometry(Point,4326)` | Service location; prefer over raw lat/long. | Localização do serviço (PostGIS). |
+| `accepts_proactive_contact` | `BOOLEAN` | Customer accepts proactive outreach (CPA). | Aceita comunicação proactiva (CPA). |
+| `utility_domain` | `VARCHAR(16)` | Utility sector: electric, gas, water, sewer, telecom. | Sector: energia, gás, água, esgoto, telecom. |
 
-## 6. Domínio — OMS
+### 3.2 `gis.equipment`
 
-### 6.1 Chamada — `oms.call`
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key (or align with legacy VARCHAR key via unique constraint). | Chave primária. |
+| `event_id` | `BIGINT` | FK to `audit.domain_event`. | FK evento de alteração. |
+| `type_id` | `SMALLINT` | FK to equipment **TYPE** table; audited. | FK **TYPE** de equipamento; auditado. |
+| `network_type_id` | `SMALLINT` | FK primary / secondary / transmission / generation. | FK tipo de rede (primário, secundário, transmissão…). |
+| `network_level_id` | `SMALLINT` | FK aerial / underground / submarine / indoor. | FK nível (aéreo, subterrâneo…). |
+| `status_0` | `SMALLINT` | Connection state phase 0 (connected / disconnected / predicted). | Estado de ligação fase 0. |
+| `status_1` | `SMALLINT` | Phase A (multi-phase / multi-circuit). | Fase A (POC). |
+| `status_2` | `SMALLINT` | Phase B. | Fase B (POC). |
+| `status_3` | `SMALLINT` | Phase C. | Fase C (POC). |
+| `normal_status_0` | `SMALLINT` | Expected normal state phase 0. | Estado normal fase 0. |
+| `normal_status_1` | `SMALLINT` | Expected normal phase A. | Estado normal fase A. |
+| `normal_status_2` | `SMALLINT` | Expected normal phase B. | Estado normal fase B. |
+| `normal_status_3` | `SMALLINT` | Expected normal phase C. | Estado normal fase C. |
+| `monitoring_status_id` | `SMALLINT` | Telemetry link: connected / disconnected / no comm. | Estado de monitorização / comunicação. |
+| `parent_equipment_id` | `VARCHAR(30)` | Upstream feeding equipment id. | ID do equipamento que alimenta. |
+| `location_desc` | `VARCHAR(80)` | Location text. | Endereço ou descrição de local. |
+| `geom` | `geometry(Geometry,4326)` | Equipment geometry (point or line). | Geometria PostGIS do ativo. |
 
-| Coluna (EN) | Tipo sugerido | Notas |
-|-------------|---------------|--------|
-| `id` | `BIGSERIAL` | |
-| `event_id` | `BIGINT` | |
-| `processor_id` | `BIGINT` | Associação / correlação entre ordens. |
-| `call_type_id` | `INTEGER` | FK `ref.call_type`. |
-| `neighborhood_id` | `BIGINT` | *Simple area* / bairro (pode FK `landbase` ou tabela de áreas). |
-| `account_number` | `VARCHAR(30)` | FK → `customer.service_account`. |
-| `originating_number` | `VARCHAR(32)` | Identificador externo na criação. |
-| `description` | `VARCHAR(50)` | |
-| `field_time_received` | `TIMESTAMPTZ` | Data informada na origem. |
-| `system_time_received` | `TIMESTAMPTZ` | Definição no sistema (`now()`). |
-| `received_by` | `VARCHAR(6)` | Canal de entrada — preferir FK `ref.intake_channel`. |
-| `comments` | `VARCHAR(500)` | |
-| `status` | `VARCHAR(16)` | default `open` — ou FK `ref.call_status`. |
-| `scheduled_start_time` | `TIMESTAMPTZ` | |
-| `informative` | `BOOLEAN` | |
-| `predict_outage` | `BOOLEAN` | `1` = gera ordem com interrupção esperada. |
-| `caller_name` | `VARCHAR(80)` | Substitui `NAME` ambíguo. |
-| `contact_phone` | `VARCHAR(32)` | |
-| `contact_email` | `VARCHAR(50)` | |
-| `callback_required` | `BOOLEAN` | |
-| `work_order_id` | `BIGINT` | FK → `oms.work_order`. |
-| `handled_by_process_id` | `SMALLINT` | Processo que associou a ordem. |
-| `system_generated` | `BOOLEAN` | Retorno proactivo / gerada pelo sistema (corrige typo `SYSMTe`). |
-| `auto_callback_status_id` | `SMALLINT` | Calculado. |
-| `human_callback_status_id` | `SMALLINT` | Calculado. |
-| `location_resolved` | `BOOLEAN` | Localização encontrada no cadastro vs. geocodificada. |
-| `location_description` | `VARCHAR(80)` | |
-| `geom` | `geometry(Point, 4326)` | |
-
-**Regra de negócio:** toda chamada relevante **gera** ou **associa** uma ordem (`work_order_id` preenchido após processamento).
-
-### 6.2 Contato — `oms.call_feedback`
-
-| Coluna (EN) | Tipo | Notas |
-|-------------|------|--------|
-| `id` | `BIGSERIAL` | |
-| `event_id` | `BIGINT` | |
-| `call_id` | `BIGINT` | NULL = contacto proactivo; pode originar `oms.call` de sistema. |
-| `channel_id` | `SMALLINT` | Humano, automático, proactivo. |
-| `system_message_template_id` | `SMALLINT` | Texto WhatsApp / SMS parametrizado. |
-| `human_comment` | `VARCHAR(1000)` | |
-
-### 6.3 Ordem — `oms.work_order` (modelo alvo; ver §9 para POC)
-
-Campos do rascunho traduzidos para nomenclatura estável:
-
-| Grupo | Colunas (resumo EN) |
-|-------|---------------------|
-| Identidade | `id`, `event_id`, `order_code` (UQ), `status_id`, `order_type_id`, `order_group` |
-| Tempos / SLA | `time_dispatched`, `time_enroute`, `time_on_site`, `time_completed`, `etr` (estimated time restore), `duration_minutes` |
-| Agregação chamadas | `number_of_calls`, `last_call_at` |
-| Impacto | `customers_interrupted_current`, `chi`, `chi_projected`, `partial_duration_mean`, `critical_customers_affected` |
-| Equipamento | `equipment_id`, `equipment_type_code` |
-| Equipas | `num_crews_assigned`, `crew_owner_id`, `main_crew_id`, tempos por equipa (`prep_crew_1`, `prep_crew_2`) |
-| Callback | `auto_callback_status_id`, `human_callback_status_id` |
-| Filtros UI | `organization_id`, `operational_unit`, `etd` (texto ou FK conforme negócio) |
-| Prioridade | `priority_score`, `reincident_flag`, `incident_status_id` |
-| Planeamento | `planned_flag`, `operational_type_id` |
-| IA / NLP (futuro) | `flag_burst_et`, `flag_sectioned_wire`, `distinct_callers_count`, `flag_broken_tree`, `flag_broken_pole` — *scores* ou booleanos derivados de análise de texto das chamadas |
-| Geografia | `location_description`, `geom` (do equipamento afectado) |
-
-**Nota:** `TP`, `TL`, `TR`, `TA` do rascunho devem documentar-se como **estados temporais** ou **durações** em tabela filha `oms.work_order_milestone` para auditoria fina.
-
-### 6.4 Tarefa — `oms.task`
-
-| Coluna (EN) | Notas |
-|-------------|--------|
-| `id`, `event_id` | |
-| `work_order_id` | **FK BIGINT** (não `VARCHAR` da ordem). |
-| `crew_assignment_id` | FK → `mwm.crew_order_assignment` |
-| `task_type_id`, `task_status_id` | *Lookups*; incluir se o tipo gera interrupção. |
-| `field_timestamp`, `system_timestamp` | |
-| `equipment_id` | FK |
-| `comments` | |
-| `parent_task_id` | Hierarquia de tarefas (corrige `TASK_ID` FK para si próprio). |
-
-### 6.5 Evento de rede — `oms.network_event`
-
-Liga ordem, opcionalmente tarefa, equipamento e estados multi-fase (`connection_status_0`…`_3`), com `field_date` / `system_date`. Pode gerar registos em `oms.customer_interruption`.
-
-### 6.6 Interrupção ao cliente — `oms.customer_interruption`
-
-| Coluna | Notas |
-|--------|--------|
-| `customer_id` | FK `customer.service_account`. |
-| `start_event_id`, `end_event_id` | FK evento de rede ou evento de domínio que abre/fecha a interrupção. |
+*Nota:* Estados `status_*` / `normal_status_*` devem referenciar tabelas de domínio (ex.: `ref.connection_state`) com o mesmo significado em todos os utilities.
 
 ---
 
-## 7. Domínio — MWM
+## 4. Schema `oms`
 
-### 7.1 Equipa — `mwm.crew`
+### 4.1 `oms.call` (chamada — gera ou associa ordem)
 
-| Coluna (EN) | Notas |
-|-------------|--------|
-| `id`, `event_id` | |
-| `crew_code`, `name`, `status_id`, `crew_type_id` | |
-| `leader_name` | |
-| `time_in_service`, `time_without_order` | Intervalo ou acumuladores conforme política. |
-| `last_order_id`, `current_order_id`, `next_order_id` | FKs opcionais. |
-| `operational_base`, `organization_id` | |
-| `last_crew_update_at`, `last_coord_update_at` | |
-| `current_neighborhood_id` | *Bairro actual*. |
-| `last_known_geom` | PostGIS |
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `event_id` | `BIGINT` | FK to `audit.domain_event`. | FK evento de alteração. |
+| `processor_id` | `BIGINT` | Correlation / merge key for order association. | Controle de associação entre ordens. |
+| `type_id` | `INTEGER` | Call **TYPE**; FK controlled table, audited. | **TYPE** da chamada; tabela de controle auditada. |
+| `simple_area_id` | `BIGINT` | Neighborhood / simple area id (e.g. landbase link). | ID do bairro / área simples. |
+| `consumer_id` | `BIGINT` | FK `gis.consumer.id` when resolved. | FK consumidor após resolução. |
+| `account_number` | `VARCHAR(30)` | Account from intake; matches `gis.consumer.account_number`. | Número de conta (entrada). |
+| `originating_number` | `VARCHAR(32)` | External id at creation. | Número externo informado na criação. |
+| `description` | `VARCHAR(50)` | Short description. | Descrição breve. |
+| `field_time_received` | `TIMESTAMPTZ` | External-reported receipt time. | Data/hora informada na origem. |
+| `system_time_received` | `TIMESTAMPTZ` | System ingest time. | Data/hora de entrada no sistema. |
+| `received_by` | `VARCHAR(6)` | Intake channel code. | Canal de entrada. |
+| `comments` | `VARCHAR(500)` | Caller / agent comments. | Comentários do cliente / registo. |
+| `status` | `VARCHAR(16)` | Call status; default `open`. | Estado da chamada. |
+| `scheduled_start_time` | `TIMESTAMPTZ` | Scheduled window start. | Início agendado. |
+| `informative` | `BOOLEAN` | Informative-only flag. | Chamada apenas informativa. |
+| `predict` | `BOOLEAN` | If true, expect outage-related order. | Se verdadeiro, gera ordem com interrupção esperada. |
+| `caller_name` | `VARCHAR(80)` | Name provided by caller. | Nome informado. |
+| `contact_no` | `VARCHAR(32)` | Phone provided. | Telefone informado. |
+| `email` | `VARCHAR(50)` | Email provided. | E-mail informado. |
+| `callback` | `BOOLEAN` | Callback status flag. | Estado de callback. |
+| `work_order_id` | `BIGINT` | Related work order FK. | Ordem relacionada. |
+| `handled_by` | `SMALLINT` | Process that linked order; FK control table. | Processo que associou a ordem. |
+| `system_generated` | `BOOLEAN` | System- or proactive-generated call. | Chamada gerada pelo sistema / proactiva. |
+| `auto_callback_status` | `SMALLINT` | Derived automatic callback status. | Estado calculado — callback automático. |
+| `human_callback_status` | `SMALLINT` | Derived human callback status. | Estado calculado — callback humano. |
+| `location_resolved` | `BOOLEAN` | True if location matched registry vs geocoded. | Localização encontrada no cadastro vs. calculada. |
+| `location_desc` | `VARCHAR(80)` | Address text as reported. | Endereço informado. |
+| `geom` | `geometry(Point,4326)` | Call location. | Localização da chamada. |
 
-### 7.2 Turno — `mwm.crew_shift`
+### 4.2 `oms.call_feedback` (contato com consumidor)
 
-`crew_id`, `event_id`, `shift_availability_start`, `shift_availability_end`, `last_change_at`.
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `event_id` | `BIGINT` | FK to `audit.domain_event`. | FK evento de alteração. |
+| `call_id` | `BIGINT` | FK `oms.call`; null if proactive-only contact. | FK chamada; nulo se só contato proactivo. |
+| `channel_id` | `SMALLINT` | Channel **TYPE** (human, automatic, proactive); audited. | Canal; tabela **CHANNEL** auditada. |
+| `system_msg_id` | `SMALLINT` | Template id for WhatsApp/SMS text; audited. | FK mensagem de sistema (ex.: WhatsApp). |
+| `human_msg` | `VARCHAR(1000)` | Human agent free-text comment. | Comentário do contacto humano. |
 
-### 7.3 Atribuição equipa–ordem — `mwm.crew_order_assignment`
+### 4.3 `oms.work_order`
 
-Equivalente a `CREW_ORDER_RELATION`: `order_id`, `task_id`, `crew_id`, `status`, `assigned_at`, `dispatched_at`, `enroute_at`, `arrived_at`, `released_at`, `is_main_crew`.  
-**Integridade:** `ON DELETE` deve ser **RESTRICT** ou **arquivo** em auditoria — evitar `CASCADE` cego em ordens fechadas.
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `event_id` | `BIGINT` | FK to `audit.domain_event`. | FK evento de alteração. |
+| `order_number` | `VARCHAR(24)` | Unique business order number. | Número único da ordem. |
+| `status` | `VARCHAR(32)` | Order lifecycle status. | Estado da ordem. |
+| `type_id` | `SMALLINT` | Order **TYPE**; FK; audited. | **TYPE** da ordem; controle auditado. |
+| `order_group` | `VARCHAR(14)` | Grouping code. | Código de grupo. |
+| `aval_dif` | `SMALLINT` | Evaluation / difficulty flag. | Flag de avaliação / dificuldade. |
+| `metric_tp` | `NUMERIC` | Dispatch phase metric (legacy TP). | Métrica fase despacho (TP legado). |
+| `metric_tl` | `NUMERIC` | En route duration metric (TL). | Métrica tempo a caminho (TL). |
+| `metric_tr` | `NUMERIC` | Field completion metric (TR). | Métrica conclusão em campo (TR). |
+| `metric_ta` | `NUMERIC` | Alternate completion metric (TA). | Métrica alternativa de conclusão (TA). |
+| `base_op` | `TEXT` | Operational base filter text. | Base operacional (filtro). |
+| `micro_region` | `TEXT` | Micro-region filter. | Micro-região. |
+| `feeder` | `TEXT` | Feeder code / name. | Alimentador. |
+| `outage_count` | `INTEGER` | Interruption count. | Número de interrupções. |
+| `customers_interrupted_current` | `INTEGER` | Currently interrupted customers (derived). | Clientes actualmente interrompidos (calculado). |
+| `number_of_calls` | `INTEGER` | Call count (from calls). | Número de chamadas associadas. |
+| `last_call_at` | `TIMESTAMPTZ` | Last related call timestamp. | Data/hora da última chamada. |
+| `duration_minutes` | `INTEGER` | Computed duration minutes. | Duração em minutos (calculada). |
+| `chi` | `TEXT` | Customer-hours interrupted aggregate string/detail. | CHI — agregado afetados × horas. |
+| `dm_partial` | `NUMERIC` | Partial mean duration (CHI / affected). | Duração média parcial. |
+| `chi_projected` | `NUMERIC` | Projected CHI (current + CI × ETR). | CHI projetado. |
+| `equipment_id` | `BIGINT` | FK `gis.equipment.id`. | Equipamento afetado. |
+| `equipment_type_code` | `VARCHAR(10)` | Equipment type shortcut FK / denormalized. | Tipo de equipamento (atalho). |
+| `crew_count` | `INTEGER` | Assigned crew count. | Número de equipas atribuídas. |
+| `prep_crew_1` | `NUMERIC` | First crew prep time metric. | Tempo preparo equipa 1 (calculado). |
+| `prep_crew_2` | `NUMERIC` | Second crew prep time metric. | Tempo preparo equipa 2 (calculado). |
+| `etr` | `TIMESTAMPTZ` | Estimated time of restoration. | Tempo estimado de restauro. |
+| `auto_callback_status` | `SMALLINT` | Derived auto callback. | Callback automático (calculado). |
+| `human_callback_status` | `SMALLINT` | Derived human callback. | Callback humano (calculado). |
+| `organization_label` | `VARCHAR(50)` | Organization filter label. | Organização (filtro UI). |
+| `etd` | `TEXT` | ETD filter / text. | ETD (filtro). |
+| `complaint_summary` | `VARCHAR(512)` | Derived complaint summary. | Resumo de reclamações (calculado). |
+| `priority` | `INTEGER` | Priority score. | Prioridade (calculada ou manual). |
+| `comment` | `VARCHAR(1000)` | Internal comment. | Comentário interno. |
+| `customer_message` | `VARCHAR(255)` | Outbound message to customer. | Mensagem para o cliente. |
+| `organization_id` | `INTEGER` | Organization FK for filters. | ID organização (filtro). |
+| `order_created_at` | `TIMESTAMPTZ` | Order creation time. | Data de criação da ordem. |
+| `outage_start_time` | `TIMESTAMPTZ` | Outage / work start for filters. | Início da interrupção / trabalho. |
+| `crew_owner_id` | `BIGINT` | FK crew that owns edit rights via assignment. | Equipa “dona” — pode editar a ordem. |
+| `main_crew_id` | `BIGINT` | First / primary assigned crew. | Primeira equipa associada. |
+| `owner_id` | `INTEGER` | FK `security.users.id`; human owner of the work order record. | Responsável (utilizador) pela ordem. |
+| `locked_by_id` | `INTEGER` | FK `security.users.id`; optimistic edit lock (nullable). | Bloqueio de edição por utilizador. |
+| `assigned_at` | `TIMESTAMPTZ` | First assignment timestamp. | Primeira atribuição. |
+| `dispatched_at` | `TIMESTAMPTZ` | First dispatch timestamp. | Primeiro despacho. |
+| `enroute_at` | `TIMESTAMPTZ` | First en-route timestamp. | Primeiro “a caminho”. |
+| `on_site_at` | `TIMESTAMPTZ` | First on-site timestamp. | Primeiro “no local”. |
+| `released_at` | `TIMESTAMPTZ` | First release / clear timestamp. | Primeira liberação. |
+| `rank_priority` | `NUMERIC` | Calculated rank vs all orders in base. | Prioridade relativa na base. |
+| `repeat_incident` | `VARCHAR(3)` | Repeat / reincident flag. | Reincidente (calculado). |
+| `incident_status` | `VARCHAR(40)` | Incident status; FK **TYPE** table. | Estado do incidente; tabela de **TYPE**. |
+| `planned_flag` | `SMALLINT` | Planned order flag. | Ordem planejada. |
+| `operational_type` | `VARCHAR(16)` | Operational subtype; FK **TYPE**. | Subtipo operacional. |
+| `burst_et_calls` | `INTEGER` | NLP/IA flag count — burst / oil / fire patterns in calls. | Padrão ET / óleo / fogo (IA sobre texto). |
+| `sectioned_wire_calls` | `INTEGER` | NLP/IA flag — broken conductor mentions. | Fio partido — padrão em chamadas. |
+| `distinct_calls` | `INTEGER` | Distinct caller / call count metric. | Chamadas distintas (calculado). |
+| `broken_tree` | `INTEGER` | NLP/IA flag — fallen tree on network. | Árvore caída (texto / IA). |
+| `broken_pole` | `INTEGER` | NLP/IA flag — broken pole. | Poste caído (texto / IA). |
+| `operational_unit` | `TEXT` | Operational unit (UO). | Unidade operacional. |
+| `location_desc` | `VARCHAR(80)` | Derived from affected equipment. | Localização (do equipamento). |
+| `geom` | `geometry(Geometry,4326)` | Derived equipment geometry. | Coordenadas do equipamento afetado. |
+| `critical_customers` | `INTEGER` | Count of critical customers affected. | Consumidores críticos afectados. |
 
-### 7.4 Trajectos — `mwm.crew_route_daily` / histórico
+### 4.4 `oms.task`
 
-- **Dia actual / anterior:** `geometry(MultiLineString, 4326)` ou `GEOGRAPHY` + `tracked_at[]` em `JSONB` normalizado para pontos ordenados.  
-- **Histórico:** partição por data ou janela (`operations.team_route` na POC já usa `window_start` / `window_end` + `route_geom`).
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `event_id` | `BIGINT` | FK to `audit.domain_event`. | FK evento de alteração. |
+| `work_order_id` | `BIGINT` | FK `oms.work_order`. | FK ordem. |
+| `crew_assignment_id` | `BIGINT` | FK `mwm.crew_order_assignment`. | FK relação equipa–ordem. |
+| `type_id` | `SMALLINT` | Task **TYPE**; may imply outage; audited. | **TYPE** da tarefa; pode gerar interrupção. |
+| `status_id` | `SMALLINT` | Task status; audited. | Estado da tarefa. |
+| `field_date` | `TIMESTAMPTZ` | Field-reported time. | Data/hora de campo. |
+| `system_date` | `TIMESTAMPTZ` | System-recorded time. | Data/hora de sistema. |
+| `equipment_id` | `BIGINT` | FK `gis.equipment`. | Equipamento. |
+| `comments` | `TEXT` | Task comments. | Comentários da tarefa. |
+| `parent_task_id` | `BIGINT` | Parent task for hierarchy. | Tarefa pai. |
+
+### 4.5 `oms.network_event` (pode gerar `customer_interruption`)
+
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `event_id` | `BIGINT` | FK to `audit.domain_event`. | FK evento de alteração. |
+| `work_order_id` | `BIGINT` | FK `oms.work_order`. | Ordem. |
+| `type_id` | `SMALLINT` | Network event **TYPE**; audited. | **TYPE** do evento de rede. |
+| `field_date` | `TIMESTAMPTZ` | Field time. | Data de campo. |
+| `system_date` | `TIMESTAMPTZ` | System time. | Data de sistema. |
+| `equipment_id` | `BIGINT` | FK `gis.equipment`. | Equipamento. |
+| `status_0` | `SMALLINT` | Connection state phase 0 after event. | Estado fase 0 após evento. |
+| `status_1` | `SMALLINT` | Phase A. | Fase A. |
+| `status_2` | `SMALLINT` | Phase B. | Fase B. |
+| `status_3` | `SMALLINT` | Phase C. | Fase C. |
+| `task_id` | `BIGINT` | Optional FK `oms.task`. | Tarefa opcional. |
+
+### 4.6 `oms.customer_interruption`
+
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `consumer_id` | `BIGINT` | FK `gis.consumer.id`. | Consumidor interrompido. |
+| `start_event_id` | `BIGINT` | FK opening event (`oms.network_event` or `audit.domain_event`). | Evento de início. |
+| `end_event_id` | `BIGINT` | FK closing event; nullable while active. | Evento de fim. |
 
 ---
 
-## 8. Eventos e auditoria unificados (proposta)
+## 5. Schema `mwm`
 
-**Tabela canónica** `audit.domain_event` (ou `oms.domain_event`):
+### 5.1 `mwm.crew`
 
-- `id`, `occurred_at`, `actor_user_id`, `source` (ui, bot, integration), `payload JSONB`, `correlation_id`.
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `event_id` | `BIGINT` | FK to `audit.domain_event`. | FK evento de alteração. |
+| `crew_code` | `VARCHAR(32)` | Unique crew code. | Código da equipa. |
+| `name` | `VARCHAR(120)` | Crew display name. | Nome da equipa. |
+| `status_id` | `SMALLINT` | Crew status; audited. | Estado da equipa. |
+| `type_id` | `SMALLINT` | Crew **TYPE**; audited. | **TYPE** da equipa. |
+| `leader_name` | `VARCHAR(120)` | Crew leader. | Líder. |
+| `time_in_service` | `INTERVAL` | Cumulative time in service. | Tempo em serviço. |
+| `last_order_id` | `BIGINT` | Last work order FK. | Última ordem. |
+| `current_order_id` | `BIGINT` | Current work order FK. | Ordem actual. |
+| `next_order_id` | `BIGINT` | Next work order FK. | Próxima ordem. |
+| `idle_time` | `INTERVAL` | Time without order. | Tempo sem ordem. |
+| `base_op` | `VARCHAR(120)` | Operational base. | Base operacional. |
+| `organization_id` | `INTEGER` | Owning organization. | Organização. |
+| `last_crew_update_at` | `TIMESTAMPTZ` | Last crew record update. | Última actualização da equipa. |
+| `last_coord_update_at` | `TIMESTAMPTZ` | Last GPS / coord update. | Última actualização de coordenadas. |
+| `current_neighborhood_id` | `BIGINT` | Current neighborhood id. | Bairro actual. |
+| `geom` | `geometry(Point,4326)` | Last known position. | Última posição conhecida. |
 
-Todas as entidades mutáveis referenciam `event_id` para a **última** alteração conhecida; histórico completo pode estar em `audit.*_history` (tipo SCD2) ou em **event sourcing** leve via MongoDB (`event_report`) para telemetria de alta frequência, conforme arquitectura TabGis.
+### 5.2 `mwm.crew_shift`
 
-**Política DELETE:** manter `audit.operations_row_archive` (padrão actual) e replicar o padrão para `oms.*` / `customer.*` críticos.
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `crew_id` | `BIGINT` | FK `mwm.crew`. | Equipa. |
+| `event_id` | `BIGINT` | FK to `audit.domain_event`. | FK evento de alteração. |
+| `shift_availability_start` | `TIMESTAMPTZ` | Shift window start. | Início disponibilidade. |
+| `shift_availability_end` | `TIMESTAMPTZ` | Shift window end. | Fim disponibilidade. |
+| `last_change_at` | `TIMESTAMPTZ` | Last schedule change. | Última alteração do turno. |
+
+### 5.3 `mwm.crew_order_assignment` (relação equipa–ordem)
+
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `event_id` | `BIGINT` | FK to `audit.domain_event`. | FK evento de alteração. |
+| `work_order_id` | `BIGINT` | FK `oms.work_order`. | Ordem. |
+| `task_id` | `BIGINT` | FK `oms.task`; optional. | Tarefa. |
+| `crew_id` | `BIGINT` | FK `mwm.crew`. | Equipa. |
+| `status` | `VARCHAR(16)` | Assignment lifecycle status. | Estado da atribuição. |
+| `assigned_time` | `TIMESTAMPTZ` | Assigned timestamp. | Hora de atribuição. |
+| `dispatched_time` | `TIMESTAMPTZ` | Dispatched timestamp. | Despacho. |
+| `enroute_time` | `TIMESTAMPTZ` | En route timestamp. | A caminho. |
+| `arrived_time` | `TIMESTAMPTZ` | Arrived on site. | Chegada ao local. |
+| `released_time` | `TIMESTAMPTZ` | Released / cleared. | Liberação. |
+| `is_main_crew` | `BOOLEAN` | Primary crew for this order. | Equipa principal. |
+
+*Integridade:* evitar `ON DELETE CASCADE` cego; preferir `RESTRICT` ou arquivo em `audit` antes de apagar ordens históricas.
+
+### 5.4 `mwm.crew_route_daily` (janela curta — hoje / ontem)
+
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `crew_id` | `BIGINT` | FK `mwm.crew`. | Equipa. |
+| `event_id` | `BIGINT` | FK to `audit.domain_event`. | FK evento de alteração. |
+| `locations_today` | `JSONB` | GeoJSON or array of timestamped points for current day. | Pontos do dia actual + horários. |
+| `locations_yesterday` | `JSONB` | Previous day track. | Pontos do dia anterior. |
+| `updated_at` | `TIMESTAMPTZ` | Last refresh. | Última actualização. |
+
+### 5.5 `mwm.crew_route_history` (histórico parametrizável)
+
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `crew_id` | `BIGINT` | FK `mwm.crew`. | Equipa. |
+| `event_id` | `BIGINT` | FK to `audit.domain_event`. | FK evento de alteração. |
+| `window_start` | `TIMESTAMPTZ` | History window start. | Início da janela. |
+| `window_end` | `TIMESTAMPTZ` | History window end. | Fim da janela. |
+| `route_geom` | `geometry(MultiLineString,4326)` | Consolidated path. | Trajecto consolidado (PostGIS). |
+| `source` | `VARCHAR(64)` | Tracker / AVL source system. | Origem do rasto. |
 
 ---
 
-## 9. Alinhamento com a implementação actual (POC)
+## 6. Evento de domínio e auditoria (`audit`)
 
-| Conceito rascunho | TabGis hoje (`operations`) |
-|-------------------|------------------------------|
-| Equipa | `operations.team` |
-| Ordem | `operations.work_order` (`order_code`, `category`, `status`, …) |
-| Relação equipa–ordem + tempos | `operations.team_order_displacement` |
-| Rota temporal | `operations.team_route` |
-| Arquivo pré-delete | `audit.operations_row_archive` + triggers |
+### 6.1 `audit.domain_event` (rastreio de alterações — todas as tabelas acima)
 
-A evolução natural é **migrar** `operations.work_order` para o modelo `oms.work_order` expandido, preservando códigos e chaves, ou **renomear schema** `operations` → `oms` após compatibilização.
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key; referenced by `event_id`. | Chave primária. |
+| `occurred_at` | `TIMESTAMPTZ` | Event timestamp. | Momento do evento. |
+| `actor_user_id` | `INTEGER` | FK `security.users` optional. | Utilizador actor. |
+| `source` | `VARCHAR(32)` | ui, bot, integration, batch. | Origem (UI, robô, integração). |
+| `payload` | `JSONB` | Optional change payload / diff. | Detalhe opcional da alteração. |
+| `correlation_id` | `VARCHAR(64)` | Cross-service correlation. | ID de correlação. |
 
----
+Tabela **analógica** por domínio (histórico append-only) e política de **arquivo antes de DELETE** replicam a ideia de `audit.operations_row_archive` já usada na POC.
 
-## 10. Artefactos relacionados
+### 6.2 `security.users` (utilizadores)
 
-| Ficheiro | Conteúdo |
-|----------|----------|
-| `docs/Database_Structure_Context.html` | Diagramas ER e fluxos (Mermaid). |
-| `infra/sql/01_init_schemas.sql` | `config`, `security`, `audit` (base). |
-| `infra/sql/03_operations_schema.sql` | POC operações / MWM mínimo. |
-| `docs/CONTEXT_STATE.md` | Estado da stack e referência rápida. |
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `SERIAL` | Primary key. | Chave primária. |
+| `username` | `VARCHAR(50)` | Unique login / handle. | Identificador único. |
+| `email` | `VARCHAR(255)` | Contact email; optional in POC. | E-mail opcional na POC. |
+| `first_name` / `last_name` | `VARCHAR(100)` | Display name parts. | Nome próprio / apelido. |
+| `access_type` | `VARCHAR(20)` | `ADMIN`, `CONSULTA`, `OPERACAO`. | Perfil de acesso. |
+| `status` | `VARCHAR(20)` | Session / account hint (`online`, `offline`, …). | Estado operacional. |
+| `created_at` | `TIMESTAMPTZ` | Row creation. | Criação do registo. |
 
----
-
-## 11. Resumo de decisões de limpeza (rascunho → modelo)
-
-- Corrigir typos: `PARENTE` → **parent**, `SYSMTe` → **system_generated**, `Numeber` → **numeric type**.  
-- `HUMAN_MSG NUMBER(1000)` → **VARCHAR(1000)**.  
-- Flags vindos de texto de chamada (**árvore**, **poste**, fio partido, etc.) → colunas **`flag_*`** documentadas + pipeline IA opcional.  
-- Coordenadas → **PostGIS**; rotas → **LineString/MultiLineString** ou pontos timestampados.  
-- **TYPE** / **STATUS** → chaves estrangeiras para `ref.*`, todos auditáveis.
+A tabela legada `security.user` é migrada para `security.users` via `infra/sql/01_init_schemas.sql` / `04_gis_oms_mwm_domain.sql`.
 
 ---
 
-*Documento gerado a partir de `Database_Structure_Context.md` (rascunho inicial) e alinhado ao projecto TabGis / GeoUtil.*
+## 7. POC `operations` (TabGis actual)
+
+| `operations` | Mapa conceptual |
+|----------------|-----------------|
+| `operations.team` | → `mwm.crew` |
+| `operations.work_order` | → `oms.work_order` (POC inclui `owner_id`, `locked_by_id` → `security.users`) |
+| `operations.team_order_displacement` | → `mwm.crew_order_assignment` |
+| `operations.team_route` | → `mwm.crew_route_history` |
+
+---
+
+*Documento orientado à tua partição **gis / oms / mwm** e às dependências originais entre consumidores, equipamentos, chamadas, ordens, tarefas, eventos de rede e equipas.*

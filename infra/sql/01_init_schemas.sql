@@ -1,7 +1,11 @@
--- Rename the existing 'basemap' schema to 'landbase'
-ALTER SCHEMA basemap RENAME TO landbase;
+-- Renomear basemap → landbase apenas se existir (bases novas podem já usar landbase)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'basemap') THEN
+        EXECUTE 'ALTER SCHEMA basemap RENAME TO landbase';
+    END IF;
+END $$;
 
--- Ensure the landbase schema exists in case it was not created yet
 CREATE SCHEMA IF NOT EXISTS landbase;
 
 -- ==========================================
@@ -48,18 +52,34 @@ CREATE TABLE IF NOT EXISTS config.translation (
 -- ==========================================
 CREATE SCHEMA IF NOT EXISTS security;
 
--- Tabela de Usuários
-CREATE TABLE IF NOT EXISTS security.user (
+-- Migração idempotente: legado security."user" → security.users (ver docs/Database_Structure_Context.md)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'security' AND table_name = 'user'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'security' AND table_name = 'users'
+    ) THEN
+        EXECUTE 'ALTER TABLE security."user" RENAME TO users';
+    END IF;
+END $$;
+
+-- Utilizadores (tabela canónica: security.users)
+CREATE TABLE IF NOT EXISTS security.users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255),
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     phone VARCHAR(20),
     address TEXT,
-    status VARCHAR(20) DEFAULT 'offline', -- 'online', 'offline', 'blocked'
+    status VARCHAR(20) DEFAULT 'offline',
     last_login_host VARCHAR(50),
     last_login_time TIMESTAMP,
-    access_type VARCHAR(20) DEFAULT 'CONSULTA' -- 'ADMIN', 'CONSULTA', 'OPERACAO'
+    access_type VARCHAR(20) DEFAULT 'CONSULTA',
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ==========================================
@@ -74,13 +94,13 @@ CREATE TABLE IF NOT EXISTS audit.parameter_history (
     old_value TEXT,
     new_value TEXT,
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    changed_by_user_id INTEGER -- opcionalmente referencia security.user(id)
+    changed_by_user_id INTEGER REFERENCES security.users(id) ON DELETE SET NULL
 );
 
 -- Histórico de acessos/logins
 CREATE TABLE IF NOT EXISTS audit.login_history (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES security.user(id),
+    user_id INTEGER REFERENCES security.users(id) ON DELETE SET NULL,
     login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     login_host VARCHAR(50),
     status VARCHAR(20) -- 'SUCCESS', 'FAILED'

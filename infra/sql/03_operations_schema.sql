@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS operations.work_order (
     status VARCHAR(32) DEFAULT 'open',
     priority VARCHAR(24),
     assigned_team_id INTEGER REFERENCES operations.team(id) ON DELETE SET NULL,
+    owner_id INTEGER REFERENCES security.users(id) ON DELETE SET NULL,
+    locked_by_id INTEGER REFERENCES security.users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -90,7 +92,7 @@ CREATE TABLE IF NOT EXISTS audit.operations_row_archive (
     row_data JSONB NOT NULL,
     archived_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     archive_reason TEXT,
-    archived_by_user_id INTEGER REFERENCES security.user(id)
+    archived_by_user_id INTEGER REFERENCES security.users(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_ops_archive_table ON audit.operations_row_archive (source_table, source_id);

@@ -55,7 +55,7 @@ git push origin v0.1.0           # ou: git push origin --tags
 | `infra-geoserver-1` | `oscarfonts/geoserver:latest` | **8080** | WMS / WFS / SLD |
 | `infra-tileserver-1` | `maptiler/tileserver-gl:latest` | **8081** | MBTiles raster (satélite local) |
 | `infra-web-1` | `nginx:alpine` | **8088** | Frontend + proxy `/geoserver`, `/tiles`, `/api` |
-| `infra-api-1` | build `backend/` (Node) | **3000** | API REST — traduções `GET /api/translations/:lang` (acesso directo; em uso normal via `:8088/api/`) |
+| `infra-api-1` | build `backend/` (Node) | **3000** | API REST — traduções; `GET/POST /api/users`; `GET/PATCH /api/work-orders`; `GET /api/work-orders/:id` (folha + tarefas + reclamações); `GET /api/teams`; `GET /api/audit/operations-archive`; `GET /api/oms/work-orders` (via `:8088/api/`) |
 | `infra-mongodb-1` | `mongo:latest` | **27017** | Logs / event_report (uso futuro) |
 
 ### Portas de acesso (de outro notebook na mesma rede ou via SSH tunnel)
@@ -83,9 +83,10 @@ O banco de dados foi estruturado em *schemas* fundamentais para sustentar o comp
 
 1. **`landbase`**: Contém todos os dados geográficos e topológicos puros do basemap e da rede (antigo `basemap`). Todas as camadas do GeoServer apontam para cá.
 2. **`config`**: Estruturas de parametrização dinâmica (`config.parameter`), traduções globais (`config.translation`) e idiomas suportados (`config.language`: EN, PT, ES, IT).
-3. **`security`**: Controle de acessos de usuário, autenticação e roles de visualização (`ADMIN`, `CONSULTA`, `OPERACAO`).
-4. **`audit`**: Histórico detalhado gerado por Triggers no PostGIS, gravando alterações em parâmetros (`audit.parameter_history`), sessões de usuário (`audit.login_history`) e **arquivo obrigatório antes de `DELETE`** em tabelas operacionais (`audit.operations_row_archive` — ver `operations`).
-5. **`operations`**: Equipas (`operations.team`), ordens (`operations.work_order`), deslocamentos equipa–ordem (`operations.team_order_displacement`), rotas por janela temporal (`operations.team_route`, ex. últimas 48h). Script: `infra/sql/03_operations_schema.sql`. Regra: *nada* é removido das tabelas principais de `operations` sem inserção prévia do registo em `audit.operations_row_archive` (triggers `BEFORE DELETE`).
+3. **`security`**: Utilizadores em **`security.users`** (roles `ADMIN`, `CONSULTA`, `OPERACAO`); migração a partir de `security.user` em `01_init_schemas.sql`.
+4. **`audit`**: Histórico detalhado gerado por Triggers no PostGIS, gravando alterações em parâmetros (`audit.parameter_history`), sessões de usuário (`audit.login_history`), **arquivo obrigatório antes de `DELETE`** em tabelas operacionais (`audit.operations_row_archive`) e **`audit.domain_event`** (correlação de alterações — ver `infra/sql/04_gis_oms_mwm_domain.sql`).
+5. **`operations`**: Equipas (`operations.team`), ordens (`operations.work_order` com `owner_id` e `locked_by_id` → `security.users`), deslocamentos equipa–ordem (`operations.team_order_displacement`), rotas por janela temporal (`operations.team_route`, ex. últimas 48h). Scripts: `03_operations_schema.sql`, `04_gis_oms_mwm_domain.sql`. Regra: *nada* é removido das tabelas principais de `operations` sem inserção prévia do registo em `audit.operations_row_archive` (triggers `BEFORE DELETE`).
+6. **`ref`**, **`gis`**, **`oms`**, **`mwm`**: Modelo canónico utilities (consumidores, equipamentos, chamadas, ordens, equipas, rotas) conforme `docs/Database_Structure_Context.md`; criado por `04_gis_oms_mwm_domain.sql`.
 
 | Artefacto | Origem | Tabelas PostGIS | Camadas GeoServer |
 |-----------|--------|-----------------|-------------------|
@@ -118,7 +119,12 @@ Script de geração: `infra/scripts/setup_municipios_alvo_sp.sh`
 |--------|--------|---------|
 | `infra/sql/01_init_schemas.sql` | Schemas `landbase`, `config`, `security`, `audit` (tabelas base, parâmetros, histórico) | `docs/DEPLOY_POC.md` §2 |
 | `infra/sql/02_populate_translations.sql` | Chaves `config.translation` (EN/PT/ES/IT), `ON CONFLICT DO UPDATE` | `docs/DEPLOY_POC.md` §2 |
-| `infra/sql/03_operations_schema.sql` | Schema `operations` + arquivo `audit.operations_row_archive` + triggers `BEFORE DELETE` | `docs/DEPLOY_POC.md` §2 (*Schemas … operations*) |
+| `infra/sql/03_operations_schema.sql` | Schema `operations` + arquivo `audit.operations_row_archive` + triggers `BEFORE DELETE`; `work_order.owner_id` / `locked_by_id` → `security.users` | `docs/DEPLOY_POC.md` §2 |
+| `infra/sql/04_gis_oms_mwm_domain.sql` | Schemas `ref`, `gis`, `oms`, `mwm`; `audit.domain_event`; utilizadores e ordens iniciais | `docs/DEPLOY_POC.md` §2 |
+| `infra/sql/05_operational_demo_data.sql` | Dados fictícios operacionais (equipas com coordenadas, mais ordens e utilizadores) | `docs/DEPLOY_POC.md` §2 |
+| `infra/sql/06_work_order_sheet_model.sql` | Colunas decisórias; tabelas `work_order_task` / `work_order_complaint`; dados de exemplo; normalização de prefixos em `order_code` legado | `docs/DEPLOY_POC.md` §2 |
+| `infra/sql/06_work_order_sheet_model_functions_triggers.sql` | `generate_work_order_code()` (YYYYMMDD + sequência diária SP); triggers de código, contagem de reclamações e arquivo pré-delete | `docs/DEPLOY_POC.md` §2 |
+| `infra/sql/07_work_order_oms_grid_columns.sql` | Grelha OMS: `started_at`, `callback_auto` | `docs/DEPLOY_POC.md` §2 |
 | `infra/scripts/setup_landbase_sp_estado.sh` | Importa IBGE + OSM → PostGIS + GeoServer (SP estado) | `docs/RUNBOOK_BASEMAP_SP_ESTADO.md` |
 | `infra/scripts/setup_landbase_sp.sh` | Basemap São Paulo Centro (legado) | `docs/RUNBOOK_BASEMAP_SP.md` |
 | `infra/scripts/setup_municipios_alvo_sp.sh` | Municípios-alvo + bairros + vias | — |
@@ -181,7 +187,7 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 | `frontend/index.html` | Topbar (brand, navegação, camada de títulos, Busca/Camadas, estado, config), painel **Operação** 50/50, modal de traduções, toggles de camadas |
 | `frontend/styles.css` | Tokens (`--bg-*`, `--accent`, …), topbar em três zonas (`topbar-left` / `topbar-titles-layer` / `topbar-right`), painel operação, tabelas mock |
 | `frontend/main.js` | Leaflet (WMS/WFS/GFI/MBTiles), i18n, painel Operação, vista inicial com insets, lógica zoom bairros/municípios-alvo |
-| `backend/server.js` | API Express — `GET /api/translations/:lang` → `config.translation` |
+| `backend/server.js` | API Express — traduções, utilizadores (`security.users`), ordens (`operations.work_order`) |
 
 - **Tipografia:** Inter (Google Fonts CDN); fallback `system-ui`
 - **Modo recomendado (`:8088`):** GeoServer em `window.location.origin + '/geoserver'` (same-origin)
@@ -200,7 +206,7 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 ### Painel Operação (split 50/50)
 
 - **Classe** `.app.has-left-panel` no contentor raiz; `aside#left-panel` + `#map` dentro de `.split-main-row`.
-- **Ordem das guias (tab bar):** 1) Ordens de serviço (OMS), 2) Equipas/rotas (MWM), 3) Telecomando (DMS), 4) Indicadores (IND), 5) Instalações e telemetria (SMT), 6) Clima (TMP), 7) Auditoria (AUD). OMS é a guia e painel **activos** por defeito.
+- **Ordem das guias (tab bar):** 1) Ordens de serviço (OMS), 2) Utilizadores (USR), 3) Equipas/rotas (MWM), 4) Telecomando (DMS), 5) Indicadores (IND), 6) Instalações e telemetria (SMT), 7) Clima (TMP), 8) Auditoria (AUD). OMS é a guia e painel **activos** por defeito; OMS e USR consomem a API (`/api/work-orders`, `/api/users`).
 - **Cabeçalho do painel:** sem linha separada «Operação»; primeira linha = grelha de guias + botão fechar (`.operacao-top`).
 - **Conteúdo:** tabelas e detalhe mock de ordens, política de auditoria em AUD; textos com `data-i18n` (prefixo `UI_OP_*`).
 
@@ -305,7 +311,7 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 | 1 | Upgrade satélite MBTiles para ZMAX=17 (1,2 m/px) | **✅ Operacional** |
 | 2 | UI Operação + schema `operations` + arquivo `audit.operations_row_archive` | **✅ Estrutura base + mock UI** |
 | 3 | Modelagem explícita da topologia de rede (schema PostGIS) | Pendente |
-| 4 | APIs/backend para edição, ordens, rotas 48h e logs MongoDB (`event_report`) | Pendente |
+| 4 | APIs/backend para edição, ordens, rotas 48h e logs MongoDB (`event_report`) | **Parcial:** `GET/POST /api/users`, `GET/PATCH /api/work-orders`, `GET /api/oms/work-orders`; MongoDB pendente |
 | 5 | Endurecimento de segurança (credenciais, TLS) | Fora do âmbito da POC |
 
 ---

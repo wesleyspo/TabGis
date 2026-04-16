@@ -107,21 +107,25 @@ Se a base for nova, faltarem tabelas `config.*` / `operations.*`, ou após `git 
 docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/01_init_schemas.sql
 docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/02_populate_translations.sql
 docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/03_operations_schema.sql
+docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/04_gis_oms_mwm_domain.sql
+docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/05_operational_demo_data.sql
+docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/06_work_order_sheet_model.sql
+docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/06_work_order_sheet_model_functions_triggers.sql
+docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/07_work_order_oms_grid_columns.sql
 ```
 
 | Script | Conteúdo principal |
 |--------|---------------------|
-| `01_init_schemas.sql` | Schemas `landbase`, `config`, `security`, `audit`; tabelas de parâmetros, traduções, idiomas, histórico de parâmetros |
+| `01_init_schemas.sql` | Schemas `landbase`, `config`, `security`, `audit`; parâmetros, traduções, idiomas; **`security.users`** (migração idempotente de `security.user`) |
 | `02_populate_translations.sql` | `INSERT … ON CONFLICT DO UPDATE` das chaves de UI (EN/PT/ES/IT) consumidas pelo frontend (`data-i18n`) e pela API |
-| `03_operations_schema.sql` | Schema `operations` (`team`, `work_order`, `team_order_displacement`, `team_route`), `audit.operations_row_archive`, triggers `BEFORE DELETE` |
+| `03_operations_schema.sql` | Schema `operations` (`team`, `work_order` com `owner_id` / `locked_by_id`, `team_order_displacement`, `team_route`), `audit.operations_row_archive`, triggers `BEFORE DELETE` |
+| `04_gis_oms_mwm_domain.sql` | Schemas `ref`, `gis`, `oms`, `mwm`; `audit.domain_event`; DDL em `docs/Database_Structure_Context.md`; dados mínimos |
+| `05_operational_demo_data.sql` | Dados fictícios operacionais (utilizadores, equipas com posição, ordens) — idempotente |
+| `06_work_order_sheet_model.sql` | Folha OMS: colunas decisórias em `work_order`, tabelas `work_order_task` / `work_order_complaint`, dados de exemplo idempotentes |
+| `06_work_order_sheet_model_functions_triggers.sql` | Função `generate_work_order_code()` (YYYYMMDD + sequência diária America/São_Paulo), trigger de `order_code`, triggers de contagem de reclamações e arquivo pré-delete em tarefas/reclamações |
+| `07_work_order_oms_grid_columns.sql` | Grelha OMS: `started_at`, `callback_auto` em `operations.work_order` (início operacional e callback automático) |
 
-**API (`api`):** após carregar ou alterar `02_populate_translations.sql` (ou mudanças em `config.translation` que devam reflectir-se de imediato), reiniciar o serviço:
-
-```bash
-docker compose -f infra/docker-compose.yml restart api
-```
-
-O `03_operations_schema.sql` não exige restart da API para a POC actual (a UI ainda usa mocks); mantém-se a ordem acima para bases novas.
+**API (`api`):** após `02_populate_translations.sql`, reiniciar: `docker compose -f infra/docker-compose.yml restart api`. Após `04_gis_oms_mwm_domain.sql`, `06_*` ou alterações ao `backend/`, reconstruir: `docker compose -f infra/docker-compose.yml up -d --build api` (inclui `POST /api/work-orders/:id/tasks`, `PATCH /api/work-orders/:id/tasks/:task_id`).
 
 **SLD no GeoServer:** ficheiros versionados em `infra/geoserver/styles/*.sld`. Um `git pull` que altere estilos (ex.: recorte alvo — `base_sp_bairros_alvo.sld`, `base_sp_municipios_alvo_highlight.sld`) **não** actualiza o GeoServer sozinho: na consola **Styles**, substituir o XML do estilo ou repetir o fluxo de publicação do projecto. Detalhe das camadas e notas visuais: `docs/CONTEXT_STATE.md` (secção *Estilos GeoServer — recorte alvo*).
 

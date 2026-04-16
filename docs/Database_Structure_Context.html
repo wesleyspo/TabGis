@@ -78,11 +78,13 @@
   </head>
   <body>
     <header>
-      <h1>Modelo de dados — Utilities (OMS / MWM)</h1>
+      <h1>Modelo de dados — GIS / OMS / MWM</h1>
       <p>
-        Diagramas de fluxo e entidade-relacionamento alinhados a
-        <strong>Database_Structure_Context.md</strong> (especificação técnica) e à POC
-        <code>operations.*</code> em PostgreSQL/PostGIS. Comentários na página em português; nomes de entidades em inglês.
+        Partição de schemas: <strong>gis</strong> (consumidores + equipamentos),
+        <strong>oms</strong> (chamadas, ordens, tarefas, eventos de rede, interrupções),
+        <strong>mwm</strong> (equipas, turnos, atribuições, rotas). Ver
+        <strong>Database_Structure_Context.md</strong>. Utilizadores: <code>security.users</code>;
+        ordens canónicas: <code>owner_id</code>, <code>locked_by_id</code>. POC: <code>operations.*</code> + API.
       </p>
     </header>
     <main>
@@ -103,12 +105,12 @@ flowchart LR
     CR[("mwm.crew")]
     AS[("mwm.crew_order_assignment")]
   end
-  subgraph cx["Cliente / rede"]
-    SA[("customer.service_account")]
-    EQ[("network.equipment")]
+  subgraph cx["Schema gis"]
+    CO[("gis.consumer")]
+    EQ[("gis.equipment")]
   end
   C -->|"cria / associa"| WO
-  C --> SA
+  C --> CO
   WO --> EQ
   WO --> T
   WO --> NE
@@ -116,7 +118,7 @@ flowchart LR
   CR --> AS
   AS --> WO
   NE -->|"pode gerar"| CI[("oms.customer_interruption")]
-  CI --> SA
+  CI --> CO
           </pre>
         </div>
       </section>
@@ -127,15 +129,15 @@ flowchart LR
           <pre class="mermaid">
 flowchart TB
   DE[("audit.domain_event\n(id, occurred_at, actor, payload)")]
-  SA[("customer.service_account\nevent_id FK")]
-  EQ[("network.equipment\nevent_id FK")]
+  CO[("gis.consumer\nevent_id FK")]
+  EQ[("gis.equipment\nevent_id FK")]
   WO[("oms.work_order\nevent_id FK")]
   AR[("audit.*_history\nappend-only")]
   SN[("audit.operations_row_archive\nJSONB pré-DELETE")]
-  SA --> DE
+  CO --> DE
   EQ --> DE
   WO --> DE
-  SA --> AR
+  CO --> AR
   WO --> AR
   WO -.->|"DELETE"| SN
           </pre>
@@ -143,7 +145,7 @@ flowchart TB
       </section>
 
       <section>
-        <h2>3. ER — Cliente, equipamento e chamada (camada referência)</h2>
+        <h2>3. ER — gis + chamada (consumidor, equipamento, call)</h2>
         <div class="diagram-wrap">
           <pre class="mermaid">
 erDiagram
@@ -159,21 +161,21 @@ erDiagram
     int id PK
     string code UK
   }
-  REF_CUSTOMER_TYPE ||--o{ SERVICE_ACCOUNT : classifies
-  REF_ACCOUNT_STATUS ||--o{ SERVICE_ACCOUNT : status
-  SERVICE_ACCOUNT ||--o{ CALL : account_number
-  EQUIPMENT ||--o{ SERVICE_ACCOUNT : serves
+  REF_CUSTOMER_TYPE ||--o{ CONSUMER : classifies
+  REF_ACCOUNT_STATUS ||--o{ CONSUMER : status
+  CONSUMER ||--o{ CALL : consumer_id
+  EQUIPMENT ||--o{ CONSUMER : serves
   EQUIPMENT ||--o{ EQUIPMENT : parent
   CALL ||--o| CALL_FEEDBACK : has
   CALL }o--|| REF_CALL_TYPE : call_type
   CALL }o--o| WORK_ORDER : work_order_id
 
-  SERVICE_ACCOUNT {
+  CONSUMER {
     int id PK
     int event_id FK
     string account_number UK
     int status_id FK
-    int customer_type_id FK
+    int type_id FK
     string equipment_id FK
     string geom_wkt
     boolean accepts_proactive_contact
@@ -182,7 +184,7 @@ erDiagram
   EQUIPMENT {
     int id PK
     int event_id FK
-    int equipment_type_id FK
+    int type_id FK
     int network_type_id FK
     string parent_equipment_id
     string geom_wkt
@@ -208,7 +210,7 @@ erDiagram
   WORK_ORDER {
     int id PK
     int event_id FK
-    string order_code UK
+    string order_number UK
   }
           </pre>
         </div>
@@ -224,11 +226,11 @@ erDiagram
   WORK_ORDER }o--o| EQUIPMENT : affects
   TASK }o--o| CREW_ORDER_ASSIGNMENT : via
   NETWORK_EVENT }o--o| TASK : optional
-  CUSTOMER_INTERRUPTION }o--|| SERVICE_ACCOUNT : customer
+  CUSTOMER_INTERRUPTION }o--|| CONSUMER : consumer
   CUSTOMER_INTERRUPTION }o--o| DOMAIN_EVENT : start
   CUSTOMER_INTERRUPTION }o--o| DOMAIN_EVENT : end
 
-  SERVICE_ACCOUNT {
+  CONSUMER {
     int id PK
   }
 
@@ -244,9 +246,9 @@ erDiagram
   WORK_ORDER {
     int id PK
     int event_id FK
-    string order_code UK
+    string order_number UK
     int equipment_id FK
-    int priority_score
+    int priority
     boolean flag_broken_tree
     boolean flag_broken_pole
     string geom_wkt
@@ -274,7 +276,7 @@ erDiagram
 
   CUSTOMER_INTERRUPTION {
     int id PK
-    int customer_id FK
+    int consumer_id FK
     int start_event_id FK
     int end_event_id FK
   }
@@ -289,7 +291,7 @@ erDiagram
 erDiagram
   CREW ||--o{ CREW_SHIFT : schedules
   CREW ||--o{ CREW_ORDER_ASSIGNMENT : assigned
-  CREW ||--o{ CREW_ROUTE_WINDOW : tracks
+  CREW ||--o{ CREW_ROUTE_HISTORY : tracks
   CREW_ORDER_ASSIGNMENT }o--|| WORK_ORDER : order
   CREW_ORDER_ASSIGNMENT }o--o| TASK : task
 
@@ -323,7 +325,7 @@ erDiagram
     boolean is_main_crew
   }
 
-  CREW_ROUTE_WINDOW {
+  CREW_ROUTE_HISTORY {
     int id PK
     int crew_id FK
     datetime window_start
@@ -333,7 +335,7 @@ erDiagram
 
   WORK_ORDER {
     int id PK
-    string order_code UK
+    string order_number UK
   }
 
   TASK {
@@ -357,7 +359,7 @@ erDiagram
     int id PK
     string team_code UK
     string name
-    geometry last_known_geom
+    string last_known_geom_wkt
   }
 
   WORK_ORDER {
@@ -381,7 +383,7 @@ erDiagram
     int team_id FK
     timestamptz window_start
     timestamptz window_end
-    geometry route_geom
+    string route_geom_wkt
   }
           </pre>
         </div>

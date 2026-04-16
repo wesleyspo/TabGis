@@ -314,7 +314,9 @@
             <div class="operacao-top">
             <div class="operacao-tab-bar" role="tablist" aria-label="Módulos de operação">
               <button type="button" class="operacao-tab active" role="tab" aria-selected="true" data-tab="oms"
-                title="Ordens: tarefas, reparos, reclamações e eventos (OMS)."><span data-i18n="UI_OP_TAB_OMS">Ordens de serviço</span></button>
+                title="Ordens de serviço: ordem → tarefas → reclamações (eventos noutro módulo)."><span data-i18n="UI_OP_TAB_OMS">Ordens de serviço</span></button>
+              <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="usr"
+                title="Utilizadores do sistema (security.users)."><span data-i18n="UI_OP_TAB_USR">Utilizadores</span></button>
               <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="mwm"
                 title="Equipas em campo, rotas (48h) e deslocamentos — primeiro foco: estrutura de equipas (MWM)."><span data-i18n="UI_OP_TAB_MWM">Equipas, rotas e deslocamentos</span></button>
               <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="dms"
@@ -337,73 +339,77 @@
             </div>
 
             <div class="operacao-panels">
-              <!-- OMS — Ordens (tarefas / reparos / reclamações / eventos) -->
+              <!-- OMS — ordem → tarefas / reclamações (eventos fora desta listagem) -->
               <section class="operacao-panel active" data-panel="oms" role="tabpanel">
-                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
-                <h4 class="mock-section-title" data-i18n="UI_OP_ORDERS_TITLE">Ordens</h4>
-                <p class="mock-hint" data-i18n="UI_OP_ORDERS_HINT">Lista de ordens (tarefas, reparos, reclamações, eventos). Ao seleccionar uma ordem, abre-se o detalhe — estrutura de campos a definir.</p>
-                <div class="mock-table-wrap">
-                  <table class="mock-table mock-table--orders">
+                <h4 class="mock-section-title" data-i18n="UI_OP_ORDERS_TITLE">Ordens de serviço</h4>
+                <p class="mock-hint" data-i18n="UI_OP_ORDERS_HINT">Ordens activas (sem eventos). Clique numa linha para abrir a folha com tarefas e reclamações. O mapa distingue tipo, equipa e estado.</p>
+                <p id="oms-orders-status" class="mock-hint mock-hint--status" hidden></p>
+                <div class="mock-table-wrap mock-table-wrap--orders-wide">
+                  <table class="mock-table mock-table--orders-wide mock-table--orders-compact">
                     <thead>
                       <tr>
-                        <th data-i18n="UI_OP_COL_ORDER_CODE">Código</th>
-                        <th data-i18n="UI_OP_COL_ORDER_CATEGORY">Categoria</th>
+                        <th data-i18n="UI_OP_COL_ORDER_CODE">Cód.</th>
+                        <th data-i18n="UI_OP_COL_START_TIME">Início</th>
+                        <th class="wo-icon-col" data-i18n="UI_OP_COL_HOURS">Δh</th>
+                        <th data-i18n="UI_OP_COL_TYPE_ABBR">T</th>
+                        <th data-i18n="UI_OP_COL_ORG_SHORT">Org.</th>
+                        <th data-i18n="UI_OP_COL_LOC_SHORT">Loc.</th>
+                        <th data-i18n="UI_OP_COL_EQUIP_SHORT">Eq.</th>
+                        <th class="wo-icon-col" data-i18n="UI_OP_COL_AFFECTED">Cli.</th>
+                        <th class="wo-icon-col" data-i18n="UI_OP_COL_COMPLAINTS">Rec.</th>
+                        <th class="wo-icon-col" data-i18n="UI_OP_COL_FLAGS_SHORT">⚑</th>
+                        <th data-i18n="UI_OP_COL_PRI_POS">Pri.·POS</th>
+                        <th class="wo-icon-col" data-i18n="UI_OP_COL_CALLBACK">CB</th>
+                        <th data-i18n="UI_OP_COL_TEAM">Eqp.</th>
+                        <th data-i18n="UI_OP_COL_ORDER_OWNER">Resp.</th>
+                        <th data-i18n="UI_OP_COL_ORDER_STATUS">Est.</th>
                         <th data-i18n="UI_OP_COL_ORDER_SUMMARY">Resumo</th>
-                        <th data-i18n="UI_OP_COL_ORDER_STATUS">Estado</th>
+                        <th></th>
                         <th></th>
                       </tr>
                     </thead>
-                    <tbody>
-                      <tr class="order-row-mock" data-order-mock="1">
-                        <td>ORD-2026-0142</td>
-                        <td><span data-i18n="UI_OP_CAT_REPAIR">Reparo</span></td>
-                        <td>Subestação — inspecção isoladores</td>
-                        <td><span class="mock-badge mock-badge--warn" data-i18n="UI_OP_ORDER_OPEN">Aberta</span></td>
-                        <td><button type="button" class="mock-btn-open-order" data-i18n="UI_OP_OPEN_DETAIL">Abrir</button></td>
-                      </tr>
-                      <tr class="order-row-mock" data-order-mock="2">
-                        <td>ORD-2026-0143</td>
-                        <td><span data-i18n="UI_OP_CAT_COMPLAINT">Reclamação</span></td>
-                        <td>Cliente — interrupção parcial BT</td>
-                        <td><span class="mock-badge mock-badge--ok" data-i18n="UI_OP_ORDER_PROGRESS">Em curso</span></td>
-                        <td><button type="button" class="mock-btn-open-order" data-i18n="UI_OP_OPEN_DETAIL">Abrir</button></td>
-                      </tr>
-                      <tr class="order-row-mock" data-order-mock="3">
-                        <td>TSK-2026-0088</td>
-                        <td><span data-i18n="UI_OP_CAT_TASK">Tarefa</span></td>
-                        <td>Leitura de campo — medidor SMT</td>
-                        <td><span class="mock-badge mock-badge--ok" data-i18n="UI_OP_ORDER_SCHEDULED">Agendada</span></td>
-                        <td><button type="button" class="mock-btn-open-order" data-i18n="UI_OP_OPEN_DETAIL">Abrir</button></td>
-                      </tr>
-                      <tr class="order-row-mock" data-order-mock="4">
-                        <td>EVT-2026-0004</td>
-                        <td><span data-i18n="UI_OP_CAT_EVENT">Evento</span></td>
-                        <td>Manobra programada — alimentador 12</td>
-                        <td><span class="mock-badge mock-badge--muted" data-i18n="UI_OP_ORDER_PLANNED">Planeado</span></td>
-                        <td><button type="button" class="mock-btn-open-order" data-i18n="UI_OP_OPEN_DETAIL">Abrir</button></td>
-                      </tr>
+                    <tbody id="oms-orders-tbody">
                     </tbody>
                   </table>
                 </div>
-                <div id="order-detail-mock" class="order-detail-mock" hidden>
-                  <h5 class="mock-detail-title" data-i18n="UI_OP_ORDER_DETAIL_TITLE">Detalhe da ordem (mock)</h5>
-                  <dl class="mock-detail-dl">
-                    <dt data-i18n="UI_OP_COL_ORDER_CODE">Código</dt><dd id="order-detail-code">—</dd>
-                    <dt data-i18n="UI_OP_COL_ORDER_CATEGORY">Categoria</dt><dd id="order-detail-category">—</dd>
-                    <dt data-i18n="UI_OP_DETAIL_DESCRIPTION">Descrição</dt><dd id="order-detail-desc">—</dd>
-                    <dt data-i18n="UI_OP_DETAIL_PRIORITY">Prioridade</dt><dd id="order-detail-prio">—</dd>
-                    <dt data-i18n="UI_OP_DETAIL_CREATED">Criada em</dt><dd id="order-detail-created">—</dd>
-                    <dt data-i18n="UI_OP_DETAIL_ASSIGNED_TEAM">Equipa atribuída</dt><dd id="order-detail-team">—</dd>
-                  </dl>
-                  <p class="mock-hint" data-i18n="UI_OP_ORDER_DETAIL_HINT">Campos definitivos e formulário de edição serão alinhados ao modelo de dados em operations.work_order.</p>
+              </section>
+
+              <section class="operacao-panel" data-panel="usr" role="tabpanel">
+                <h4 class="mock-section-title" data-i18n="UI_OP_USERS_TITLE">Utilizadores</h4>
+                <p class="mock-hint" data-i18n="UI_OP_USERS_HINT">Gestão de contas internas: responsáveis por ordens e bloqueios de edição. O acesso por perfil será endurecido nas próximas iterações.</p>
+                <p id="usr-panel-status" class="mock-hint mock-hint--status" hidden></p>
+                <form id="form-new-user" class="mock-form-inline">
+                  <input type="text" name="username" data-i18n-placeholder="UI_OP_PLACEHOLDER_USERNAME" placeholder="username" required maxlength="50" />
+                  <input type="email" name="email" data-i18n-placeholder="UI_OP_PLACEHOLDER_EMAIL" placeholder="email" maxlength="255" />
+                  <input type="text" name="first_name" data-i18n-placeholder="UI_OP_PLACEHOLDER_FIRST" placeholder="nome" maxlength="100" />
+                  <input type="text" name="last_name" data-i18n-placeholder="UI_OP_PLACEHOLDER_LAST" placeholder="apelido" maxlength="100" />
+                  <select name="access_type" title="access_type">
+                    <option value="CONSULTA">CONSULTA</option>
+                    <option value="OPERACAO">OPERACAO</option>
+                    <option value="ADMIN">ADMIN</option>
+                  </select>
+                  <button type="submit" class="mock-btn" data-i18n="UI_OP_BTN_ADD_USER">Adicionar</button>
+                </form>
+                <div class="mock-table-wrap">
+                  <table class="mock-table">
+                    <thead>
+                      <tr>
+                        <th data-i18n="UI_OP_COL_USERNAME">Utilizador</th>
+                        <th data-i18n="UI_OP_COL_EMAIL">E-mail</th>
+                        <th data-i18n="UI_OP_COL_ACCESS">Perfil</th>
+                        <th data-i18n="UI_OP_COL_USER_STATUS">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody id="users-tbody"></tbody>
+                  </table>
                 </div>
               </section>
 
               <!-- MWM — Equipas; rotas 48h e deslocamentos virão da BD -->
               <section class="operacao-panel" data-panel="mwm" role="tabpanel">
-                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
-                <h4 class="mock-section-title" data-i18n="UI_OP_TEAMS_TITLE">Estrutura de equipas</h4>
-                <p class="mock-hint" data-i18n="UI_OP_TEAMS_HINT">Equipas, competências e localização. Relacionamento com ordens e horários de deslocamento na BD; rotas completas das últimas 48h por equipa.</p>
+                <h4 class="mock-section-title" data-i18n="UI_OP_TEAMS_TITLE">Equipas em campo</h4>
+                <p class="mock-hint" data-i18n="UI_OP_TEAMS_HINT">Posição mais recente reportada por equipa. Utilize «Ir para o mapa» para centrar a vista operacional na última coordenada conhecida.</p>
+                <p id="teams-panel-status" class="mock-hint mock-hint--status" hidden></p>
                 <div class="mock-table-wrap mock-table-wrap--wide">
                   <table class="mock-table mock-table--teams">
                     <thead>
@@ -412,7 +418,7 @@
                         <th data-i18n="UI_OP_COL_LEADER">Líder</th>
                         <th data-i18n="UI_OP_COL_SKILL">Skill</th>
                         <th data-i18n="UI_OP_COL_TYPE">Tipo</th>
-                        <th data-i18n="UI_OP_COL_OWNER">Proprietário</th>
+                        <th data-i18n="UI_OP_COL_OWNER">Unidade</th>
                         <th data-i18n="UI_OP_COL_LAST_COORD">Últ. coordenada</th>
                         <th data-i18n="UI_OP_COL_LAST_UPDATE">Últ. atualização</th>
                         <th data-i18n="UI_OP_COL_ZONE">Zona</th>
@@ -421,46 +427,7 @@
                         <th></th>
                       </tr>
                     </thead>
-                    <tbody>
-                      <tr>
-                        <td>EQ-ALPHA</td>
-                        <td>M. Silva</td>
-                        <td>BT + MT</td>
-                        <td>Rede</td>
-                        <td>Op. Leste</td>
-                        <td>2026-04-15 08:42</td>
-                        <td>2026-04-15 09:10</td>
-                        <td>RMSP Leste</td>
-                        <td>5</td>
-                        <td><span class="mock-badge mock-badge--ok" data-i18n="UI_OP_STATUS_ACTIVE">Activa</span></td>
-                        <td><button type="button" class="mock-btn-ir" data-i18n="UI_OP_GO_MAP" data-lat="-23.55" data-lng="-46.63" title="Centrar mapa na última posição conhecida (mock)">Ir para</button></td>
-                      </tr>
-                      <tr>
-                        <td>EQ-BETA</td>
-                        <td>J. Costa</td>
-                        <td>Telecom</td>
-                        <td>FTTH</td>
-                        <td>Op. Capital</td>
-                        <td>2026-04-15 07:15</td>
-                        <td>2026-04-15 08:55</td>
-                        <td>Capital SP</td>
-                        <td>4</td>
-                        <td><span class="mock-badge mock-badge--ok" data-i18n="UI_OP_STATUS_ACTIVE">Activa</span></td>
-                        <td><button type="button" class="mock-btn-ir" data-i18n="UI_OP_GO_MAP" data-lat="-23.56" data-lng="-46.65">Ir para</button></td>
-                      </tr>
-                      <tr>
-                        <td>EQ-GAMA</td>
-                        <td>A. Reis</td>
-                        <td>Energia</td>
-                        <td>MT</td>
-                        <td>Op. Oeste</td>
-                        <td>2026-04-14 18:30</td>
-                        <td>2026-04-14 18:30</td>
-                        <td>RMSP Oeste</td>
-                        <td>3</td>
-                        <td><span class="mock-badge mock-badge--warn" data-i18n="UI_OP_STATUS_STANDBY">Stand-by</span></td>
-                        <td><button type="button" class="mock-btn-ir" data-i18n="UI_OP_GO_MAP" data-lat="-23.60" data-lng="-46.70">Ir para</button></td>
-                      </tr>
+                    <tbody id="teams-tbody">
                     </tbody>
                   </table>
                 </div>
@@ -471,38 +438,34 @@
               </section>
 
               <section class="operacao-panel" data-panel="dms" role="tabpanel">
-                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
                 <h4 class="mock-section-title" data-i18n="UI_OP_DMS_TITLE">Telecomando</h4>
-                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">Módulo em construção. Alterações e remoções em dados operacionais são sempre registadas em Auditoria antes de eliminar registos nas tabelas principais.</p>
-                <div class="mock-placeholder" data-i18n="UI_OP_DMS_PLACEHOLDER">Dispositivos e comandos (mock).</div>
+                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">Comando remoto de dispositivos e pontos de rede em fase de integração. Eliminaciones em dados operacionais exigem registo prévio no arquivo de auditoria.</p>
+                <div class="mock-placeholder" data-i18n="UI_OP_DMS_PLACEHOLDER">Sem dispositivos seleccionados. A listagem de activos ligará a este painel.</div>
               </section>
 
               <section class="operacao-panel" data-panel="ind" role="tabpanel">
-                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
                 <h4 class="mock-section-title" data-i18n="UI_OP_IND_TITLE">Indicadores</h4>
-                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">Módulo em construção. Alterações e remoções em dados operacionais são sempre registadas em Auditoria antes de eliminar registos nas tabelas principais.</p>
-                <div class="mock-placeholder" data-i18n="UI_OP_IND_PLACEHOLDER">KPIs e painéis (mock) — ver guia AUD para trilhas.</div>
+                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">KPIs operacionais e painéis de desempenho em fase de integração. Consulte Auditoria para trilhas de alterações críticas.</p>
+                <div class="mock-placeholder" data-i18n="UI_OP_IND_PLACEHOLDER">Indicadores agregados serão apresentados aqui quando a fonte de métricas estiver ligada.</div>
               </section>
 
               <section class="operacao-panel" data-panel="smt" role="tabpanel">
-                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
                 <h4 class="mock-section-title" data-i18n="UI_OP_SMT_TITLE">Instalações e telemetria</h4>
-                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">Módulo em construção. Alterações e remoções em dados operacionais são sempre registadas em Auditoria antes de eliminar registos nas tabelas principais.</p>
-                <div class="mock-placeholder" data-i18n="UI_OP_SMT_PLACEHOLDER">Leituras e alarmes (mock).</div>
+                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">Leituras, alarmes e telemetria de campo em fase de integração com o modelo de activos.</p>
+                <div class="mock-placeholder" data-i18n="UI_OP_SMT_PLACEHOLDER">Nenhum alarme activo na vista actual. Os fluxos de telemetria serão listados aqui.</div>
               </section>
 
               <section class="operacao-panel" data-panel="tmp" role="tabpanel">
-                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
                 <h4 class="mock-section-title" data-i18n="UI_OP_TMP_TITLE">Clima</h4>
-                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">Módulo em construção. Alterações e remoções em dados operacionais são sempre registadas em Auditoria antes de eliminar registos nas tabelas principais.</p>
-                <div class="mock-placeholder" data-i18n="UI_OP_TMP_PLACEHOLDER">Condicionantes meteorológicas (mock).</div>
+                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">Condicionantes meteorológicas e impacto em operações de campo em fase de ligação a fontes externas.</p>
+                <div class="mock-placeholder" data-i18n="UI_OP_TMP_PLACEHOLDER">Dados meteorológicos não disponíveis nesta vista. Configure a fonte para alertas de campo.</div>
               </section>
 
               <section class="operacao-panel" data-panel="aud" role="tabpanel">
-                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
                 <h4 class="mock-section-title" data-i18n="UI_OP_AUD_TITLE">Auditoria</h4>
                 <p class="mock-hint" data-i18n="UI_OP_AUD_POLICY">Nada é apagado das tabelas principais do schema operations sem cópia prévia para audit.operations_row_archive. Inclui trilhas relevantes dos módulos IND, DMS, SMT e TMP quando aplicável.</p>
-                <h5 class="mock-subtitle" data-i18n="UI_OP_AUD_ARCHIVE_TITLE">Arquivo de linhas removidas (mock)</h5>
+                <h5 class="mock-subtitle" data-i18n="UI_OP_AUD_ARCHIVE_TITLE">Arquivo pré-delete (operations)</h5>
+                <p id="audit-panel-status" class="mock-hint mock-hint--status" hidden></p>
                 <div class="mock-table-wrap">
                   <table class="mock-table">
                     <thead>
@@ -513,23 +476,11 @@
                         <th data-i18n="UI_OP_AUD_COL_REASON">Motivo</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      <tr>
-                        <td><code>operations.team</code></td>
-                        <td>12</td>
-                        <td>2026-03-01 14:00</td>
-                        <td data-i18n="UI_OP_AUD_REASON_MERGE">Fusão de equipas</td>
-                      </tr>
-                      <tr>
-                        <td><code>operations.work_order</code></td>
-                        <td>9001</td>
-                        <td>2026-02-20 09:30</td>
-                        <td data-i18n="UI_OP_REASON_CANCEL">Cancelamento duplicado</td>
-                      </tr>
+                    <tbody id="audit-archive-tbody">
                     </tbody>
                   </table>
                 </div>
-                <p class="mock-hint" data-i18n="UI_OP_AUD_TIMELINE_HINT">Linha temporal completa de audit.parameter_history, audit.login_history e arquivo operacional será integrada na API.</p>
+                <p class="mock-hint" data-i18n="UI_OP_AUD_TIMELINE_HINT">Histórico de parâmetros, sessões e arquivo operacional completo estarão disponíveis neste módulo.</p>
               </section>
             </div>
           </div>
@@ -539,6 +490,108 @@
         <section id="map"></section>
         </div>
       </main>
+
+      <!-- ── Modal Folha da ordem ───────────────────────── -->
+      <div id="modal-order-sheet" class="modal-overlay" style="display: none;" aria-hidden="true">
+        <div class="modal-content modal-content--order-sheet">
+          <div class="panel-header">
+            <h3><span data-i18n="UI_OP_ORDER_SHEET_TITLE">Folha da ordem</span> <code id="wo-sheet-code-sub" class="wo-sheet-code"></code></h3>
+            <button type="button" id="btn-close-order-sheet" class="close-btn" title="Fechar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body modal-body--order-sheet">
+            <p id="wo-sheet-fetch-status" class="mock-hint mock-hint--status" hidden></p>
+            <form id="form-order-sheet" class="wo-sheet-form">
+              <label><span data-i18n="UI_OP_COL_ORDER_SUMMARY">Resumo</span><input type="text" name="summary" id="wo-sheet-summary" maxlength="500" /></label>
+              <label class="wo-sheet-span-2"><span data-i18n="UI_OP_DETAIL_DESCRIPTION">Descrição</span><textarea name="description" id="wo-sheet-description" rows="2"></textarea></label>
+              <label><span data-i18n="UI_OP_COL_ORDER_STATUS">Estado</span>
+                <select name="status" id="wo-sheet-status">
+                  <option value="open">open</option>
+                  <option value="in_progress">in_progress</option>
+                  <option value="scheduled">scheduled</option>
+                  <option value="planned">planned</option>
+                </select>
+              </label>
+              <label><span data-i18n="UI_OP_DETAIL_PRIORITY">Prioridade</span><input type="text" name="priority" id="wo-sheet-priority" maxlength="24" /></label>
+              <label><span data-i18n="UI_OP_COL_ORDER_TYPE">Tipo</span>
+                <select name="order_type" id="wo-sheet-order-type">
+                  <option value="repair">repair</option>
+                  <option value="maintenance">maintenance</option>
+                  <option value="inspection">inspection</option>
+                  <option value="emergency">emergency</option>
+                  <option value="restoration">restoration</option>
+                  <option value="incident">incident</option>
+                </select>
+              </label>
+              <label><span data-i18n="UI_OP_COL_ORG">Organização</span><input type="text" name="organization_label" id="wo-sheet-org" maxlength="120" /></label>
+              <label><span data-i18n="UI_OP_COL_MUNICIPALITY">Município</span><input type="text" name="municipality_name" id="wo-sheet-municipality" maxlength="120" /></label>
+              <label><span data-i18n="UI_OP_COL_NEIGHBORHOOD">Bairro</span><input type="text" name="neighborhood_name" id="wo-sheet-neighborhood" maxlength="120" /></label>
+              <label><span data-i18n="UI_OP_COL_EQUIPMENT">Equipamento</span><input type="text" name="equipment_code" id="wo-sheet-equipment" maxlength="64" /></label>
+              <label><span data-i18n="UI_OP_COL_FEEDER">Alimentador</span><input type="text" name="feeder_code" id="wo-sheet-feeder" maxlength="64" /></label>
+              <label><span data-i18n="UI_OP_COL_AFFECTED">Clientes afectados</span><input type="number" name="affected_customers_count" id="wo-sheet-affected" min="0" step="1" /></label>
+              <label><span data-i18n="UI_OP_COL_PRIORITY_SCORE">Peso decisório</span><input type="number" name="priority_score" id="wo-sheet-prio-score" min="0" max="32767" step="1" /></label>
+              <label><span data-i18n="UI_OP_COL_FOCUS_LAT">Latitude foco</span><input type="text" name="focus_lat" id="wo-sheet-lat" inputmode="decimal" /></label>
+              <label><span data-i18n="UI_OP_COL_FOCUS_LNG">Longitude foco</span><input type="text" name="focus_lng" id="wo-sheet-lng" inputmode="decimal" /></label>
+              <label class="wo-sheet-check"><input type="checkbox" name="flag_safety_risk" id="wo-sheet-flag-safety" /><span data-i18n="UI_OP_FLAG_SAFETY">Risco segurança</span></label>
+              <label class="wo-sheet-check"><input type="checkbox" name="flag_critical_infra" id="wo-sheet-flag-crit" /><span data-i18n="UI_OP_FLAG_CRITICAL">Infra crítica</span></label>
+              <label class="wo-sheet-check"><input type="checkbox" name="flag_customer_callback" id="wo-sheet-flag-cb" /><span data-i18n="UI_OP_FLAG_CALLBACK">Callback cliente</span></label>
+            </form>
+            <div class="wo-sheet-meta mock-hint" id="wo-sheet-readonly-meta"></div>
+            <h4 class="wo-sheet-subtitle" data-i18n="UI_OP_TASKS_TITLE">Tarefas</h4>
+            <div class="wo-task-add">
+              <input type="text" id="wo-new-task-summary" maxlength="500" data-i18n-placeholder="UI_OP_PLACEHOLDER_TASK_SUMMARY" placeholder="Resumo da nova tarefa" />
+              <input type="text" id="wo-new-task-notes" maxlength="2000" data-i18n-placeholder="UI_OP_PLACEHOLDER_TASK_NOTES" placeholder="Notas (opcional)" />
+              <select id="wo-new-task-status" title="status">
+                <option value="open">open</option>
+                <option value="scheduled">scheduled</option>
+                <option value="in_progress">in_progress</option>
+                <option value="completed">completed</option>
+              </select>
+              <button type="button" id="btn-wo-add-task" class="mock-btn mock-btn--ghost" data-i18n="UI_OP_BTN_TASK_ADD">Adicionar tarefa</button>
+            </div>
+            <div class="mock-table-wrap">
+              <table class="mock-table mock-table--tasks">
+                <thead>
+                  <tr>
+                    <th data-i18n="UI_OP_COL_TASK_SEQ">Seq.</th>
+                    <th data-i18n="UI_OP_COL_TASK_SUMMARY">Tarefa</th>
+                    <th data-i18n="UI_OP_COL_ORDER_STATUS">Estado</th>
+                    <th data-i18n="UI_OP_COL_TASK_NOTES">Notas</th>
+                    <th data-i18n="UI_OP_COL_TASK_ACTIONS">Acções</th>
+                  </tr>
+                </thead>
+                <tbody id="wo-sheet-tasks-tbody"></tbody>
+              </table>
+            </div>
+            <h4 class="wo-sheet-subtitle" data-i18n="UI_OP_COMPLAINTS_TITLE">Reclamações</h4>
+            <div class="mock-table-wrap">
+              <table class="mock-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="UI_OP_COL_COMPLAINT_REF">Ref.</th>
+                    <th data-i18n="UI_OP_COL_CHANNEL">Canal</th>
+                    <th data-i18n="UI_OP_COL_CALLER">Interlocutor</th>
+                    <th data-i18n="UI_OP_COL_ORDER_STATUS">Estado</th>
+                    <th data-i18n="UI_OP_COL_ORDER_SUMMARY">Resumo</th>
+                    <th data-i18n="UI_OP_COL_RECEIVED">Recebida</th>
+                  </tr>
+                </thead>
+                <tbody id="wo-sheet-complaints-tbody"></tbody>
+              </table>
+            </div>
+            <div class="order-detail-actions wo-sheet-actions">
+              <button type="button" id="btn-order-sheet-save" class="mock-btn" data-i18n="UI_OP_BTN_SAVE_SHEET">Guardar folha</button>
+              <button type="button" id="btn-order-sheet-assume-lock" class="mock-btn" data-i18n="UI_OP_BTN_ASSUME_LOCK">Reservar edição</button>
+              <button type="button" id="btn-order-sheet-release-lock" class="mock-btn mock-btn--ghost" data-i18n="UI_OP_BTN_RELEASE_LOCK">Libertar edição</button>
+            </div>
+            <p class="mock-hint" data-i18n="UI_OP_ORDER_SHEET_HINT">Pode criar tarefas e alterar o estado (em curso, concluída) a partir desta folha; reclamações permanecem em leitura nesta versão.</p>
+          </div>
+        </div>
+      </div>
       
       <!-- ── Modal Traduções ────────────────────────────── -->
       <div id="modal-translations" class="modal-overlay" style="display: none;">
