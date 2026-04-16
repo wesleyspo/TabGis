@@ -5,6 +5,8 @@
 Guia para carga localizada (capital, recorte Centro) e publicação no GeoServer.
 Útil para testes rápidos em área reduzida ou desenvolvimento isolado.
 
+**POC TabGis actual:** a interface completa (topbar, Busca WFS, painel Operação, proxy same-origin) assume o frontend servido por **nginx** em **`http://<host>:8088/`** com `infra/docker-compose.yml`. Estado da stack, SQL `01`–`03`, SLD do recorte alvo e i18n: `docs/CONTEXT_STATE.md` e `docs/DEPLOY_POC.md`.
+
 ---
 
 ## 1. Objectivo

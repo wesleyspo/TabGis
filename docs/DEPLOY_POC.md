@@ -99,16 +99,31 @@ Serviços iniciados:
 > docker compose -f infra/docker-compose.yml restart tileserver web
 > ```
 
-### Schemas `config` / `landbase` e traduções (API)
+### Schemas `config` / `landbase` / `operations` e traduções (API)
 
-Se a base for nova ou faltarem tabelas `config.*`, aplicar (na raiz do projecto):
+Se a base for nova, faltarem tabelas `config.*` / `operations.*`, ou após `git pull` que altere estes scripts, aplicar **nesta ordem** (na raiz do projecto):
 
 ```bash
 docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/01_init_schemas.sql
 docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/02_populate_translations.sql
+docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d tabgis_db < infra/sql/03_operations_schema.sql
 ```
 
-Reiniciar o `api` após alterações relevantes na BD: `docker compose -f infra/docker-compose.yml restart api`.
+| Script | Conteúdo principal |
+|--------|---------------------|
+| `01_init_schemas.sql` | Schemas `landbase`, `config`, `security`, `audit`; tabelas de parâmetros, traduções, idiomas, histórico de parâmetros |
+| `02_populate_translations.sql` | `INSERT … ON CONFLICT DO UPDATE` das chaves de UI (EN/PT/ES/IT) consumidas pelo frontend (`data-i18n`) e pela API |
+| `03_operations_schema.sql` | Schema `operations` (`team`, `work_order`, `team_order_displacement`, `team_route`), `audit.operations_row_archive`, triggers `BEFORE DELETE` |
+
+**API (`api`):** após carregar ou alterar `02_populate_translations.sql` (ou mudanças em `config.translation` que devam reflectir-se de imediato), reiniciar o serviço:
+
+```bash
+docker compose -f infra/docker-compose.yml restart api
+```
+
+O `03_operations_schema.sql` não exige restart da API para a POC actual (a UI ainda usa mocks); mantém-se a ordem acima para bases novas.
+
+**SLD no GeoServer:** ficheiros versionados em `infra/geoserver/styles/*.sld`. Um `git pull` que altere estilos (ex.: recorte alvo — `base_sp_bairros_alvo.sld`, `base_sp_municipios_alvo_highlight.sld`) **não** actualiza o GeoServer sozinho: na consola **Styles**, substituir o XML do estilo ou repetir o fluxo de publicação do projecto. Detalhe das camadas e notas visuais: `docs/CONTEXT_STATE.md` (secção *Estilos GeoServer — recorte alvo*).
 
 ---
 

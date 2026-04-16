@@ -21,7 +21,7 @@ Desenvolver uma plataforma Web para gestão de activos de **utilities** (redes t
 
 | Componente | Tecnologia | Função |
 |------------|-----------|--------|
-| Base de dados espacial | PostgreSQL 15 + PostGIS 3.3 | **landbase** (áreas geográficas, topologia), **config** (parâmetros, tradução), **security** (acessos), **audit** (logs) |
+| Base de dados espacial | PostgreSQL 15 + PostGIS 3.3 | **landbase**, **config**, **security**, **audit**, **operations** (equipas, ordens, deslocamentos, rotas; ver `infra/sql/03_operations_schema.sql`) |
 | Servidor de mapas | GeoServer (oscarfonts) | Publicação WMS/WFS a partir do PostGIS (`landbase`) |
 | Servidor de tiles raster | TileServer GL (maptiler) | MBTiles satélite offline |
 | Proxy / frontend | nginx:alpine | Serve `frontend/`, proxy `/geoserver`, `/tiles` e `/api` |
@@ -37,10 +37,12 @@ Desenvolver uma plataforma Web para gestão de activos de **utilities** (redes t
 
 ### 3.1 Mapa geográfico
 - Basemap offline: limites IBGE (UF + municípios) + vias OSM, publicados via GeoServer WMS
+- Recorte **municípios-alvo** (24), **bairros-alvo**, **vias-alvo** com estilos SLD versionados (`infra/geoserver/styles/`)
 - Satélite offline: MBTiles raster (capital SP, zoom 10–17) servidos por TileServer GL
 - Satélite online: tiles XYZ Esri (requer Internet)
-- Busca por município e bairro via WFS (GeoServer)
+- **Busca** (não «filtro» de painel tabular): município e bairro via WFS (GeoServer)
 - Identificação de feições ao clique (GetFeatureInfo WMS)
+- Vista inicial calibrada por **inset** (tela cheia vs. mapa com painel 50%); botão Inicial reproduz a mesma lógica do primeiro carregamento
 
 ### 3.2 Esquemático (fase futura)
 - Vista lógica/sequencial da rede
@@ -81,19 +83,31 @@ Scripts: `infra/scripts/setup_municipios_alvo_sp.sh`
 Princípios de UX estabelecidos:
 
 - **Design-system dark:** topbar e painel esquerdo (split-screen 50/50) `#0f172a`, tokens CSS centralizados, tipografia Inter
-- **Controlos sem dependências:** toggle switches CSS puro, `<details>` HTML nativo em dropdown, checkboxes com múltipla seleção
-- **Modal de Traduções (Configurações):** UI de engrenagem para seleção de idioma (EN, PT, ES, IT) e tela tabular para gerir traduções e parâmetros globais do sistema
-- **Feedback padronizado:** mensagens de erro no padrão `"Falha em [X]. [Remediação] (ver docs/DEPLOY_POC.md)."` visíveis no rodapé da sidebar sem abrir consola
-- **Código comentado:** todos os blocos funcionais de `main.js` têm comentários JSDoc
+- **Topbar única (60px):** esquerda TabGis + Início + Operação; centro camada de títulos **Mapa** (tela cheia) ou **Centro de Controle | Mapa** (vista dividida); direita Busca, Camadas, estado (`#status`), configurações
+- **Operação:** guias OMS → MWM → DMS → IND → SMT → TMP → AUD; primeira guia OMS; cabeçalho compacto (guias + fechar); mocks alinhados a `operations.*`
+- **Controlos:** toggles CSS, `<details>` para Busca/Camadas, checkboxes e *pills* por camada
+- **Modal de Traduções:** idioma EN/PT/ES/IT + grelha de chaves (espelho parcial de `config.translation`)
+- **i18n:** `data-i18n` + API; ver `infra/sql/02_populate_translations.sql` e `docs/CONTEXT_STATE.md`
+- **Feedback padronizado:** mensagens de erro no padrão `"Falha em [X]. [Remediação] (ver docs/DEPLOY_POC.md)."` na barra de estado da topbar
+- **Código:** blocos principais comentados em `main.js`
 
-### 4.4 Documentação operacional
+### 4.4 Centro de controlo operacional (POC)
+
+| Aspecto | Detalhe |
+|---------|---------|
+| **Persistência** | Schema `operations`: `team`, `work_order`, `team_order_displacement`, `team_route` |
+| **Auditoria** | `audit.operations_row_archive` + triggers `BEFORE DELETE` — JSON da linha antes de eliminar |
+| **UI** | Mocks até existir API; política: sem `DELETE` em `operations` sem arquivo |
+
+### 4.5 Documentação operacional
 
 | Documento | Conteúdo |
 |-----------|---------|
-| `docs/CONTEXT_STATE.md` | Estado actual da stack, portas, credenciais, acesso remoto |
-| `docs/DEPLOY_POC.md` | Procedimento completo de deploy e manutenção |
-| `docs/RUNBOOK_BASEMAP_SP_ESTADO.md` | Pipeline de dados SP estado (referência principal) |
-| `docs/RUNBOOK_BASEMAP_SP.md` | Pipeline SP Centro (legado / ensaios) |
+| `docs/CONTEXT_STATE.md` | Stack, frontend detalhado, SQL, SLD, zoom, i18n |
+| `docs/DEPLOY_POC.md` | Deploy, ordem SQL, estilos GeoServer |
+| `docs/RUNBOOK_BASEMAP_SP_ESTADO.md` | Pipeline landbase SP estado |
+| `docs/RUNBOOK_BASEMAP_SP.md` | Pipeline SP Centro (legado) |
+| `frontend/README.md` | Cliente web |
 
 ---
 
@@ -111,9 +125,10 @@ Princípios de UX estabelecidos:
 | # | Tarefa | Prioridade |
 |---|--------|-----------|
 | 1 | Upgrade satélite MBTiles ZMAX=17 (1,2 m/px, ~3,5 h geração) | ✅ Concluído |
-| 2 | Interface split-screen (50% mapa, 50% painel de operação) | ✅ Concluído |
-| 3 | Modelagem da topologia de rede em PostGIS (schema dedicado) | Alta |
-| 4 | APIs REST (backend Node/Python) para edição e logs MongoDB | Média |
-| 5 | Vista esquemática com ligação "Ir para o Mapa" | Média |
-| 6 | Integração IA (Ollama) para consulta sobre a rede | Baixa (fase posterior) |
-| 7 | Endurecimento de segurança (TLS, credenciais, reverse proxy público) | Fora do âmbito POC |
+| 2 | Interface split-screen + topbar com títulos Mapa / Centro de Controle + Busca | ✅ Concluído (POC) |
+| 3 | Schema `operations` + arquivo obrigatório pré-DELETE | ✅ Concluído (SQL); API pendente |
+| 4 | Modelagem da topologia de rede em PostGIS (schema dedicado) | Alta |
+| 5 | APIs REST para `operations`, rotas 48h, edição e logs MongoDB | Média |
+| 6 | Vista esquemática com ligação "Ir para o Mapa" | Média |
+| 7 | Integração IA (Ollama) para consulta sobre a rede | Baixa (fase posterior) |
+| 8 | Endurecimento de segurança (TLS, credenciais, reverse proxy público) | Fora do âmbito POC |

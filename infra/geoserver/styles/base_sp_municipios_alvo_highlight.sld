@@ -22,10 +22,8 @@
             </Stroke>
           </PolygonSymbolizer>
         </Rule>
-        <!-- Regra separada apenas para os rótulos de município com limitação de zoom -->
+        <!-- Rótulos de município em todas as escalas (zoom próximo incluído), para não sumirem quando Bairros está desligado -->
         <Rule>
-          <!-- Esconde os rótulos de município a escalas maiores (zoom in) -->
-          <MinScaleDenominator>150000</MinScaleDenominator>
           <TextSymbolizer>
             <Geometry>
               <ogc:Function name="interiorPoint">
@@ -54,7 +52,6 @@
               <Fill><CssParameter name="fill">#ffffff</CssParameter></Fill>
             </Halo>
             <Fill><CssParameter name="fill">#7c2d12</CssParameter></Fill>
-            <!-- Desliga o rótulo de município quando o zoom está muito próximo (evita sobreposição com os bairros) -->
             <VendorOption name="maxDisplacement">50</VendorOption>
             <VendorOption name="autoWrap">60</VendorOption>
             <VendorOption name="group">yes</VendorOption>

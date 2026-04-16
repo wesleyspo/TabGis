@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TabGis — Basemap SP</title>
+    <title>TabGis — Localização, monitoramento e visualização em tempo real!</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -19,46 +21,74 @@
     <div class="app">
       <!-- ── Topbar ──────────────────────────────────────── -->
       <header class="topbar">
-        <!-- Brand -->
-        <div class="topbar-brand">
-          <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
-            <line x1="9" y1="3" x2="9" y2="18"/>
-            <line x1="15" y1="6" x2="15" y2="21"/>
-          </svg>
-          <div class="brand-text">
-            <span class="brand-name">TabGis</span>
+        <!-- Títulos decorativos: Mapa centrado; com Operação aberta, CC e Mapa centrados em cada metade -->
+        <div class="topbar-titles-layer">
+          <div class="topbar-title-pane topbar-title-pane--solo">
+            <span class="topbar-hero-title topbar-hero-title--map" data-i18n="UI_SPLIT_MAP">Mapa</span>
+          </div>
+          <div class="topbar-title-pane topbar-title-pane--split">
+            <div class="topbar-title-half">
+              <span class="topbar-hero-title" data-i18n="UI_SPLIT_CONTROL_CENTER">Centro de Controle</span>
+            </div>
+            <div class="topbar-title-half">
+              <span class="topbar-hero-title topbar-hero-title--map" data-i18n="UI_SPLIT_MAP">Mapa</span>
+            </div>
           </div>
         </div>
 
-        <div class="topbar-scroll">
-          <button id="btn-home" class="nav-btn" style="margin: 0 10px; border: none; background: transparent; padding: 6px;" title="Visão inicial (Capital)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; color: var(--text-secondary);">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <div class="topbar-left">
+          <div
+            class="topbar-brand"
+            title="TabGis — Localização, monitoramento e visualização em tempo real!"
+          >
+            <svg class="brand-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <circle cx="16" cy="13" r="11" stroke="currentColor" stroke-width="1.25" opacity="0.35"/>
+              <circle cx="16" cy="13" r="7" stroke="currentColor" stroke-width="1.25" opacity="0.5"/>
+              <path
+                fill="currentColor"
+                d="M16 5.2c-2.65 0-4.8 2.1-4.8 4.7 0 3.5 4.8 8.6 4.8 8.6s4.8-5.1 4.8-8.6c0-2.6-2.15-4.7-4.8-4.7zm0 6.3a1.65 1.65 0 1 1 0-3.3 1.65 1.65 0 0 1 0 3.3z"
+              />
+              <path
+                fill="currentColor"
+                opacity="0.85"
+                d="M7 25h2.2v4H7zm4.2-1.5h2.2v5.5h-2.2zm4.3.8h2.2v4.7h-2.2zm4.3-2.2h2.2v6.9h-2.2z"
+              />
             </svg>
-          </button>
+            <div class="brand-text">
+              <span class="brand-name">TabGis</span>
+            </div>
+          </div>
 
-          <button id="btn-operacao" class="nav-btn" style="margin-left: 0; border: 1px solid var(--border-input); background: var(--bg-section); height: 32px;" title="Painel de Operação">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="8" y1="6" x2="21" y2="6"/>
-              <line x1="8" y1="12" x2="21" y2="12"/>
-              <line x1="8" y1="18" x2="21" y2="18"/>
-              <line x1="3" y1="6" x2="3.01" y2="6"/>
-              <line x1="3" y1="12" x2="3.01" y2="12"/>
-              <line x1="3" y1="18" x2="3.01" y2="18"/>
-            </svg>
-            <span data-i18n="UI_BTN_OPERATION">Operação</span>
-          </button>
+          <div class="topbar-nav">
+            <button id="btn-home" class="nav-btn" style="margin: 0 10px; border: none; background: transparent; padding: 6px;" title="Visão inicial (Capital)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; color: var(--text-secondary);">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              </svg>
+            </button>
+
+            <button id="btn-operacao" class="nav-btn" style="margin-left: 0; border: 1px solid var(--border-input); background: var(--bg-section); height: 32px;" title="Painel de Operação">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"/>
+                <line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+              <span data-i18n="UI_BTN_OPERATION">Operação</span>
+            </button>
+          </div>
         </div>
 
-        <div style="display: flex; align-items: center; height: 100%;">
-          <!-- ── Secção: Filtros ──────────────────────────── -->
+        <div class="topbar-right">
+        <div class="topbar-menus">
+          <!-- ── Secção: Busca (mapa); filtros tabulares são módulo à parte ── -->
           <details class="panel-section" style="border-left: 1px solid var(--border);">
             <summary class="section-header">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-              <span data-i18n="UI_MENU_FILTERS">Filtros</span>
+              <span data-i18n="UI_MENU_SEARCH">Busca</span>
               <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 12 15 18 9"/>
               </svg>
@@ -66,10 +96,10 @@
 
             <div class="section-body">
               <div class="field-group">
-                <label class="field-label" data-i18n="UI_FILTER_MUNI_LABEL">Municípios</label>
+                <label class="field-label" data-i18n="UI_SEARCH_MUNI_LABEL">Municípios</label>
                 <div class="select-wrapper">
                   <select id="search-municipio">
-                    <option value="">Carregando…</option>
+                    <option value="" data-i18n="UI_SEARCH_LOADING_MUNI">Carregando municípios…</option>
                   </select>
                   <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 12 15 18 9"/>
@@ -78,10 +108,10 @@
               </div>
 
               <div class="field-group" style="margin-top: 12px;">
-                <label class="field-label" data-i18n="UI_FILTER_NEIGHBORHOOD_LABEL">Bairros</label>
+                <label class="field-label" data-i18n="UI_SEARCH_NEIGHBORHOOD_LABEL">Bairros</label>
                 <div class="select-wrapper">
                   <select id="search-bairro">
-                    <option value="">Selecione um município primeiro…</option>
+                    <option value="" data-i18n="UI_SEARCH_NEED_MUNI_FIRST">Selecione um município primeiro…</option>
                   </select>
                   <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 12 15 18 9"/>
@@ -235,7 +265,7 @@
         </div>
 
         <!-- ── Status bar ─────────────────────────────────── -->
-        <div class="topbar-footer" style="margin-left: 0;">
+        <div class="topbar-footer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="8" x2="12" y2="12"/>
@@ -272,30 +302,242 @@
             </div>
           </div>
         </details>
+        </div>
       </header>
 
       <!-- ── Container Principal (Left Panel + Mapa) ─────── -->
       <main class="main-content">
+        <div class="split-main-row">
         <!-- ── Painel Esquerdo (Operação) ───────────────────── -->
         <aside id="left-panel" class="left-panel">
-          <div class="panel-header">
-            <h3 data-i18n="UI_BTN_OPERATION">Operação</h3>
-            <button id="btn-close-operacao" class="close-btn" title="Fechar">
+          <div class="panel-body panel-body--operacao">
+            <div class="operacao-top">
+            <div class="operacao-tab-bar" role="tablist" aria-label="Módulos de operação">
+              <button type="button" class="operacao-tab active" role="tab" aria-selected="true" data-tab="oms"
+                title="Ordens: tarefas, reparos, reclamações e eventos (OMS)."><span data-i18n="UI_OP_TAB_OMS">Ordens de serviço</span></button>
+              <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="mwm"
+                title="Equipas em campo, rotas (48h) e deslocamentos — primeiro foco: estrutura de equipas (MWM)."><span data-i18n="UI_OP_TAB_MWM">Equipas, rotas e deslocamentos</span></button>
+              <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="dms"
+                title="Telecomando e comando remoto de dispositivos e pontos de rede (DMS)."><span data-i18n="UI_OP_TAB_DMS">Telecomando remoto</span></button>
+              <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="ind"
+                title="Indicadores operacionais, KPIs e painéis de desempenho (IND)."><span data-i18n="UI_OP_TAB_IND">Indicadores operacionais</span></button>
+              <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="smt"
+                title="Instalações de campo, leituras e telemetria associada (SMT)."><span data-i18n="UI_OP_TAB_SMT">Instalações e telemetria</span></button>
+              <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="tmp"
+                title="Clima, condições ambientais e impacto em operações de campo (TMP)."><span data-i18n="UI_OP_TAB_TMP">Clima e operações de campo</span></button>
+              <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="aud"
+                title="Auditoria, trilhas de alterações e conformidade (AUD)."><span data-i18n="UI_OP_TAB_AUD">Auditoria e conformidade</span></button>
+            </div>
+            <button type="button" id="btn-close-operacao" class="close-btn operacao-close" title="Fechar">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"/>
                 <line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
             </button>
-          </div>
-          <div class="panel-body">
-            <p class="text-muted" style="font-size: 13px; text-align: center; margin-top: 40px;">
-              Lista de objetos e ferramentas de rede aparecerá aqui.
-            </p>
+            </div>
+
+            <div class="operacao-panels">
+              <!-- OMS — Ordens (tarefas / reparos / reclamações / eventos) -->
+              <section class="operacao-panel active" data-panel="oms" role="tabpanel">
+                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
+                <h4 class="mock-section-title" data-i18n="UI_OP_ORDERS_TITLE">Ordens</h4>
+                <p class="mock-hint" data-i18n="UI_OP_ORDERS_HINT">Lista de ordens (tarefas, reparos, reclamações, eventos). Ao seleccionar uma ordem, abre-se o detalhe — estrutura de campos a definir.</p>
+                <div class="mock-table-wrap">
+                  <table class="mock-table mock-table--orders">
+                    <thead>
+                      <tr>
+                        <th data-i18n="UI_OP_COL_ORDER_CODE">Código</th>
+                        <th data-i18n="UI_OP_COL_ORDER_CATEGORY">Categoria</th>
+                        <th data-i18n="UI_OP_COL_ORDER_SUMMARY">Resumo</th>
+                        <th data-i18n="UI_OP_COL_ORDER_STATUS">Estado</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="order-row-mock" data-order-mock="1">
+                        <td>ORD-2026-0142</td>
+                        <td><span data-i18n="UI_OP_CAT_REPAIR">Reparo</span></td>
+                        <td>Subestação — inspecção isoladores</td>
+                        <td><span class="mock-badge mock-badge--warn" data-i18n="UI_OP_ORDER_OPEN">Aberta</span></td>
+                        <td><button type="button" class="mock-btn-open-order" data-i18n="UI_OP_OPEN_DETAIL">Abrir</button></td>
+                      </tr>
+                      <tr class="order-row-mock" data-order-mock="2">
+                        <td>ORD-2026-0143</td>
+                        <td><span data-i18n="UI_OP_CAT_COMPLAINT">Reclamação</span></td>
+                        <td>Cliente — interrupção parcial BT</td>
+                        <td><span class="mock-badge mock-badge--ok" data-i18n="UI_OP_ORDER_PROGRESS">Em curso</span></td>
+                        <td><button type="button" class="mock-btn-open-order" data-i18n="UI_OP_OPEN_DETAIL">Abrir</button></td>
+                      </tr>
+                      <tr class="order-row-mock" data-order-mock="3">
+                        <td>TSK-2026-0088</td>
+                        <td><span data-i18n="UI_OP_CAT_TASK">Tarefa</span></td>
+                        <td>Leitura de campo — medidor SMT</td>
+                        <td><span class="mock-badge mock-badge--ok" data-i18n="UI_OP_ORDER_SCHEDULED">Agendada</span></td>
+                        <td><button type="button" class="mock-btn-open-order" data-i18n="UI_OP_OPEN_DETAIL">Abrir</button></td>
+                      </tr>
+                      <tr class="order-row-mock" data-order-mock="4">
+                        <td>EVT-2026-0004</td>
+                        <td><span data-i18n="UI_OP_CAT_EVENT">Evento</span></td>
+                        <td>Manobra programada — alimentador 12</td>
+                        <td><span class="mock-badge mock-badge--muted" data-i18n="UI_OP_ORDER_PLANNED">Planeado</span></td>
+                        <td><button type="button" class="mock-btn-open-order" data-i18n="UI_OP_OPEN_DETAIL">Abrir</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div id="order-detail-mock" class="order-detail-mock" hidden>
+                  <h5 class="mock-detail-title" data-i18n="UI_OP_ORDER_DETAIL_TITLE">Detalhe da ordem (mock)</h5>
+                  <dl class="mock-detail-dl">
+                    <dt data-i18n="UI_OP_COL_ORDER_CODE">Código</dt><dd id="order-detail-code">—</dd>
+                    <dt data-i18n="UI_OP_COL_ORDER_CATEGORY">Categoria</dt><dd id="order-detail-category">—</dd>
+                    <dt data-i18n="UI_OP_DETAIL_DESCRIPTION">Descrição</dt><dd id="order-detail-desc">—</dd>
+                    <dt data-i18n="UI_OP_DETAIL_PRIORITY">Prioridade</dt><dd id="order-detail-prio">—</dd>
+                    <dt data-i18n="UI_OP_DETAIL_CREATED">Criada em</dt><dd id="order-detail-created">—</dd>
+                    <dt data-i18n="UI_OP_DETAIL_ASSIGNED_TEAM">Equipa atribuída</dt><dd id="order-detail-team">—</dd>
+                  </dl>
+                  <p class="mock-hint" data-i18n="UI_OP_ORDER_DETAIL_HINT">Campos definitivos e formulário de edição serão alinhados ao modelo de dados em operations.work_order.</p>
+                </div>
+              </section>
+
+              <!-- MWM — Equipas; rotas 48h e deslocamentos virão da BD -->
+              <section class="operacao-panel" data-panel="mwm" role="tabpanel">
+                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
+                <h4 class="mock-section-title" data-i18n="UI_OP_TEAMS_TITLE">Estrutura de equipas</h4>
+                <p class="mock-hint" data-i18n="UI_OP_TEAMS_HINT">Equipas, competências e localização. Relacionamento com ordens e horários de deslocamento na BD; rotas completas das últimas 48h por equipa.</p>
+                <div class="mock-table-wrap mock-table-wrap--wide">
+                  <table class="mock-table mock-table--teams">
+                    <thead>
+                      <tr>
+                        <th data-i18n="UI_OP_COL_TEAM">Equipa</th>
+                        <th data-i18n="UI_OP_COL_LEADER">Líder</th>
+                        <th data-i18n="UI_OP_COL_SKILL">Skill</th>
+                        <th data-i18n="UI_OP_COL_TYPE">Tipo</th>
+                        <th data-i18n="UI_OP_COL_OWNER">Proprietário</th>
+                        <th data-i18n="UI_OP_COL_LAST_COORD">Últ. coordenada</th>
+                        <th data-i18n="UI_OP_COL_LAST_UPDATE">Últ. atualização</th>
+                        <th data-i18n="UI_OP_COL_ZONE">Zona</th>
+                        <th data-i18n="UI_OP_COL_MEMBERS">Memb.</th>
+                        <th data-i18n="UI_OP_COL_STATUS">Estado</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>EQ-ALPHA</td>
+                        <td>M. Silva</td>
+                        <td>BT + MT</td>
+                        <td>Rede</td>
+                        <td>Op. Leste</td>
+                        <td>2026-04-15 08:42</td>
+                        <td>2026-04-15 09:10</td>
+                        <td>RMSP Leste</td>
+                        <td>5</td>
+                        <td><span class="mock-badge mock-badge--ok" data-i18n="UI_OP_STATUS_ACTIVE">Activa</span></td>
+                        <td><button type="button" class="mock-btn-ir" data-i18n="UI_OP_GO_MAP" data-lat="-23.55" data-lng="-46.63" title="Centrar mapa na última posição conhecida (mock)">Ir para</button></td>
+                      </tr>
+                      <tr>
+                        <td>EQ-BETA</td>
+                        <td>J. Costa</td>
+                        <td>Telecom</td>
+                        <td>FTTH</td>
+                        <td>Op. Capital</td>
+                        <td>2026-04-15 07:15</td>
+                        <td>2026-04-15 08:55</td>
+                        <td>Capital SP</td>
+                        <td>4</td>
+                        <td><span class="mock-badge mock-badge--ok" data-i18n="UI_OP_STATUS_ACTIVE">Activa</span></td>
+                        <td><button type="button" class="mock-btn-ir" data-i18n="UI_OP_GO_MAP" data-lat="-23.56" data-lng="-46.65">Ir para</button></td>
+                      </tr>
+                      <tr>
+                        <td>EQ-GAMA</td>
+                        <td>A. Reis</td>
+                        <td>Energia</td>
+                        <td>MT</td>
+                        <td>Op. Oeste</td>
+                        <td>2026-04-14 18:30</td>
+                        <td>2026-04-14 18:30</td>
+                        <td>RMSP Oeste</td>
+                        <td>3</td>
+                        <td><span class="mock-badge mock-badge--warn" data-i18n="UI_OP_STATUS_STANDBY">Stand-by</span></td>
+                        <td><button type="button" class="mock-btn-ir" data-i18n="UI_OP_GO_MAP" data-lat="-23.60" data-lng="-46.70">Ir para</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="mock-actions">
+                  <button type="button" class="mock-btn" disabled data-i18n="UI_OP_BTN_NEW_TEAM">+ Nova equipa</button>
+                  <button type="button" class="mock-btn mock-btn--ghost" disabled data-i18n="UI_OP_BTN_IMPORT">Importar CSV</button>
+                </div>
+              </section>
+
+              <section class="operacao-panel" data-panel="dms" role="tabpanel">
+                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
+                <h4 class="mock-section-title" data-i18n="UI_OP_DMS_TITLE">Telecomando</h4>
+                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">Módulo em construção. Alterações e remoções em dados operacionais são sempre registadas em Auditoria antes de eliminar registos nas tabelas principais.</p>
+                <div class="mock-placeholder" data-i18n="UI_OP_DMS_PLACEHOLDER">Dispositivos e comandos (mock).</div>
+              </section>
+
+              <section class="operacao-panel" data-panel="ind" role="tabpanel">
+                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
+                <h4 class="mock-section-title" data-i18n="UI_OP_IND_TITLE">Indicadores</h4>
+                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">Módulo em construção. Alterações e remoções em dados operacionais são sempre registadas em Auditoria antes de eliminar registos nas tabelas principais.</p>
+                <div class="mock-placeholder" data-i18n="UI_OP_IND_PLACEHOLDER">KPIs e painéis (mock) — ver guia AUD para trilhas.</div>
+              </section>
+
+              <section class="operacao-panel" data-panel="smt" role="tabpanel">
+                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
+                <h4 class="mock-section-title" data-i18n="UI_OP_SMT_TITLE">Instalações e telemetria</h4>
+                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">Módulo em construção. Alterações e remoções em dados operacionais são sempre registadas em Auditoria antes de eliminar registos nas tabelas principais.</p>
+                <div class="mock-placeholder" data-i18n="UI_OP_SMT_PLACEHOLDER">Leituras e alarmes (mock).</div>
+              </section>
+
+              <section class="operacao-panel" data-panel="tmp" role="tabpanel">
+                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
+                <h4 class="mock-section-title" data-i18n="UI_OP_TMP_TITLE">Clima</h4>
+                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">Módulo em construção. Alterações e remoções em dados operacionais são sempre registadas em Auditoria antes de eliminar registos nas tabelas principais.</p>
+                <div class="mock-placeholder" data-i18n="UI_OP_TMP_PLACEHOLDER">Condicionantes meteorológicas (mock).</div>
+              </section>
+
+              <section class="operacao-panel" data-panel="aud" role="tabpanel">
+                <div class="mock-banner" data-i18n="UI_OP_MOCK_BANNER">Painel mock — dados de exemplo</div>
+                <h4 class="mock-section-title" data-i18n="UI_OP_AUD_TITLE">Auditoria</h4>
+                <p class="mock-hint" data-i18n="UI_OP_AUD_POLICY">Nada é apagado das tabelas principais do schema operations sem cópia prévia para audit.operations_row_archive. Inclui trilhas relevantes dos módulos IND, DMS, SMT e TMP quando aplicável.</p>
+                <h5 class="mock-subtitle" data-i18n="UI_OP_AUD_ARCHIVE_TITLE">Arquivo de linhas removidas (mock)</h5>
+                <div class="mock-table-wrap">
+                  <table class="mock-table">
+                    <thead>
+                      <tr>
+                        <th data-i18n="UI_OP_AUD_COL_TABLE">Tabela</th>
+                        <th data-i18n="UI_OP_AUD_COL_ID">ID origem</th>
+                        <th data-i18n="UI_OP_AUD_COL_WHEN">Arquivado em</th>
+                        <th data-i18n="UI_OP_AUD_COL_REASON">Motivo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code>operations.team</code></td>
+                        <td>12</td>
+                        <td>2026-03-01 14:00</td>
+                        <td data-i18n="UI_OP_AUD_REASON_MERGE">Fusão de equipas</td>
+                      </tr>
+                      <tr>
+                        <td><code>operations.work_order</code></td>
+                        <td>9001</td>
+                        <td>2026-02-20 09:30</td>
+                        <td data-i18n="UI_OP_REASON_CANCEL">Cancelamento duplicado</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p class="mock-hint" data-i18n="UI_OP_AUD_TIMELINE_HINT">Linha temporal completa de audit.parameter_history, audit.login_history e arquivo operacional será integrada na API.</p>
+              </section>
+            </div>
           </div>
         </aside>
 
         <!-- ── Mapa ───────────────────────────────────────── -->
         <section id="map"></section>
+        </div>
       </main>
       
       <!-- ── Modal Traduções ────────────────────────────── -->
@@ -332,11 +574,11 @@
                     <td><input type="text" class="table-input" value="Vista iniziale (Capitale)"></td>
                   </tr>
                   <tr>
-                    <td>UI_MENU_FILTERS</td>
-                    <td><input type="text" class="table-input" value="Filters"></td>
-                    <td><input type="text" class="table-input" value="Filtros"></td>
-                    <td><input type="text" class="table-input" value="Filtros"></td>
-                    <td><input type="text" class="table-input" value="Filtri"></td>
+                    <td>UI_MENU_SEARCH</td>
+                    <td><input type="text" class="table-input" value="Search"></td>
+                    <td><input type="text" class="table-input" value="Busca"></td>
+                    <td><input type="text" class="table-input" value="Búsqueda"></td>
+                    <td><input type="text" class="table-input" value="Ricerca"></td>
                   </tr>
                   <tr>
                     <td>UI_MENU_LAYERS</td>
@@ -352,35 +594,70 @@
                     <td><input type="text" class="table-input" value="Operación"></td>
                     <td><input type="text" class="table-input" value="Operazione"></td>
                   </tr>
-
-                  <!-- Filtros -->
                   <tr>
-                    <td>UI_FILTER_MUNI_LABEL</td>
+                    <td>UI_SPLIT_CONTROL_CENTER</td>
+                    <td><input type="text" class="table-input" value="Control center"></td>
+                    <td><input type="text" class="table-input" value="Centro de Controle"></td>
+                    <td><input type="text" class="table-input" value="Centro de control"></td>
+                    <td><input type="text" class="table-input" value="Centro di controllo"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_SPLIT_MAP</td>
+                    <td><input type="text" class="table-input" value="Map"></td>
+                    <td><input type="text" class="table-input" value="Mapa"></td>
+                    <td><input type="text" class="table-input" value="Mapa"></td>
+                    <td><input type="text" class="table-input" value="Mappa"></td>
+                  </tr>
+
+                  <!-- Busca (mapa) -->
+                  <tr>
+                    <td>UI_SEARCH_MUNI_LABEL</td>
                     <td><input type="text" class="table-input" value="Municipalities"></td>
                     <td><input type="text" class="table-input" value="Municípios"></td>
                     <td><input type="text" class="table-input" value="Municipios"></td>
                     <td><input type="text" class="table-input" value="Comuni"></td>
                   </tr>
                   <tr>
-                    <td>UI_FILTER_MUNI_PLACEHOLDER</td>
-                    <td><input type="text" class="table-input" value="Filter municipalities..."></td>
-                    <td><input type="text" class="table-input" value="Filtrar municípios…"></td>
-                    <td><input type="text" class="table-input" value="Filtrar municipios…"></td>
-                    <td><input type="text" class="table-input" value="Filtra comuni…"></td>
-                  </tr>
-                  <tr>
-                    <td>UI_FILTER_NEIGHBORHOOD_LABEL</td>
+                    <td>UI_SEARCH_NEIGHBORHOOD_LABEL</td>
                     <td><input type="text" class="table-input" value="Neighborhoods"></td>
                     <td><input type="text" class="table-input" value="Bairros"></td>
                     <td><input type="text" class="table-input" value="Barrios"></td>
                     <td><input type="text" class="table-input" value="Quartieri"></td>
                   </tr>
                   <tr>
-                    <td>UI_FILTER_NEIGHBORHOOD_PLACEHOLDER</td>
-                    <td><input type="text" class="table-input" value="Filter neighborhoods..."></td>
-                    <td><input type="text" class="table-input" value="Filtrar bairros…"></td>
-                    <td><input type="text" class="table-input" value="Filtrar barrios…"></td>
-                    <td><input type="text" class="table-input" value="Filtra quartieri…"></td>
+                    <td>UI_SEARCH_LOADING_MUNI</td>
+                    <td><input type="text" class="table-input" value="Loading municipalities…"></td>
+                    <td><input type="text" class="table-input" value="Carregando municípios…"></td>
+                    <td><input type="text" class="table-input" value="Cargando municipios…"></td>
+                    <td><input type="text" class="table-input" value="Caricamento comuni…"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_SEARCH_SELECT_MUNI</td>
+                    <td><input type="text" class="table-input" value="Select a municipality…"></td>
+                    <td><input type="text" class="table-input" value="Selecione um município…"></td>
+                    <td><input type="text" class="table-input" value="Seleccione un municipio…"></td>
+                    <td><input type="text" class="table-input" value="Seleziona un comune…"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_SEARCH_NEED_MUNI_FIRST</td>
+                    <td><input type="text" class="table-input" value="Select a municipality first…"></td>
+                    <td><input type="text" class="table-input" value="Selecione um município primeiro…"></td>
+                    <td><input type="text" class="table-input" value="Seleccione primero un municipio…"></td>
+                    <td><input type="text" class="table-input" value="Seleziona prima un comune…"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_SEARCH_LOADING_BAIRROS</td>
+                    <td><input type="text" class="table-input" value="Loading neighborhoods…"></td>
+                    <td><input type="text" class="table-input" value="Carregando bairros…"></td>
+                    <td><input type="text" class="table-input" value="Cargando barrios…"></td>
+                    <td><input type="text" class="table-input" value="Caricamento quartieri…"></td>
+                  </tr>
+                  <tr>
+                    <td>UI_SEARCH_SELECT_BAIRRO</td>
+                    <td><input type="text" class="table-input" value="Select a neighborhood…"></td>
+                    <td><input type="text" class="table-input" value="Selecione um bairro…"></td>
+                    <td><input type="text" class="table-input" value="Seleccione un barrio…"></td>
+                    <td><input type="text" class="table-input" value="Seleziona un quartiere…"></td>
                   </tr>
 
                   <!-- Camadas (Layers) -->

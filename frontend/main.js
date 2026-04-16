@@ -47,6 +47,15 @@ function getGeoserverBase() {
 }
 
 const geoserverBase = getGeoserverBase();
+
+/** Último mapa de traduções carregado (para detalhe de ordem mock). */
+let i18nCache = {};
+
+/** Rótulo i18n com fallback (ex.: busca no mapa antes do fetch completar). */
+function uiText(key, fallback) {
+  const v = i18nCache[key];
+  return v != null && v !== "" ? v : fallback;
+}
 /** Endpoint WMS do workspace base_sp */
 const geoserverWms = `${geoserverBase}/base_sp/wms`;
 /** Endpoint OWS genérico — usado para pedidos WFS */
@@ -282,6 +291,26 @@ function fitBounds(minLon, minLat, maxLon, maxLat) {
 }
 
 /**
+ * Vista inicial: inset = metade da extensão em proporção ao bbox (menor inset ⇒ mais zoom).
+ */
+function fitBoundsHomeInset(minLon, minLat, maxLon, maxLat, inset) {
+  const cLat = (minLat + maxLat) / 2;
+  const cLon = (minLon + maxLon) / 2;
+  const hLat = ((maxLat - minLat) / 2) * inset;
+  const hLon = ((maxLon - minLon) / 2) * inset;
+  map.fitBounds([
+    [cLat - hLat, cLon - hLon],
+    [cLat + hLat, cLon + hLon],
+  ]);
+}
+
+/** Mapa em tela cheia: ~4% menos zoom que inset 0,9 (área visível um pouco maior). */
+const HOME_INSET_FULL = 0.9 * 1.04;
+
+/** Com painel 50%: ~8% mais zoom que a mesma cena em tela cheia (compensa metade da largura). */
+const HOME_INSET_SPLIT = HOME_INSET_FULL / 1.08;
+
+/**
  * Constrói a string BBOX em EPSG:3857 para os pedidos WMS GetFeatureInfo.
  * O GeoServer 1.1.1 espera BBOX no SRS da camada (3857 quando publicado em WebMercator).
  * @returns {string} "minX,minY,maxX,maxY"
@@ -335,7 +364,7 @@ async function checkTileServerHealth() {
   return res.json();
 }
 
-// ── Filtros WFS — Municípios e Bairros ───────────────────────────────────
+// ── Busca no mapa (WFS — municípios e bairros). Filtros ficam para a parte tabular. ──
 
 let municipiosGeoJSON = null;
 
@@ -368,7 +397,7 @@ async function loadMunicipiosAlvoWfs() {
     .filter(Boolean)
     .sort();
 
-  sel.innerHTML = '<option value="">Selecione um município…</option>';
+  sel.innerHTML = `<option value="">${uiText("UI_SEARCH_SELECT_MUNI", "Selecione um município…")}</option>`;
   names.forEach((n) => {
     const opt = document.createElement("option");
     opt.value = n;
@@ -379,7 +408,7 @@ async function loadMunicipiosAlvoWfs() {
 
 async function onMunicipioSelected(name) {
   if (!name) {
-    document.getElementById("search-bairro").innerHTML = '<option value="">Selecione um município primeiro…</option>';
+    document.getElementById("search-bairro").innerHTML = `<option value="">${uiText("UI_SEARCH_NEED_MUNI_FIRST", "Selecione um município primeiro…")}</option>`;
     return;
   }
   const f = municipiosGeoJSON.features.find((x) => municipioNameFromFeature(x) === name);
@@ -392,7 +421,7 @@ async function onMunicipioSelected(name) {
  */
 async function loadBairrosWfs(municipioNome) {
   const sel = document.getElementById("search-bairro");
-  sel.innerHTML = '<option value="">Carregando bairros…</option>';
+  sel.innerHTML = `<option value="">${uiText("UI_SEARCH_LOADING_BAIRROS", "Carregando bairros…")}</option>`;
 
   const cql = `municipio_nome = '${municipioNome.replace(/'/g, "''")}'`;
 
@@ -415,7 +444,7 @@ async function loadBairrosWfs(municipioNome) {
       .filter(Boolean)
       .sort();
 
-    sel.innerHTML = '<option value="">Selecione um bairro…</option>';
+    sel.innerHTML = `<option value="">${uiText("UI_SEARCH_SELECT_BAIRRO", "Selecione um bairro…")}</option>`;
     bairros.forEach((b) => {
       const opt = document.createElement("option");
       opt.value = b;
@@ -584,19 +613,51 @@ async function getFeatureInfoAtEvent(ev) {
 
 // ── Inicialização ─────────────────────────────────────────────────────────
 
-// Função Home: visão dependente do estado do painel lateral
+// Função Home: visão dependente do estado do painel lateral (mesmos parâmetros que ao abrir a URL)
 function setHomeView() {
-  if (document.querySelector(".app").classList.contains("has-left-panel")) {
-    fitBounds(-47.2496, -24.1088, -46.2513, -23.1966);
-  } else {
-    // Movido cerca de 10% de volta para a direita
-    fitBounds(-47.6480, -24.0674, -45.9180, -23.2733);
+  map.invalidateSize();
+  const split = document.querySelector(".app").classList.contains("has-left-panel");
+  requestAnimationFrame(() => {
+    if (split) {
+      fitBoundsHomeInset(
+        -47.2496,
+        -24.1088,
+        -46.2513,
+        -23.1966,
+        HOME_INSET_SPLIT
+      );
+    } else {
+      fitBoundsHomeInset(
+        -47.6480,
+        -24.0674,
+        -45.9180,
+        -23.2733,
+        HOME_INSET_FULL
+      );
+    }
+  });
+}
+
+/** Mensagem inicial só uma vez; setHomeView pode repetir-se após o contentor ganhar altura. */
+let mapInitialStatusDone = false;
+function runInitialMapLayout() {
+  try {
+    setHomeView();
+  } catch (e) {
+    console.error(e);
+  }
+  if (!mapInitialStatusDone) {
+    mapInitialStatusDone = true;
+    setStatus("Mapa carregado.");
   }
 }
 
-// Enquadra a visão inicial
-setHomeView();
-setStatus("Mapa carregado.");
+map.whenReady(() => {
+  requestAnimationFrame(runInitialMapLayout);
+});
+
+// Respaldo: contentor flex às vezes só tem altura definitiva após pintura
+setTimeout(runInitialMapLayout, 400);
 
 document.getElementById("search-municipio").addEventListener("change", (e) => onMunicipioSelected(e.target.value));
 document.getElementById("search-bairro").addEventListener("change", (e) => onBairroSelected(e.target.value));
@@ -623,6 +684,115 @@ function toggleLeftPanel() {
 
 btnOperacao.addEventListener("click", toggleLeftPanel);
 btnCloseOperacao.addEventListener("click", toggleLeftPanel);
+
+// Guias do painel Operação (OMS, MWM, IND, …)
+(function initOperacaoTabs() {
+  const bar = document.querySelector(".operacao-tab-bar");
+  if (!bar) return;
+
+  bar.addEventListener("click", (e) => {
+    const tab = e.target.closest(".operacao-tab");
+    if (!tab || !bar.contains(tab)) return;
+
+    const id = tab.getAttribute("data-tab");
+    if (!id) return;
+
+    bar.querySelectorAll(".operacao-tab").forEach((btn) => {
+      const on = btn === tab;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+
+    document.querySelectorAll(".operacao-panel").forEach((panel) => {
+      const on = panel.getAttribute("data-panel") === id;
+      panel.classList.toggle("active", on);
+    });
+  });
+})();
+
+/** Dados mock para detalhe de ordem (OMS) — alinhar depois a operations.work_order. */
+const ORDER_MOCK_DETAIL = {
+  "1": {
+    code: "ORD-2026-0142",
+    categoryKey: "UI_OP_CAT_REPAIR",
+    desc: "Subestação — inspecção de isoladores e termografia (mock).",
+    prio: "P1",
+    created: "2026-04-10 11:20",
+    team: "EQ-ALPHA",
+  },
+  "2": {
+    code: "ORD-2026-0143",
+    categoryKey: "UI_OP_CAT_COMPLAINT",
+    desc: "Reclamação cliente — interrupção parcial de BT; prioridade atendimento (mock).",
+    prio: "P2",
+    created: "2026-04-11 09:00",
+    team: "EQ-BETA",
+  },
+  "3": {
+    code: "TSK-2026-0088",
+    categoryKey: "UI_OP_CAT_TASK",
+    desc: "Leitura de campo e conferência de medidor inteligente (mock).",
+    prio: "P3",
+    created: "2026-04-12 14:45",
+    team: "EQ-ALPHA",
+  },
+  "4": {
+    code: "EVT-2026-0004",
+    categoryKey: "UI_OP_CAT_EVENT",
+    desc: "Manobra programada — alimentador 12; comunicação a clientes (mock).",
+    prio: "P2",
+    created: "2026-04-08 16:00",
+    team: "EQ-GAMA",
+  },
+};
+
+(function initOperacaoPanelActions() {
+  const panels = document.querySelector(".operacao-panels");
+  if (!panels) return;
+
+  panels.addEventListener("click", (e) => {
+    const irBtn = e.target.closest(".mock-btn-ir");
+    if (irBtn) {
+      const lat = parseFloat(irBtn.getAttribute("data-lat") || "");
+      const lng = parseFloat(irBtn.getAttribute("data-lng") || "");
+      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+        map.setView([lat, lng], 15);
+        setStatus(
+          i18nCache.UI_OP_STATUS_MAP_CENTERED ||
+            "Mapa centralizado na última posição conhecida da equipa (mock)."
+        );
+      }
+      return;
+    }
+
+    const openBtn = e.target.closest(".mock-btn-open-order");
+    if (!openBtn) return;
+
+    const row = openBtn.closest(".order-row-mock");
+    const id = row && row.getAttribute("data-order-mock");
+    const detail = document.getElementById("order-detail-mock");
+    if (!detail || !id) return;
+
+    const data = ORDER_MOCK_DETAIL[id];
+    if (!data) return;
+
+    const setDd = (idEl, text) => {
+      const el = document.getElementById(idEl);
+      if (el) el.textContent = text;
+    };
+
+    setDd("order-detail-code", data.code);
+    const catLabel = i18nCache[data.categoryKey] || data.categoryKey;
+    setDd("order-detail-category", catLabel);
+    setDd("order-detail-desc", data.desc);
+    setDd("order-detail-prio", data.prio);
+    setDd("order-detail-created", data.created);
+    setDd("order-detail-team", data.team);
+
+    detail.hidden = false;
+    detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+})();
 
 // Lógica do Modal de Traduções (Configurações)
 const modalTranslations = document.getElementById("modal-translations");
@@ -666,6 +836,7 @@ async function loadTranslations(lang) {
     const res = await fetch(`/api/translations/${lang}`);
     if (!res.ok) throw new Error("Failed to fetch translations");
     const translations = await res.json();
+    i18nCache = translations;
 
     document.querySelectorAll("[data-i18n]").forEach((el) => {
       const key = el.getAttribute("data-i18n");
@@ -715,20 +886,26 @@ map.on("zoomend", () => {
     map.removeLayer(ufLayer);
   }
 
-  // Lógica Bairros vs Municípios
+  // Lógica Bairros vs Municípios (respeita o toggle de Bairros em zoom ≥ 12)
   const temBairros = map.hasLayer(bairrosAlvoLayer);
   const temMunicipios = map.hasLayer(municipiosAlvoLayer);
   const checkboxBairros = document.getElementById("bairros_alvo_sp");
   const checkboxMunicipios = document.getElementById("municipios_alvo_sp");
+  const bairrosPretendidos = checkboxBairros && checkboxBairros.checked;
 
   if (zoom >= 12) {
-    if (!temBairros) {
-      bairrosAlvoLayer.addTo(map);
-      if (checkboxBairros) checkboxBairros.checked = true;
-    }
-    if (temMunicipios) {
-      map.removeLayer(municipiosAlvoLayer);
-      if (checkboxMunicipios) checkboxMunicipios.checked = false;
+    if (bairrosPretendidos) {
+      if (!temBairros) bairrosAlvoLayer.addTo(map);
+      if (temMunicipios) {
+        map.removeLayer(municipiosAlvoLayer);
+        if (checkboxMunicipios) checkboxMunicipios.checked = false;
+      }
+    } else {
+      if (temBairros) map.removeLayer(bairrosAlvoLayer);
+      if (!temMunicipios) {
+        municipiosAlvoLayer.addTo(map);
+        if (checkboxMunicipios) checkboxMunicipios.checked = true;
+      }
     }
   } else {
     if (temBairros) {

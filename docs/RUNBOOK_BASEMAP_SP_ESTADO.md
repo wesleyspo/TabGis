@@ -83,6 +83,35 @@ Estilos SLD versionados em `infra/geoserver/styles/`.
 
 ---
 
+## 5.1 Recorte prioritário (municípios-alvo, bairros, vias)
+
+O landbase estadual (secção 5) cobre **todo o estado**. Para a POC TabGis usa-se um **recorte metropolitano** (24 municípios) com camadas adicionais e estilos dedicados.
+
+| Passo | Comando / referência |
+|-------|----------------------|
+| Gerar tabelas e publicar camadas | `./infra/scripts/setup_municipios_alvo_sp.sh` |
+| Detalhe da lista de municípios e comportamento no mapa | `docs/CONTEXT_STATE.md` → *Recorte prioritário* e *Frontend* |
+
+### PostGIS (além das tabelas da secção 5)
+
+| Tabela | Conteúdo |
+|--------|----------|
+| `landbase.municipios_alvo_sp` | Polígonos dos 24 municípios-alvo |
+| `landbase.bairros_alvo_sp` | Bairros (OSM) intersectando os municípios-alvo |
+| `landbase.vias_alvo_sp` | Vias públicas no mesmo recorte |
+
+### GeoServer — camadas e SLD em repositório
+
+| Camada | SLD versionado (repo) | Notas |
+|--------|----------------------|--------|
+| `base_sp:municipios_alvo_sp` | `infra/geoserver/styles/base_sp_municipios_alvo_highlight.sld` | Rótulos `nm_mun` visíveis nas escalas usadas na POC |
+| `base_sp:bairros_alvo_sp` | `infra/geoserver/styles/base_sp_bairros_alvo.sld` | Preenchimento/contorno discretos; rótulos `municipio_nome` + `bairro_nome` |
+| `base_sp:vias_alvo_sp` | (estilo atribuído pelo script; alinhado a vias por zoom onde aplicável) | — |
+
+> **Manutenção:** alterações a estes `.sld` no Git **não** entram automaticamente no GeoServer após `git pull`. Republicar o XML na consola (**Styles** / camada) ou repetir o procedimento de publicação do teu ambiente. Sincronismo com toggles e zoom do cliente: `docs/CONTEXT_STATE.md` (*Camadas alvo — zoom e toggles*, *Estilos GeoServer — recorte alvo*).
+
+---
+
 ## 6. Validação
 
 ```bash

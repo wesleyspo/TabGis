@@ -79,12 +79,13 @@ git push origin v0.1.0           # ou: git push origin --tags
 
 ## Dados e schemas
 
-O banco de dados foi estruturado em quatro *schemas* fundamentais para sustentar o comportamento da aplicação em ambiente agnóstico de idioma e localidade:
+O banco de dados foi estruturado em *schemas* fundamentais para sustentar o comportamento da aplicação em ambiente agnóstico de idioma e localidade:
 
 1. **`landbase`**: Contém todos os dados geográficos e topológicos puros do basemap e da rede (antigo `basemap`). Todas as camadas do GeoServer apontam para cá.
 2. **`config`**: Estruturas de parametrização dinâmica (`config.parameter`), traduções globais (`config.translation`) e idiomas suportados (`config.language`: EN, PT, ES, IT).
 3. **`security`**: Controle de acessos de usuário, autenticação e roles de visualização (`ADMIN`, `CONSULTA`, `OPERACAO`).
-4. **`audit`**: Histórico detalhado gerado por Triggers no PostGIS, gravando alterações em parâmetros (`audit.parameter_history`) e sessões de usuário (`audit.login_history`).
+4. **`audit`**: Histórico detalhado gerado por Triggers no PostGIS, gravando alterações em parâmetros (`audit.parameter_history`), sessões de usuário (`audit.login_history`) e **arquivo obrigatório antes de `DELETE`** em tabelas operacionais (`audit.operations_row_archive` — ver `operations`).
+5. **`operations`**: Equipas (`operations.team`), ordens (`operations.work_order`), deslocamentos equipa–ordem (`operations.team_order_displacement`), rotas por janela temporal (`operations.team_route`, ex. últimas 48h). Script: `infra/sql/03_operations_schema.sql`. Regra: *nada* é removido das tabelas principais de `operations` sem inserção prévia do registo em `audit.operations_row_archive` (triggers `BEFORE DELETE`).
 
 | Artefacto | Origem | Tabelas PostGIS | Camadas GeoServer |
 |-----------|--------|-----------------|-------------------|
@@ -115,6 +116,9 @@ Script de geração: `infra/scripts/setup_municipios_alvo_sp.sh`
 
 | Script | Função | Runbook |
 |--------|--------|---------|
+| `infra/sql/01_init_schemas.sql` | Schemas `landbase`, `config`, `security`, `audit` (tabelas base, parâmetros, histórico) | `docs/DEPLOY_POC.md` §2 |
+| `infra/sql/02_populate_translations.sql` | Chaves `config.translation` (EN/PT/ES/IT), `ON CONFLICT DO UPDATE` | `docs/DEPLOY_POC.md` §2 |
+| `infra/sql/03_operations_schema.sql` | Schema `operations` + arquivo `audit.operations_row_archive` + triggers `BEFORE DELETE` | `docs/DEPLOY_POC.md` §2 (*Schemas … operations*) |
 | `infra/scripts/setup_landbase_sp_estado.sh` | Importa IBGE + OSM → PostGIS + GeoServer (SP estado) | `docs/RUNBOOK_BASEMAP_SP_ESTADO.md` |
 | `infra/scripts/setup_landbase_sp.sh` | Basemap São Paulo Centro (legado) | `docs/RUNBOOK_BASEMAP_SP.md` |
 | `infra/scripts/setup_municipios_alvo_sp.sh` | Municípios-alvo + bairros + vias | — |
@@ -174,14 +178,69 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 
 | Ficheiro | Função |
 |---------|--------|
-| `frontend/index.html` | Markup — topbar horizontal, painel esquerdo "Operação" (split screen 50/50), secções `<details>` dropdown, checkboxes, ícones SVG |
-| `frontend/styles.css` | Design-system — layout flex dinâmico, tokens CSS (`--bg-*`, `--accent`, `--radius-*`), Inter font |
-| `frontend/main.js` | Lógica Leaflet — WMS, MBTiles, WFS, GetFeatureInfo; i18n via `fetch` a `/api/translations/:lang` e atributos `data-i18n` |
-| `backend/server.js` | API Express — lê `config.translation` + `config.language` no PostGIS |
+| `frontend/index.html` | Topbar (brand, navegação, camada de títulos, Busca/Camadas, estado, config), painel **Operação** 50/50, modal de traduções, toggles de camadas |
+| `frontend/styles.css` | Tokens (`--bg-*`, `--accent`, …), topbar em três zonas (`topbar-left` / `topbar-titles-layer` / `topbar-right`), painel operação, tabelas mock |
+| `frontend/main.js` | Leaflet (WMS/WFS/GFI/MBTiles), i18n, painel Operação, vista inicial com insets, lógica zoom bairros/municípios-alvo |
+| `backend/server.js` | API Express — `GET /api/translations/:lang` → `config.translation` |
 
-- **Tipografia:** Inter (Google Fonts CDN) — requer Internet para carregar a fonte; fallback `system-ui`
-- **Modo recomendado (`:8088`):** `main.js` resolve GeoServer como `window.location.origin + '/geoserver'` (same-origin, sem CORS)
-- **Modo dev (`:5173`):** usa `http://homeserver:8080/geoserver`; WFS e GetFeatureInfo podem falhar por CORS
+- **Tipografia:** Inter (Google Fonts CDN); fallback `system-ui`
+- **Modo recomendado (`:8088`):** GeoServer em `window.location.origin + '/geoserver'` (same-origin)
+- **Modo dev (`:5173`):** GeoServer em `:8080`; WFS/GFI podem falhar por CORS
+
+### Topbar (uma única linha, 60px)
+
+| Zona | Conteúdo |
+|------|-----------|
+| **Esquerda** (`topbar-left`) | Marca TabGis, botão Início, botão **Operação** (abre/fecha split 50/50) |
+| **Centro** (`topbar-titles-layer`, `pointer-events: none`, `z-index: 0`) | Camada absoluta sobre a barra: em tela **cheia** mostra só **Mapa** (tipografia próxima da marca, cor `var(--text-muted)`). Com **Operação aberta** (`.app.has-left-panel`): metade esquerda **Centro de Controle** (`UI_SPLIT_CONTROL_CENTER`), metade direita **Mapa** (`UI_SPLIT_MAP`) — alinhado às colunas 50/50 do conteúdo |
+| **Direita** (`topbar-right`) | **Busca** (município/bairro WFS), **Camadas**, texto de estado (`#status`), engrenagem (idioma + modal traduções) |
+
+- **Busca vs filtro:** o rótulo do menu passou de «Filtros» para **«Busca»** (`UI_MENU_SEARCH`). A palavra *filtro* reserva-se a listagens tabulares futuras. Chaves de campo: `UI_SEARCH_MUNI_LABEL`, `UI_SEARCH_NEIGHBORHOOD_LABEL`, mensagens de *select* `UI_SEARCH_*`.
+
+### Painel Operação (split 50/50)
+
+- **Classe** `.app.has-left-panel` no contentor raiz; `aside#left-panel` + `#map` dentro de `.split-main-row`.
+- **Ordem das guias (tab bar):** 1) Ordens de serviço (OMS), 2) Equipas/rotas (MWM), 3) Telecomando (DMS), 4) Indicadores (IND), 5) Instalações e telemetria (SMT), 6) Clima (TMP), 7) Auditoria (AUD). OMS é a guia e painel **activos** por defeito.
+- **Cabeçalho do painel:** sem linha separada «Operação»; primeira linha = grelha de guias + botão fechar (`.operacao-top`).
+- **Conteúdo:** tabelas e detalhe mock de ordens, política de auditoria em AUD; textos com `data-i18n` (prefixo `UI_OP_*`).
+
+### Vista inicial do mapa (`main.js`)
+
+| Constante | Valor | Significado |
+|-----------|--------|-------------|
+| `HOME_INSET_FULL` | `0.9 × 1.04` | Tela cheia: bbox efectivo = 90% da meia-extensão × 1,04 (~4% menos «zoom agressivo» que 0,9 puro) |
+| `HOME_INSET_SPLIT` | `HOME_INSET_FULL / 1.08` | Com painel 50%: ~8% mais zoom que a referência de tela cheia (compensa metade da largúra do mapa) |
+| Bbox cheio | `-47.6480, -24.0674, -45.9180, -23.2733` | RMSP / capital |
+| Bbox split | `-47.2496, -24.1088, -46.2513, -23.1966` | Recorte quando o mapa ocupa metade da largura |
+
+- **`setHomeView()`:** `map.invalidateSize()` + `requestAnimationFrame` → `fitBoundsHomeInset(...)` com o inset adequado. Botão **Inicial** e abertura do painel Operação usam a mesma função.
+- **Arranque:** `map.whenReady` + `requestAnimationFrame` chama `runInitialMapLayout()` (define vista + `setStatus("Mapa carregado.")`). **Respaldo** `setTimeout(..., 400)` repete `setHomeView()` para contentores flex que só ganham altura após pintura; a mensagem de estado só é definida **uma vez** (`mapInitialStatusDone`).
+
+### Camadas alvo — zoom e toggles
+
+- **Threshold:** zoom Leaflet **≥ 12** trata-se de «vista de detalhe».
+- **Comportamento:** se a checkbox **Bairros** (`#bairros_alvo_sp`) está **marcada** em zoom ≥ 12, mostra-se `bairrosAlvoLayer` e remove-se `municipiosAlvoLayer` da vista (checkbox municípios-alvo desmarcada). Se **desmarcada**, mantêm-se municípios-alvo visíveis e bairros fora — útil para ver **rótulos de município** sem poluição dos bairros.
+- **Zoom &lt; 12:** bairros removidos, municípios-alvo repostos por defeito.
+
+### Estilos GeoServer (recorte alvo) — ficheiros em repo
+
+| SLD | Camada | Notas |
+|-----|--------|--------|
+| `infra/geoserver/styles/base_sp_bairros_alvo.sld` | `base_sp:bairros_alvo_sp` | Preenchimento/contorno **suaves** (tons slate, opacidades baixas); rótulos `municipio_nome` + `bairro_nome` mais discretos |
+| `infra/geoserver/styles/base_sp_municipios_alvo_highlight.sld` | `base_sp:municipios_alvo_sp` | Rótulos `nm_mun` **em todas as escalas** (removido `MinScaleDenominator` que escondia nomes em zoom próximo) |
+
+> Após alterar SLD no Git, republicar no GeoServer (Styles → substituir XML ou reexecutar script que aplica estilos, se existir no teu fluxo).
+
+### Chaves i18n relevantes (amostra)
+
+| Prefixo / chave | Uso |
+|-----------------|-----|
+| `UI_MENU_SEARCH`, `UI_SEARCH_*` | Menu Busca e textos dos selects |
+| `UI_SPLIT_MAP`, `UI_SPLIT_CONTROL_CENTER` | Títulos na faixa central do topbar |
+| `UI_BTN_OPERATION` | Botão Operação |
+| `UI_OP_TAB_*`, `UI_OP_*` | Painel Operação (guias, colunas, mock, auditoria) |
+
+Lista completa mantida em `infra/sql/02_populate_translations.sql`; API devolve mapa chave → texto por idioma.
 
 ### Convenção de mensagens de erro
 
@@ -244,6 +303,20 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 | Prioridade | Tarefa | Estado |
 |------------|--------|--------|
 | 1 | Upgrade satélite MBTiles para ZMAX=17 (1,2 m/px) | **✅ Operacional** |
-| 2 | Modelagem explícita da topologia de rede (schema PostGIS) | Pendente |
-| 3 | APIs/backend para edição e logs MongoDB (`event_report`) | Pendente |
-| 4 | Endurecimento de segurança (credenciais, TLS) | Fora do âmbito da POC |
+| 2 | UI Operação + schema `operations` + arquivo `audit.operations_row_archive` | **✅ Estrutura base + mock UI** |
+| 3 | Modelagem explícita da topologia de rede (schema PostGIS) | Pendente |
+| 4 | APIs/backend para edição, ordens, rotas 48h e logs MongoDB (`event_report`) | Pendente |
+| 5 | Endurecimento de segurança (credenciais, TLS) | Fora do âmbito da POC |
+
+---
+
+## Índice de documentação Markdown
+
+| Ficheiro | Conteúdo |
+|----------|-----------|
+| `docs/CONTEXT_STATE.md` | Este ficheiro — estado da stack, frontend, SQL, estilos |
+| `docs/Escopo_Projeto_GeoUtil.md` | Escopo académico, arquitectura, roadmap |
+| `docs/DEPLOY_POC.md` | Deploy Docker, ordem dos scripts SQL, diagnóstico |
+| `docs/RUNBOOK_BASEMAP_SP_ESTADO.md` | Pipeline landbase SP estado |
+| `docs/RUNBOOK_BASEMAP_SP.md` | Pipeline SP Centro (legado) |
+| `frontend/README.md` | Cliente web, modos :8088 / :5173, camadas |

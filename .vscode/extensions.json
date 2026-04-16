@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "yzhang.markdown-all-in-one",
+    "esbenp.prettier-vscode",
+    "formulahendry.auto-rename-tag",
+    "bierner.markdown-mermaid"
+  ]
+}

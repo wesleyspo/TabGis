@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TabGis — Modelo de dados utilities (diagramas)</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --card: #1e293b;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #3b82f6;
+        --border: #334155;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Inter", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.55;
+      }
+      header {
+        padding: 2rem 1.5rem 1rem;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(180deg, #1e293b 0%, var(--bg) 100%);
+      }
+      header h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1.5rem;
+        font-weight: 600;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+        max-width: 52rem;
+      }
+      main {
+        max-width: 56rem;
+        margin: 0 auto;
+        padding: 1.5rem;
+      }
+      section {
+        margin-bottom: 2.5rem;
+      }
+      section h2 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin: 0 0 0.75rem;
+        color: var(--accent);
+      }
+      .diagram-wrap {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem;
+        overflow-x: auto;
+      }
+      .mermaid {
+        display: flex;
+        justify-content: center;
+      }
+      footer {
+        padding: 1.5rem;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.85rem;
+        border-top: 1px solid var(--border);
+      }
+      footer a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Modelo de dados — Utilities (OMS / MWM)</h1>
+      <p>
+        Diagramas de fluxo e entidade-relacionamento alinhados a
+        <strong>Database_Structure_Context.md</strong> (especificação técnica) e à POC
+        <code>operations.*</code> em PostgreSQL/PostGIS. Comentários na página em português; nomes de entidades em inglês.
+      </p>
+    </header>
+    <main>
+      <section>
+        <h2>1. Fluxo principal OMS (chamada → ordem → tarefa / evento de rede)</h2>
+        <div class="diagram-wrap">
+          <pre class="mermaid">
+flowchart LR
+  subgraph intake["Entrada"]
+    C[("oms.call")]
+  end
+  subgraph core["Núcleo operacional"]
+    WO[("oms.work_order")]
+    T[("oms.task")]
+    NE[("oms.network_event")]
+  end
+  subgraph field["MWM"]
+    CR[("mwm.crew")]
+    AS[("mwm.crew_order_assignment")]
+  end
+  subgraph cx["Cliente / rede"]
+    SA[("customer.service_account")]
+    EQ[("network.equipment")]
+  end
+  C -->|"cria / associa"| WO
+  C --> SA
+  WO --> EQ
+  WO --> T
+  WO --> NE
+  T --> AS
+  CR --> AS
+  AS --> WO
+  NE -->|"pode gerar"| CI[("oms.customer_interruption")]
+  CI --> SA
+          </pre>
+        </div>
+      </section>
+
+      <section>
+        <h2>2. Padrão de evento e auditoria (por entidade)</h2>
+        <div class="diagram-wrap">
+          <pre class="mermaid">
+flowchart TB
+  DE[("audit.domain_event\n(id, occurred_at, actor, payload)")]
+  SA[("customer.service_account\nevent_id FK")]
+  EQ[("network.equipment\nevent_id FK")]
+  WO[("oms.work_order\nevent_id FK")]
+  AR[("audit.*_history\nappend-only")]
+  SN[("audit.operations_row_archive\nJSONB pré-DELETE")]
+  SA --> DE
+  EQ --> DE
+  WO --> DE
+  SA --> AR
+  WO --> AR
+  WO -.->|"DELETE"| SN
+          </pre>
+        </div>
+      </section>
+
+      <section>
+        <h2>3. ER — Cliente, equipamento e chamada (camada referência)</h2>
+        <div class="diagram-wrap">
+          <pre class="mermaid">
+erDiagram
+  REF_CUSTOMER_TYPE {
+    int id PK
+    string code UK
+  }
+  REF_ACCOUNT_STATUS {
+    int id PK
+    string code UK
+  }
+  REF_CALL_TYPE {
+    int id PK
+    string code UK
+  }
+  REF_CUSTOMER_TYPE ||--o{ SERVICE_ACCOUNT : classifies
+  REF_ACCOUNT_STATUS ||--o{ SERVICE_ACCOUNT : status
+  SERVICE_ACCOUNT ||--o{ CALL : account_number
+  EQUIPMENT ||--o{ SERVICE_ACCOUNT : serves
+  EQUIPMENT ||--o{ EQUIPMENT : parent
+  CALL ||--o| CALL_FEEDBACK : has
+  CALL }o--|| REF_CALL_TYPE : call_type
+  CALL }o--o| WORK_ORDER : work_order_id
+
+  SERVICE_ACCOUNT {
+    int id PK
+    int event_id FK
+    string account_number UK
+    int status_id FK
+    int customer_type_id FK
+    string equipment_id FK
+    string geom_wkt
+    boolean accepts_proactive_contact
+  }
+
+  EQUIPMENT {
+    int id PK
+    int event_id FK
+    int equipment_type_id FK
+    int network_type_id FK
+    string parent_equipment_id
+    string geom_wkt
+  }
+
+  CALL {
+    int id PK
+    int event_id FK
+    int work_order_id FK
+    datetime system_time_received
+    boolean system_generated
+    string geom_wkt
+  }
+
+  CALL_FEEDBACK {
+    int id PK
+    int event_id FK
+    int call_id FK
+    int channel_id FK
+    string human_comment
+  }
+
+  WORK_ORDER {
+    int id PK
+    int event_id FK
+    string order_code UK
+  }
+          </pre>
+        </div>
+      </section>
+
+      <section>
+        <h2>4. ER — Ordem, tarefa, evento de rede, interrupção ao cliente</h2>
+        <div class="diagram-wrap">
+          <pre class="mermaid">
+erDiagram
+  WORK_ORDER ||--o{ TASK : contains
+  WORK_ORDER ||--o{ NETWORK_EVENT : logs
+  WORK_ORDER }o--o| EQUIPMENT : affects
+  TASK }o--o| CREW_ORDER_ASSIGNMENT : via
+  NETWORK_EVENT }o--o| TASK : optional
+  CUSTOMER_INTERRUPTION }o--|| SERVICE_ACCOUNT : customer
+  CUSTOMER_INTERRUPTION }o--o| DOMAIN_EVENT : start
+  CUSTOMER_INTERRUPTION }o--o| DOMAIN_EVENT : end
+
+  SERVICE_ACCOUNT {
+    int id PK
+  }
+
+  EQUIPMENT {
+    int id PK
+  }
+
+  DOMAIN_EVENT {
+    int id PK
+    datetime occurred_at
+  }
+
+  WORK_ORDER {
+    int id PK
+    int event_id FK
+    string order_code UK
+    int equipment_id FK
+    int priority_score
+    boolean flag_broken_tree
+    boolean flag_broken_pole
+    string geom_wkt
+  }
+
+  TASK {
+    int id PK
+    int event_id FK
+    int work_order_id FK
+    int parent_task_id FK
+    int task_type_id FK
+    int task_status_id FK
+  }
+
+  NETWORK_EVENT {
+    int id PK
+    int event_id FK
+    int work_order_id FK
+    int task_id FK
+    int connection_status_0
+    int connection_status_1
+    int connection_status_2
+    int connection_status_3
+  }
+
+  CUSTOMER_INTERRUPTION {
+    int id PK
+    int customer_id FK
+    int start_event_id FK
+    int end_event_id FK
+  }
+          </pre>
+        </div>
+      </section>
+
+      <section>
+        <h2>5. ER — MWM (equipa, turno, atribuição, rota)</h2>
+        <div class="diagram-wrap">
+          <pre class="mermaid">
+erDiagram
+  CREW ||--o{ CREW_SHIFT : schedules
+  CREW ||--o{ CREW_ORDER_ASSIGNMENT : assigned
+  CREW ||--o{ CREW_ROUTE_WINDOW : tracks
+  CREW_ORDER_ASSIGNMENT }o--|| WORK_ORDER : order
+  CREW_ORDER_ASSIGNMENT }o--o| TASK : task
+
+  CREW {
+    int id PK
+    int event_id FK
+    string crew_code UK
+    string leader_name
+    string last_known_geom_wkt
+    datetime last_coord_update_at
+  }
+
+  CREW_SHIFT {
+    int id PK
+    int crew_id FK
+    datetime shift_availability_start
+    datetime shift_availability_end
+  }
+
+  CREW_ORDER_ASSIGNMENT {
+    int id PK
+    int event_id FK
+    int crew_id FK
+    int work_order_id FK
+    int task_id FK
+    datetime assigned_at
+    datetime dispatched_at
+    datetime enroute_at
+    datetime arrived_at
+    datetime released_at
+    boolean is_main_crew
+  }
+
+  CREW_ROUTE_WINDOW {
+    int id PK
+    int crew_id FK
+    datetime window_start
+    datetime window_end
+    string route_geom_wkt
+  }
+
+  WORK_ORDER {
+    int id PK
+    string order_code UK
+  }
+
+  TASK {
+    int id PK
+    int work_order_id FK
+  }
+          </pre>
+        </div>
+      </section>
+
+      <section>
+        <h2>6. Mapeamento POC actual (schema <code>operations</code>)</h2>
+        <div class="diagram-wrap">
+          <pre class="mermaid">
+erDiagram
+  TEAM ||--o{ TEAM_ORDER_DISPLACEMENT : ""
+  WORK_ORDER ||--o{ TEAM_ORDER_DISPLACEMENT : ""
+  TEAM ||--o{ TEAM_ROUTE : ""
+
+  TEAM {
+    int id PK
+    string team_code UK
+    string name
+    geometry last_known_geom
+  }
+
+  WORK_ORDER {
+    int id PK
+    string order_code UK
+    string category
+    string status
+    int assigned_team_id FK
+  }
+
+  TEAM_ORDER_DISPLACEMENT {
+    int id PK
+    int team_id FK
+    int work_order_id FK
+    timestamptz actual_departure_at
+    timestamptz actual_arrival_at
+  }
+
+  TEAM_ROUTE {
+    bigint id PK
+    int team_id FK
+    timestamptz window_start
+    timestamptz window_end
+    geometry route_geom
+  }
+          </pre>
+        </div>
+        <p style="color: var(--muted); font-size: 0.9rem; margin-top: 0.75rem">
+          Subconjunto mínimo implementado em <code>infra/sql/03_operations_schema.sql</code>; evolução
+          prevista para entidades <code>oms.*</code> / <code>mwm.*</code> descritas no Markdown.
+        </p>
+      </section>
+    </main>
+    <footer>
+      TabGis / GeoUtil — documentação técnica.
+      <a href="./Database_Structure_Context.md">Voltar ao Markdown</a>
+      · Campos calculados e *lookups* <code>ref.*</code> detalhados no MD.
+    </footer>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "dark",
+        themeVariables: {
+          primaryColor: "#1e3a5f",
+          primaryTextColor: "#e2e8f0",
+          primaryBorderColor: "#3b82f6",
+          lineColor: "#64748b",
+          secondaryColor: "#1e293b",
+          tertiaryColor: "#0f172a",
+        },
+        flowchart: { curve: "basis" },
+        er: { layoutDirection: "TB", minEntityWidth: 120 },
+      });
+    </script>
+  </body>
+</html>

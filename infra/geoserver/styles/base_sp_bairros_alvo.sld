@@ -14,12 +14,13 @@
           <MaxScaleDenominator>400000</MaxScaleDenominator>
           <PolygonSymbolizer>
             <Fill>
-              <CssParameter name="fill">#a78bfa</CssParameter>
-              <CssParameter name="fill-opacity">0.08</CssParameter>
+              <CssParameter name="fill">#94a3b8</CssParameter>
+              <CssParameter name="fill-opacity">0.045</CssParameter>
             </Fill>
             <Stroke>
-              <CssParameter name="stroke">#7c3aed</CssParameter>
-              <CssParameter name="stroke-width">0.8</CssParameter>
+              <CssParameter name="stroke">#64748b</CssParameter>
+              <CssParameter name="stroke-opacity">0.55</CssParameter>
+              <CssParameter name="stroke-width">0.45</CssParameter>
             </Stroke>
           </PolygonSymbolizer>
           <TextSymbolizer>
@@ -34,15 +35,15 @@
             </Label>
             <Font>
               <CssParameter name="font-family">Arial</CssParameter>
-              <CssParameter name="font-size">10</CssParameter>
+              <CssParameter name="font-size">9</CssParameter>
               <CssParameter name="font-style">normal</CssParameter>
-              <CssParameter name="font-weight">bold</CssParameter>
+              <CssParameter name="font-weight">normal</CssParameter>
             </Font>
             <Halo>
-              <Radius>1.5</Radius>
-              <Fill><CssParameter name="fill">#ffffff</CssParameter></Fill>
+              <Radius>1</Radius>
+              <Fill><CssParameter name="fill">#ffffff</CssParameter><CssParameter name="fill-opacity">0.85</CssParameter></Fill>
             </Halo>
-            <Fill><CssParameter name="fill">#4c1d95</CssParameter></Fill>
+            <Fill><CssParameter name="fill">#475569</CssParameter></Fill>
             <!-- group=yes agrupa polígonos com o mesmo nome e exibe apenas 1 rótulo central -->
             <!-- goodnessOfFit diminui a restrição de caber o texto perfeitamente no polígono, útil para geometrias fragmentadas -->
             <VendorOption name="group">yes</VendorOption>
