@@ -204,7 +204,7 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 |------|-----------|
 | **Esquerda** (`topbar-left`) | Marca TabGis, botão Início, botão **Operação** (abre/fecha split 50/50) |
 | **Centro** (`topbar-titles-layer`, `pointer-events: none`, `z-index: 0`) | Camada absoluta sobre a barra: em tela **cheia** mostra só **Mapa** (tipografia próxima da marca, cor `var(--text-muted)`). Com **Operação aberta** (`.app.has-left-panel`): metade esquerda **Centro de Controle** (`UI_SPLIT_CONTROL_CENTER`), metade direita **Mapa** (`UI_SPLIT_MAP`) — alinhado às colunas 50/50 do conteúdo |
-| **Direita** (`topbar-right`) | **Busca** (município/bairro WFS), **Camadas**, texto de estado (`#status`), engrenagem (**idioma**, **Gerenciar visualização**, **Gerenciar utilizadores**, **Tipos de domínio (ref)**, **Traduções**, **Ajuda**). |
+| **Direita** (`topbar-right`) | **Atalho clima** (ícone cápsula sol+nuvem → guia TMP), **Busca** (WFS + geocodificação), **Camadas**, estado (`#status`), engrenagem (**idioma**, visualização, utilizadores, tipos `ref`, traduções, ajuda). |
 
 - **Busca vs filtro:** o rótulo do menu passou de «Filtros» para **«Busca»** (`UI_MENU_SEARCH`). A palavra *filtro* reserva-se a listagens tabulares futuras. Chaves de campo: `UI_SEARCH_MUNI_LABEL`, `UI_SEARCH_NEIGHBORHOOD_LABEL`, mensagens de *select* `UI_SEARCH_*`.
 

@@ -2117,6 +2117,106 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   flex-shrink: 0;
 }
 
+/* —— Atalho clima (topbar): sol + nuvem —— */
+.tabgis-weather-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 32px;
+  padding: 0;
+  margin-right: 4px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-input));
+  border-radius: 999px;
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, #38bdf8 22%, var(--bg-section)) 0%,
+    var(--bg-section) 45%,
+    color-mix(in srgb, #fbbf24 12%, var(--bg-section)) 100%
+  );
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12), 0 2px 10px rgba(56, 189, 248, 0.12);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.tabgis-weather-chip:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border-input));
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25), 0 4px 16px rgba(56, 189, 248, 0.18);
+}
+
+.tabgis-weather-chip:active {
+  transform: translateY(0);
+}
+
+.tabgis-weather-chip__svg {
+  width: 30px;
+  height: 26px;
+  display: block;
+}
+
+.tabgis-weather-chip__sunburst {
+  transform-origin: 0 0;
+  animation: tabgis-weather-sun-drift 5s ease-in-out infinite;
+}
+
+.tabgis-weather-chip__spark {
+  animation: tabgis-weather-spark 2.8s ease-in-out infinite;
+}
+
+.tabgis-weather-chip__cloud-wrap {
+  transform-origin: 28px 22px;
+  animation: tabgis-weather-cloud-breathe 6s ease-in-out infinite;
+}
+
+@keyframes tabgis-weather-sun-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(0, -1px) rotate(5deg);
+  }
+}
+
+@keyframes tabgis-weather-cloud-breathe {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(0.5px, -0.5px);
+  }
+}
+
+@keyframes tabgis-weather-spark {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  60% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabgis-weather-chip__sunburst,
+  .tabgis-weather-chip__spark,
+  .tabgis-weather-chip__cloud-wrap {
+    animation: none;
+  }
+
+  .tabgis-weather-chip:hover {
+    transform: none;
+  }
+}
+
 .weather-panel-body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));

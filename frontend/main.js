@@ -1362,6 +1362,25 @@ function toggleLeftPanel() {
 btnOperacao.addEventListener("click", toggleLeftPanel);
 btnCloseOperacao.addEventListener("click", toggleLeftPanel);
 
+/** Atalho topbar → painel Operação na guia Clima (TMP). */
+function openOperacaoWeatherTab() {
+  const wasOpen = appContainer.classList.contains("has-left-panel");
+  if (!wasOpen) toggleLeftPanel();
+  setTimeout(() => {
+    document.querySelector(".operacao-tab[data-tab='tmp']")?.click();
+    document
+      .querySelector(".operacao-panel[data-panel='tmp']")
+      ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, wasOpen ? 0 : 320);
+}
+
+document.getElementById("btn-top-weather")?.addEventListener("click", () => {
+  document.querySelectorAll("details.panel-section, details.config-dropdown").forEach((d) => {
+    d.removeAttribute("open");
+  });
+  openOperacaoWeatherTab();
+});
+
 (function initOperLayoutPicker() {
   const operCccCb = document.getElementById("oper-layout-ccc-focus");
   if (!(operCccCb instanceof HTMLInputElement)) return;
