@@ -125,6 +125,10 @@ const MAP_ORIG_MIN_ZOOM = map.getMinZoom();
 map.createPane("satellite");
 map.getPane("satellite").style.zIndex = "100";
 
+/** Radar RainViewer acima do basemap, abaixo de marcadores WMS densos. */
+map.createPane("weatherRadar");
+map.getPane("weatherRadar").style.zIndex = "350";
+
 // ── Definição das camadas ─────────────────────────────────────────────────
 
 /**
@@ -1424,6 +1428,109 @@ btnCloseOperacao.addEventListener("click", toggleLeftPanel);
   });
 })();
 
+/** Centro da previsão Open-Meteo (capital SP). */
+const WEATHER_REF_LAT = -23.55052;
+const WEATHER_REF_LNG = -46.633308;
+
+let tabgisWeatherPopupHtml =
+  "<p>Carregue a previsão com «Atualizar previsão» para ver o resumo no mapa.</p>";
+
+const weatherOverlayGroup = L.layerGroup();
+let rainRadarCache = { urlTemplate: null, fetchedAt: 0 };
+
+async function getRainViewerTileUrlTemplate() {
+  const now = Date.now();
+  if (rainRadarCache.urlTemplate && now - rainRadarCache.fetchedAt < 300000) {
+    return rainRadarCache.urlTemplate;
+  }
+  const r = await fetch("https://api.rainviewer.com/public/weather-maps.json");
+  if (!r.ok) throw new Error("RainViewer API");
+  const j = await r.json();
+  const past = j.radar && j.radar.past;
+  if (!past || !past.length) throw new Error("RainViewer sem frames");
+  const last = past[past.length - 1];
+  const host = String(j.host || "https://tilecache.rainviewer.com").replace(/\/$/, "");
+  const urlTemplate = `${host}${last.path}/256/{z}/{x}/{y}/2/1_1.png`;
+  rainRadarCache = { urlTemplate, fetchedAt: now };
+  return urlTemplate;
+}
+
+function setWeatherMapStatus(msg, show) {
+  const el = document.getElementById("weather-map-map-status");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.hidden = !show;
+  el.style.color = show ? "var(--danger, #f87171)" : "";
+}
+
+async function syncWeatherMapOverlays() {
+  const radarCb = document.getElementById("weather-map-show-radar");
+  const refCb = document.getElementById("weather-map-show-ref");
+  const opacityEl = document.getElementById("weather-map-opacity");
+  const wantRadar = !!(radarCb && radarCb.checked);
+  const wantRef = !!(refCb && refCb.checked);
+  const op = Math.min(
+    0.9,
+    Math.max(0.12, parseFloat(opacityEl && opacityEl.value !== "" ? opacityEl.value : "0.5"))
+  );
+
+  if (!wantRadar && !wantRef) {
+    if (map.hasLayer(weatherOverlayGroup)) map.removeLayer(weatherOverlayGroup);
+    weatherOverlayGroup.clearLayers();
+    setWeatherMapStatus("", false);
+    return;
+  }
+
+  setWeatherMapStatus("", false);
+  weatherOverlayGroup.clearLayers();
+
+  if (wantRef) {
+    const circ = L.circle([WEATHER_REF_LAT, WEATHER_REF_LNG], {
+      radius: 22000,
+      color: "#38bdf8",
+      weight: 1,
+      fillColor: "#0ea5e9",
+      fillOpacity: 0.07,
+      pane: "overlayPane",
+    });
+    circ.bindPopup(
+      `<div class="weather-map-popup" style="max-width:280px">${tabgisWeatherPopupHtml}</div>`,
+      { maxWidth: 300 }
+    );
+    weatherOverlayGroup.addLayer(circ);
+  }
+
+  if (wantRadar) {
+    try {
+      const urlTemplate = await getRainViewerTileUrlTemplate();
+      const tl = L.tileLayer(urlTemplate, {
+        pane: "weatherRadar",
+        opacity: op,
+        maxZoom: 20,
+        maxNativeZoom: 10,
+        attribution:
+          'Radar <a href="https://www.rainviewer.com/api.html" target="_blank" rel="noopener noreferrer">RainViewer</a>',
+      });
+      weatherOverlayGroup.addLayer(tl);
+    } catch {
+      setWeatherMapStatus("Radar RainViewer indisponível (rede ou API).", true);
+    }
+  }
+
+  if (!map.hasLayer(weatherOverlayGroup)) weatherOverlayGroup.addTo(map);
+}
+
+function applyWeatherRadarOpacityOnly() {
+  const opacityEl = document.getElementById("weather-map-opacity");
+  const op = Math.min(
+    0.9,
+    Math.max(0.12, parseFloat(opacityEl && opacityEl.value !== "" ? opacityEl.value : "0.5"))
+  );
+  weatherOverlayGroup.eachLayer((layer) => {
+    if (layer instanceof L.TileLayer) layer.setOpacity(op);
+  });
+}
+
 /**
  * Clima indicativo (São Paulo centro) — Open-Meteo, sem chave API.
  * @see https://open-meteo.com/en/terms
@@ -1506,6 +1613,14 @@ async function loadWeatherOpenMeteo() {
         <div class="weather-card__value">${w != null ? `${Number(w).toFixed(0)} km/h` : "—"}</div>
         <div class="mock-hint" style="margin-top:4px;font-size:11px;">${wd != null ? `Direcção ${wd}°` : ""}</div>
       </div>`;
+    tabgisWeatherPopupHtml = `<strong>Referência SP (Open-Meteo)</strong><br/>${escapeHtml(
+      wmoLabel(wc)
+    )}<br/><small>${escapeHtml(time)}</small><br/>Temp.: ${
+      t != null ? `${Number(t).toFixed(1)} °C` : "—"
+    } · Hum.: ${rh != null ? `${rh} %` : "—"}<br/>Vento: ${
+      w != null ? `${Number(w).toFixed(0)} km/h` : "—"
+    }${wd != null ? ` · Dir. ${wd}°` : ""}`;
+    void syncWeatherMapOverlays();
   } catch {
     setErr("Falha ao obter previsão (Open-Meteo). Verifique ligação à Internet.");
     body.innerHTML =
@@ -1515,6 +1630,16 @@ async function loadWeatherOpenMeteo() {
 
 document.getElementById("btn-weather-refresh")?.addEventListener("click", () => {
   loadWeatherOpenMeteo();
+});
+
+document.getElementById("weather-map-show-radar")?.addEventListener("change", () => {
+  void syncWeatherMapOverlays();
+});
+document.getElementById("weather-map-show-ref")?.addEventListener("change", () => {
+  void syncWeatherMapOverlays();
+});
+document.getElementById("weather-map-opacity")?.addEventListener("input", () => {
+  applyWeatherRadarOpacityOnly();
 });
 
 // Guias do painel Operação (OMS, MWM, IND, …)

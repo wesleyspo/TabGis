@@ -520,11 +520,27 @@
                 <div class="weather-toolbar">
                   <button type="button" id="btn-weather-refresh" class="mock-btn">Atualizar previsão</button>
                 </div>
+                <div class="weather-map-controls mock-hint" style="margin: 10px 0 14px; padding: 10px 12px; border: 1px solid var(--border-input); border-radius: var(--radius-sm); background: var(--bg-section);">
+                  <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">Sobreposição no mapa</div>
+                  <label class="weather-map-check">
+                    <input type="checkbox" id="weather-map-show-ref" />
+                    <span>Área de referência da previsão (círculo ~22 km, centro SP — Open-Meteo)</span>
+                  </label>
+                  <label class="weather-map-check">
+                    <input type="checkbox" id="weather-map-show-radar" />
+                    <span>Radar de precipitação global (último frame RainViewer)</span>
+                  </label>
+                  <label class="weather-map-opacity-label" style="display: block; margin-top: 10px;">
+                    Opacidade do radar
+                    <input type="range" id="weather-map-opacity" min="0.15" max="0.85" step="0.05" value="0.5" style="width: 100%; max-width: 280px; vertical-align: middle;" />
+                  </label>
+                  <p id="weather-map-map-status" class="mock-hint mock-hint--status" hidden style="margin-top: 8px;"></p>
+                </div>
                 <div id="weather-panel-body" class="weather-panel-body">
                   <p class="mock-hint">Carregue ou abra esta guia para obter dados.</p>
                 </div>
                 <p class="mock-hint" style="font-size: 11px; margin-top: 10px;">
-                  Atribuição: Weather data by Open-Meteo.com (CC-BY 4.0). Uso em utilities: apoio ao planeamento de deslocamentos de equipas; não substitui procedimentos de segurança em tensão.
+                  Atribuições: previsão pontual <strong>Open-Meteo</strong> (CC-BY 4.0); tiles de radar <strong>RainViewer</strong> (consulte os termos em rainviewer.com). Uso em utilities: apoio ao planeamento de deslocamentos; não substitui alertas oficiais nem procedimentos de segurança em tensão.
                 </p>
               </section>
 
