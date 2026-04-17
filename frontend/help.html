@@ -122,7 +122,7 @@
       <li><strong>Estado</strong> — texto curto com feedback (carregamento, erros, confirmações); posicionado para não deslocar os menus.</li>
       <li><strong>Busca</strong> — painel em <code>&lt;details&gt;</code>: municípios e bairros (WFS), endereço (Nominatim online ou geocodificação local PostGIS).</li>
       <li><strong>Camadas</strong> — imagem de fundo (satélite online/local, GeoSampa offline), vias, limites administrativos, municípios-alvo e bairros com toggles e <em>pills</em> OMS/MWM/GIS/LAND.</li>
-      <li><strong>Configurações</strong> (engrenagem) — idioma, <strong>Gerenciar visualização</strong>, <strong>Gerenciar Traduções</strong>, <strong>Ajuda</strong> (esta página).</li>
+      <li><strong>Configurações</strong> (engrenagem) — idioma, <strong>Gerenciar visualização</strong>, <strong>Gerenciar utilizadores</strong> (modal, API <code>/api/users</code>), <strong>Tipos de domínio (ref)</strong> (modal, <code>GET</code>/<code>PUT /api/ref/types</code>), <strong>Gerenciar Traduções</strong>, <strong>Ajuda</strong> (esta página).</li>
     </ul>
     <p class="help-note">Só um menu entre Busca, Camadas e Configurações fica aberto de cada vez; clique fora da topbar fecha os painéis.</p>
 
@@ -156,10 +156,12 @@
     </ul>
 
     <h2>7. Painel Operação</h2>
-    <p>Guias previstas: OMS (ordens de serviço), utilizadores, MWM (equipas/rotas), DMS, IND, SMT, TMP, AUD. Na POC, <strong>OMS</strong> e <strong>USR</strong> consomem a API REST (listagens, folha de ordem com tarefas e reclamações, etc.).</p>
+    <p>Guias na barra lateral: <strong>OMS</strong>, <strong>MWM</strong>, <strong>DMS</strong>, <strong>IND</strong>, <strong>SMT</strong>, <strong>TMP</strong> (clima), <strong>AUD</strong>. A gestão de <strong>utilizadores</strong> não está nesta barra: use <strong>Configurações → Gerenciar utilizadores</strong>.</p>
     <ul>
+      <li><strong>OMS</strong> — listagem e folha de ordem (tarefas, reclamações) via API REST.</li>
+      <li><strong>TMP</strong> — resumo meteorológico indicativo (Open-Meteo, São Paulo centro); botão <strong>Atualizar previsão</strong>. Não substitui alertas oficiais (ex.: INMET/CPTEC).</li>
       <li><strong>Ir para o mapa</strong> — a partir de uma ordem, centra o mapa e activa vista operacional (bairros/vias; regras de zoom aplicam-se).</li>
-      <li>Outras guias podem estar em mock ou evolução contínua — consulte <code>docs/CONTEXT_STATE.md</code> para o estado exacto.</li>
+      <li>Outras guias podem estar em mock — consulte <code>docs/CONTEXT_STATE.md</code>.</li>
     </ul>
 
     <h2>8. Gerenciar visualização</h2>
@@ -180,7 +182,14 @@
     <h2>10. Gerenciar Traduções</h2>
     <p>Modal para edição espelhada de chaves <code>config.translation</code> (EN/PT/ES/IT). O idioma da sessão altera-se pelo selector na engrenagem; as traduções são carregadas via <code>GET /api/translations/:lang</code>.</p>
 
-    <h2>11. Documentação técnica no repositório</h2>
+    <h2>11. Utilizadores e tipos <code>ref.*</code></h2>
+    <p><strong>Utilizadores:</strong> modal a partir da engrenagem; lista e criação de contas em <code>security.users</code> (<code>GET</code>/<code>POST /api/users</code>). Perfil de acesso em evolução.</p>
+    <p><strong>Tipos de domínio:</strong> modal que lê as tabelas <code>ref.equipment_type</code>, <code>ref.network_type</code>, <code>ref.network_level</code>, <code>ref.connection_state</code>, <code>ref.work_order_type</code>, <code>ref.task_type</code>, <code>ref.call_type</code> via <code>GET /api/ref/types</code>; guardar rótulos com <code>PUT /api/ref/types</code>. Os códigos <code>code</code> não são editáveis nesta vista.</p>
+
+    <h2>12. Testes E2E (Playwright)</h2>
+    <p>Pasta <code>e2e/</code>: após <code>npm install</code> e <code>npx playwright install chromium</code>, com a stack Docker a servir o frontend em <code>:8088</code>, execute <code>npm test</code> (opcional: <code>PLAYWRIGHT_BASE_URL=…</code>). Cobre fumo de mapa, traduções e entradas do menu Configurações.</p>
+
+    <h2>13. Documentação técnica no repositório</h2>
     <ul>
       <li><code>docs/Escopo_Projeto_GeoUtil.md</code> — objectivos e arquitectura.</li>
       <li><code>docs/CONTEXT_STATE.md</code> — estado da POC, portas, SQL, frontend.</li>

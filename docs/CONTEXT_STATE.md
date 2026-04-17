@@ -55,7 +55,7 @@ git push origin v0.1.0           # ou: git push origin --tags
 | `infra-geoserver-1` | `oscarfonts/geoserver:latest` | **8080** | WMS / WFS / SLD |
 | `infra-tileserver-1` | `maptiler/tileserver-gl:latest` | **8081** | MBTiles raster (satélite local) |
 | `infra-web-1` | `nginx:alpine` | **8088** | Frontend + proxy `/geoserver`, `/tiles`, `/api` |
-| `infra-api-1` | build `backend/` (Node) | **3000** | API REST — traduções; `GET/POST /api/users`; `GET/PATCH /api/work-orders`; `GET /api/work-orders/:id` (folha + tarefas + reclamações); `GET /api/teams`; `GET /api/audit/operations-archive`; `GET /api/oms/work-orders` (via `:8088/api/`) |
+| `infra-api-1` | build `backend/` (Node) | **3000** | API REST (via `:8088/api/`): `GET /api/translations/:lang`; `GET/POST /api/users`; `GET/PATCH /api/work-orders`; `GET/POST/PATCH` folha e tarefas em `/api/work-orders/:id`…; `GET /api/geocode`, `GET /api/geocode-local`; **`GET`/`PUT /api/ref/types`** (rótulos `ref.*` POC); `GET /api/teams`; `GET /api/mwm/demo-routes`; `GET /api/oms/work-orders/aggregate`; `GET /api/oms/work-orders`; `GET /api/audit/operations-archive` |
 | `infra-mongodb-1` | `mongo:latest` | **27017** | Logs / event_report (uso futuro) |
 
 ### Portas de acesso (de outro notebook na mesma rede ou via SSH tunnel)
@@ -125,6 +125,9 @@ Script de geração: `infra/scripts/setup_municipios_alvo_sp.sh`
 | `infra/sql/06_work_order_sheet_model.sql` | Colunas decisórias; tabelas `work_order_task` / `work_order_complaint`; dados de exemplo; normalização de prefixos em `order_code` legado | `docs/DEPLOY_POC.md` §2 |
 | `infra/sql/06_work_order_sheet_model_functions_triggers.sql` | `generate_work_order_code()` (YYYYMMDD + sequência diária SP); triggers de código, contagem de reclamações e arquivo pré-delete | `docs/DEPLOY_POC.md` §2 |
 | `infra/sql/07_work_order_oms_grid_columns.sql` | Grelha OMS: `started_at`, `callback_auto` | `docs/DEPLOY_POC.md` §2 |
+| `infra/sql/08_oms_test_orders_extra.sql` … `infra/sql/13_oms_bulk_clustered_demo.sql` | Dados de teste / vistas OMS-MWM opcionais (ambiente de laboratório) | aplicar manualmente conforme necessidade |
+| `infra/sql/14_gis_equipment_network_demo.sql` | Massa idempotente `gis.equipment` + `gis.consumer` (prefixos `POC_DEMO_` / `POC-DEMO-`) | — |
+| `infra/scripts/apply_poc_test_mass.sh` | Executa o SQL 14 contra o contentor `db` (`psql`) | — |
 | `infra/scripts/setup_landbase_sp_estado.sh` | Importa IBGE + OSM → PostGIS + GeoServer (SP estado) | `docs/RUNBOOK_BASEMAP_SP_ESTADO.md` |
 | `infra/scripts/setup_landbase_sp.sh` | Basemap São Paulo Centro (legado) | `docs/RUNBOOK_BASEMAP_SP.md` |
 | `infra/scripts/setup_municipios_alvo_sp.sh` | Municípios-alvo + bairros + vias | — |
@@ -184,10 +187,12 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 
 | Ficheiro | Função |
 |---------|--------|
-| `frontend/index.html` | Topbar (brand, navegação, camada de títulos, Busca/Camadas, estado, config), painel **Operação** 50/50, modal de traduções, toggles de camadas |
-| `frontend/styles.css` | Tokens (`--bg-*`, `--accent`, …), topbar em três zonas (`topbar-left` / `topbar-titles-layer` / `topbar-right`), painel operação, tabelas mock |
-| `frontend/main.js` | Leaflet (WMS/WFS/GFI/MBTiles), i18n, painel Operação, vista inicial com insets, lógica zoom bairros/municípios-alvo |
-| `backend/server.js` | API Express — traduções, utilizadores (`security.users`), ordens (`operations.work_order`) |
+| `frontend/index.html` | Topbar, Busca/Camadas, **Configurações** (modais: visualização, **utilizadores**, **tipos `ref.*`**, traduções, **ajuda** `help.html`), painel **Operação** 50/50, folha OMS, toggles de camadas |
+| `frontend/help.html` | Ajuda ao operador (resumo funcional; liga a `styles.css`) | — |
+| `frontend/styles.css` | Tokens, topbar, painel operação, modais, clima (TMP), tabelas `ref` em modal |
+| `frontend/main.js` | Leaflet, i18n, Operação, modais de configuração, **Open-Meteo** na guia TMP, `GET`/`PUT` `/api/ref/types`, vista inicial e zoom |
+| `backend/server.js` | API Express — traduções, geocodificação, utilizadores, ordens/tarefas, **`/api/ref/types`**, equipas, auditoria, rotas demo MWM |
+| `e2e/` | **Playwright** — testes de fumo (`specs/smoke.spec.ts`): mapa, traduções, menu Configurações | `cd e2e && npm install && npx playwright install chromium && PLAYWRIGHT_BASE_URL=http://127.0.0.1:8088 npm test` |
 
 - **Tipografia:** Inter (Google Fonts CDN); fallback `system-ui`
 - **Modo recomendado (`:8088`):** GeoServer em `window.location.origin + '/geoserver'` (same-origin)
@@ -199,16 +204,17 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 |------|-----------|
 | **Esquerda** (`topbar-left`) | Marca TabGis, botão Início, botão **Operação** (abre/fecha split 50/50) |
 | **Centro** (`topbar-titles-layer`, `pointer-events: none`, `z-index: 0`) | Camada absoluta sobre a barra: em tela **cheia** mostra só **Mapa** (tipografia próxima da marca, cor `var(--text-muted)`). Com **Operação aberta** (`.app.has-left-panel`): metade esquerda **Centro de Controle** (`UI_SPLIT_CONTROL_CENTER`), metade direita **Mapa** (`UI_SPLIT_MAP`) — alinhado às colunas 50/50 do conteúdo |
-| **Direita** (`topbar-right`) | **Busca** (município/bairro WFS), **Camadas**, texto de estado (`#status`), engrenagem (idioma + modal traduções) |
+| **Direita** (`topbar-right`) | **Busca** (município/bairro WFS), **Camadas**, texto de estado (`#status`), engrenagem (**idioma**, **Gerenciar visualização**, **Gerenciar utilizadores**, **Tipos de domínio (ref)**, **Traduções**, **Ajuda**). |
 
 - **Busca vs filtro:** o rótulo do menu passou de «Filtros» para **«Busca»** (`UI_MENU_SEARCH`). A palavra *filtro* reserva-se a listagens tabulares futuras. Chaves de campo: `UI_SEARCH_MUNI_LABEL`, `UI_SEARCH_NEIGHBORHOOD_LABEL`, mensagens de *select* `UI_SEARCH_*`.
 
 ### Painel Operação (split 50/50)
 
 - **Classe** `.app.has-left-panel` no contentor raiz; `aside#left-panel` + `#map` dentro de `.split-main-row`.
-- **Ordem das guias (tab bar):** 1) Ordens de serviço (OMS), 2) Utilizadores (USR), 3) Equipas/rotas (MWM), 4) Telecomando (DMS), 5) Indicadores (IND), 6) Instalações e telemetria (SMT), 7) Clima (TMP), 8) Auditoria (AUD). OMS é a guia e painel **activos** por defeito; OMS e USR consomem a API (`/api/work-orders`, `/api/users`).
+- **Ordem das guias (tab bar):** 1) **OMS**, 2) **MWM**, 3) **DMS**, 4) **IND**, 5) **SMT**, 6) **TMP** (clima Open-Meteo, SP centro), 7) **AUD**. A guia **Utilizadores** foi **retirada da barra**: a gestão de `security.users` passou para **Configurações → Gerenciar utilizadores** (modal). OMS consome `/api/work-orders` (e folha); utilizadores consomem `/api/users` a partir desse modal.
 - **Cabeçalho do painel:** sem linha separada «Operação»; primeira linha = grelha de guias + botão fechar (`.operacao-top`).
-- **Conteúdo:** tabelas e detalhe mock de ordens, política de auditoria em AUD; textos com `data-i18n` (prefixo `UI_OP_*`).
+- **Conteúdo:** tabelas e detalhe de ordens (OMS), equipas/rotas demo (MWM), política de auditoria (AUD); textos com `data-i18n` (prefixo `UI_OP_*`).
+- **Tipos de domínio (`ref.*`):** não há guia no painel; edição de `label_en` / `label_pt` (códigos fixos) em **Configurações → Tipos de domínio (ref)** com **`GET`/`PUT /api/ref/types`** (POC sem autenticação por rota).
 
 ### Vista inicial do mapa (`main.js`)
 
