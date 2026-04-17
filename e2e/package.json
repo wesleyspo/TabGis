@@ -1,0 +1,13 @@
+{
+  "name": "tabgis-e2e",
+  "private": true,
+  "description": "Testes ponta-a-ponta do TabGis (Playwright). Requer stack Docker em http://127.0.0.1:8088.",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}

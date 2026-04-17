@@ -567,6 +567,80 @@ app.get('/api/teams', async (_req, res) => {
   }
 });
 
+/** Tabelas ref.* de tipos / estados usados pelo domínio GIS/OMS (leitura + edição de rótulos POC). */
+const REF_DOMAIN_TYPE_TABLES = [
+  'equipment_type',
+  'network_type',
+  'network_level',
+  'connection_state',
+  'work_order_type',
+  'task_type',
+  'call_type',
+];
+
+app.get('/api/ref/types', async (_req, res) => {
+  try {
+    const out = {};
+    for (const t of REF_DOMAIN_TYPE_TABLES) {
+      const { rows } = await pool.query(
+        `SELECT id, code, label_en, label_pt FROM ref.${t} ORDER BY id`
+      );
+      out[t] = rows;
+    }
+    res.json(out);
+  } catch (error) {
+    console.error('GET /api/ref/types', error);
+    res.status(500).json({ error: 'Failed to load reference types' });
+  }
+});
+
+/**
+ * Actualização em lote de label_en / label_pt (código `code` imutável nesta POC).
+ * Corpo: { "equipment_type": [{ "id": 1, "label_en": "…", "label_pt": "…" }], ... }
+ */
+app.put('/api/ref/types', async (req, res) => {
+  const body = req.body;
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return res.status(400).json({ error: 'Expected JSON object keyed by table name' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const [table, rows] of Object.entries(body)) {
+      if (!REF_DOMAIN_TYPE_TABLES.includes(table)) {
+        throw new Error(`Unknown table: ${table}`);
+      }
+      if (!Array.isArray(rows)) {
+        throw new Error(`Value for ${table} must be an array`);
+      }
+      for (const row of rows) {
+        const id = Number(row.id);
+        if (!Number.isFinite(id)) {
+          throw new Error(`Invalid id in ${table}`);
+        }
+        const label_en = row.label_en != null ? String(row.label_en) : '';
+        const label_pt = row.label_pt != null ? String(row.label_pt) : '';
+        await client.query(
+          `UPDATE ref.${table} SET label_en = $1, label_pt = $2 WHERE id = $3`,
+          [label_en, label_pt, id]
+        );
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (_) {
+      /* ignore */
+    }
+    console.error('PUT /api/ref/types', error);
+    res.status(400).json({ error: error.message || 'Update failed' });
+  } finally {
+    client.release();
+  }
+});
+
 /** Últimos registos de arquivo antes de DELETE (operations) */
 app.get('/api/audit/operations-archive', async (req, res) => {
   try {

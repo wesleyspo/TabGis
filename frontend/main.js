@@ -1424,6 +1424,99 @@ btnCloseOperacao.addEventListener("click", toggleLeftPanel);
   });
 })();
 
+/**
+ * Clima indicativo (São Paulo centro) — Open-Meteo, sem chave API.
+ * @see https://open-meteo.com/en/terms
+ */
+async function loadWeatherOpenMeteo() {
+  const statusEl = document.getElementById("weather-panel-status");
+  const body = document.getElementById("weather-panel-body");
+  if (!body) return;
+  const setErr = (msg) => {
+    if (statusEl) {
+      statusEl.textContent = msg;
+      statusEl.hidden = false;
+      statusEl.style.color = "var(--danger, #f87171)";
+    }
+  };
+  const clearErr = () => {
+    if (statusEl) {
+      statusEl.hidden = true;
+      statusEl.textContent = "";
+      statusEl.style.color = "";
+    }
+  };
+  clearErr();
+  body.innerHTML = '<p class="mock-hint">A carregar dados meteorológicos…</p>';
+  const url =
+    "https://api.open-meteo.com/v1/forecast?latitude=-23.55052&longitude=-46.633308" +
+    "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,apparent_temperature" +
+    "&timezone=America%2FSao_Paulo&wind_speed_unit=kmh";
+  const wmoLabel = (code) => {
+    const m = {
+      0: "Céu limpo",
+      1: "Principalmente limpo",
+      2: "Parcialmente nublado",
+      3: "Nublado",
+      45: "Nevoeiro",
+      48: "Nevoeiro com geada",
+      51: "Chuvisco leve",
+      61: "Chuva fraca",
+      63: "Chuva moderada",
+      65: "Chuva forte",
+      80: "Aguaceiros",
+      95: "Trovoada",
+      96: "Trovoada com granizo",
+    };
+    return m[code] != null ? m[code] : `Condição (código WMO ${code})`;
+  };
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(String(r.status));
+    const j = await r.json();
+    const c = j.current;
+    if (!c) throw new Error("no current");
+    const t = c.temperature_2m;
+    const ap = c.apparent_temperature;
+    const rh = c.relative_humidity_2m;
+    const w = c.wind_speed_10m;
+    const wd = c.wind_direction_10m;
+    const wc = c.weather_code;
+    const time = c.time || "";
+    body.innerHTML = `
+      <div class="weather-card weather-card--wide">
+        <div class="weather-card__label">Resumo</div>
+        <div class="weather-card__value" style="font-size:1rem;font-weight:500;">${escapeHtml(wmoLabel(wc))}</div>
+        <div class="mock-hint" style="margin-top:6px;font-size:11px;">Observação: ${escapeHtml(time)} (America/Sao_Paulo)</div>
+      </div>
+      <div class="weather-card">
+        <div class="weather-card__label">Temperatura</div>
+        <div class="weather-card__value">${t != null ? `${Number(t).toFixed(1)} °C` : "—"}</div>
+      </div>
+      <div class="weather-card">
+        <div class="weather-card__label">Sensação</div>
+        <div class="weather-card__value">${ap != null ? `${Number(ap).toFixed(1)} °C` : "—"}</div>
+      </div>
+      <div class="weather-card">
+        <div class="weather-card__label">Humidade</div>
+        <div class="weather-card__value">${rh != null ? `${rh} %` : "—"}</div>
+      </div>
+      <div class="weather-card">
+        <div class="weather-card__label">Vento</div>
+        <div class="weather-card__value">${w != null ? `${Number(w).toFixed(0)} km/h` : "—"}</div>
+        <div class="mock-hint" style="margin-top:4px;font-size:11px;">${wd != null ? `Direcção ${wd}°` : ""}</div>
+      </div>`;
+  } catch {
+    setErr("Falha ao obter previsão (Open-Meteo). Verifique ligação à Internet.");
+    body.innerHTML =
+      '<p class="mock-hint">Sem dados. Utilize «Atualizar previsão» ou confirme acesso a api.open-meteo.com a partir do browser.</p>';
+  }
+}
+
+document.getElementById("btn-weather-refresh")?.addEventListener("click", () => {
+  loadWeatherOpenMeteo();
+});
+
 // Guias do painel Operação (OMS, MWM, IND, …)
 (function initOperacaoTabs() {
   const bar = document.querySelector(".operacao-tab-bar");
@@ -1447,7 +1540,6 @@ btnCloseOperacao.addEventListener("click", toggleLeftPanel);
       panel.classList.toggle("active", on);
     });
 
-    if (id === "usr") loadUsersFromApi();
     if (id === "oms") loadWorkOrdersFromApi();
     if (id === "mwm") {
       loadTeamsFromApi();
@@ -1455,6 +1547,7 @@ btnCloseOperacao.addEventListener("click", toggleLeftPanel);
         if (!map.hasLayer(mwmDemoCrewRoutesGroup)) mwmDemoCrewRoutesGroup.addTo(map);
       });
     }
+    if (id === "tmp") loadWeatherOpenMeteo();
     if (id === "aud") loadAuditArchiveFromApi();
   });
 })();
@@ -2628,13 +2721,121 @@ document.getElementById("form-new-user")?.addEventListener("submit", async (ev) 
 });
 
 
+const REF_TYPE_SECTION_LABELS = {
+  equipment_type: "Tipo de equipamento",
+  network_type: "Tipo de rede",
+  network_level: "Nível / instalação",
+  connection_state: "Estado de ligação",
+  work_order_type: "Tipo de ordem de serviço",
+  task_type: "Tipo de tarefa",
+  call_type: "Tipo de chamada / incidente",
+};
+
+function setRefTypesStatus(msg, isError) {
+  const el = document.getElementById("ref-types-status");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.hidden = !msg;
+  el.style.color = isError ? "var(--danger, #f87171)" : "";
+}
+
+function renderRefTypesToRoot(data) {
+  const root = document.getElementById("ref-types-tables-root");
+  if (!root) return;
+  root.innerHTML = "";
+  const tables = Object.keys(data).sort();
+  tables.forEach((table) => {
+    const rows = data[table];
+    if (!Array.isArray(rows)) return;
+    const sec = document.createElement("section");
+    sec.className = "ref-type-block";
+    const h = document.createElement("h4");
+    h.textContent = REF_TYPE_SECTION_LABELS[table] || table;
+    const tbl = document.createElement("table");
+    tbl.className = "mock-table";
+    tbl.innerHTML =
+      "<thead><tr><th>code</th><th>label_en</th><th>label_pt</th></tr></thead>";
+    const tb = document.createElement("tbody");
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      tr.dataset.refTable = table;
+      tr.dataset.refId = String(row.id);
+      tr.innerHTML = `<td><code>${escapeHtml(row.code || "")}</code></td>
+        <td><input type="text" class="table-input ref-lbl-en" value="${escapeHtml(row.label_en || "")}" /></td>
+        <td><input type="text" class="table-input ref-lbl-pt" value="${escapeHtml(row.label_pt || "")}" /></td>`;
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb);
+    sec.appendChild(h);
+    sec.appendChild(tbl);
+    root.appendChild(sec);
+  });
+}
+
+function readRefTypesPayloadFromDom() {
+  const root = document.getElementById("ref-types-tables-root");
+  if (!root) return {};
+  const out = {};
+  root.querySelectorAll("tbody tr[data-ref-table]").forEach((tr) => {
+    const table = tr.getAttribute("data-ref-table");
+    const id = Number(tr.getAttribute("data-ref-id"));
+    if (!table || !Number.isFinite(id)) return;
+    const label_en = tr.querySelector(".ref-lbl-en")?.value ?? "";
+    const label_pt = tr.querySelector(".ref-lbl-pt")?.value ?? "";
+    if (!out[table]) out[table] = [];
+    out[table].push({ id, label_en, label_pt });
+  });
+  return out;
+}
+
+async function loadRefTypesFromApi() {
+  setRefTypesStatus("A carregar tipos de domínio (ref.*)…", false);
+  try {
+    const res = await fetch("/api/ref/types");
+    if (!res.ok) throw new Error("bad");
+    const data = await res.json();
+    renderRefTypesToRoot(data);
+    setRefTypesStatus("", false);
+  } catch {
+    setRefTypesStatus("Falha ao carregar ref.* (ver API e schema 04).", true);
+  }
+}
+
+async function saveRefTypesFromApi() {
+  const body = readRefTypesPayloadFromDom();
+  setRefTypesStatus("A guardar…", false);
+  try {
+    const res = await fetch("/api/ref/types", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || res.statusText);
+    }
+    setRefTypesStatus("Guardado.", false);
+    await loadRefTypesFromApi();
+  } catch (e) {
+    setRefTypesStatus(e.message || "Falha ao guardar.", true);
+  }
+}
+
 // Lógica do Modal de Traduções (Configurações)
 const modalTranslations = document.getElementById("modal-translations");
 const modalVisualization = document.getElementById("modal-visualization");
+const modalUsers = document.getElementById("modal-users");
+const modalRefTypes = document.getElementById("modal-ref-types");
 const btnOpenTranslations = document.getElementById("btn-open-translations");
 const btnCloseTranslations = document.getElementById("btn-close-translations");
 const btnOpenVisualization = document.getElementById("btn-open-visualization");
 const btnCloseVisualization = document.getElementById("btn-close-visualization");
+const btnOpenUsers = document.getElementById("btn-open-users");
+const btnCloseUsers = document.getElementById("btn-close-users");
+const btnOpenRefTypes = document.getElementById("btn-open-ref-types");
+const btnCloseRefTypes = document.getElementById("btn-close-ref-types");
+const btnRefTypesReload = document.getElementById("btn-ref-types-reload");
+const btnRefTypesSave = document.getElementById("btn-ref-types-save");
 const configDropdown = document.querySelector(".config-dropdown");
 const selectLanguage = document.getElementById("select-language");
 
@@ -2660,6 +2861,38 @@ if (btnCloseVisualization && modalVisualization) {
     modalVisualization.style.display = "none";
   });
 }
+
+if (btnOpenUsers && modalUsers) {
+  btnOpenUsers.addEventListener("click", () => {
+    modalUsers.style.display = "flex";
+    modalUsers.setAttribute("aria-hidden", "false");
+    if (configDropdown) configDropdown.removeAttribute("open");
+    loadUsersFromApi();
+  });
+}
+if (btnCloseUsers && modalUsers) {
+  btnCloseUsers.addEventListener("click", () => {
+    modalUsers.style.display = "none";
+    modalUsers.setAttribute("aria-hidden", "true");
+  });
+}
+
+if (btnOpenRefTypes && modalRefTypes) {
+  btnOpenRefTypes.addEventListener("click", () => {
+    modalRefTypes.style.display = "flex";
+    modalRefTypes.setAttribute("aria-hidden", "false");
+    if (configDropdown) configDropdown.removeAttribute("open");
+    loadRefTypesFromApi();
+  });
+}
+if (btnCloseRefTypes && modalRefTypes) {
+  btnCloseRefTypes.addEventListener("click", () => {
+    modalRefTypes.style.display = "none";
+    modalRefTypes.setAttribute("aria-hidden", "true");
+  });
+}
+btnRefTypesReload?.addEventListener("click", () => loadRefTypesFromApi());
+btnRefTypesSave?.addEventListener("click", () => saveRefTypesFromApi());
 
 const btnOpenHelp = document.getElementById("btn-open-help");
 if (btnOpenHelp) {
@@ -2744,6 +2977,14 @@ document.addEventListener("click", (event) => {
   }
   if (event.target === modalVisualization) {
     modalVisualization.style.display = "none";
+  }
+  if (modalUsers && event.target === modalUsers) {
+    modalUsers.style.display = "none";
+    modalUsers.setAttribute("aria-hidden", "true");
+  }
+  if (modalRefTypes && event.target === modalRefTypes) {
+    modalRefTypes.style.display = "none";
+    modalRefTypes.setAttribute("aria-hidden", "true");
   }
 });
 

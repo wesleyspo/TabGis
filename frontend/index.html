@@ -364,6 +364,12 @@
               </button>
             </div>
             <div style="margin-top: 12px;">
+              <button type="button" id="btn-open-users" class="nav-btn" style="width: 100%; justify-content: center;">Gerenciar utilizadores</button>
+            </div>
+            <div style="margin-top: 12px;">
+              <button type="button" id="btn-open-ref-types" class="nav-btn" style="width: 100%; justify-content: center;">Tipos de domínio (ref)</button>
+            </div>
+            <div style="margin-top: 12px;">
               <button id="btn-open-translations" class="nav-btn" style="width: 100%; justify-content: center; background: var(--accent); color: #fff; border-color: var(--accent);">Gerenciar Traduções</button>
             </div>
             <div style="margin-top: 12px;">
@@ -384,8 +390,6 @@
             <div class="operacao-tab-bar" role="tablist" aria-label="Módulos de operação">
               <button type="button" class="operacao-tab active" role="tab" aria-selected="true" data-tab="oms"
                 title="Ordens de serviço: ordem → tarefas → reclamações (eventos noutro módulo)."><span data-i18n="UI_OP_TAB_OMS">Ordens de serviço</span></button>
-              <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="usr"
-                title="Utilizadores do sistema (security.users)."><span data-i18n="UI_OP_TAB_USR">Utilizadores</span></button>
               <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="mwm"
                 title="Equipes em campo, rotas (48h) e deslocamentos — primeiro foco: estrutura de equipes (MWM)."><span data-i18n="UI_OP_TAB_MWM">Equipes, rotas e deslocamentos</span></button>
               <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="dms"
@@ -454,37 +458,6 @@
                 </div>
               </section>
 
-              <section class="operacao-panel" data-panel="usr" role="tabpanel">
-                <h4 class="mock-section-title" data-i18n="UI_OP_USERS_TITLE">Utilizadores</h4>
-                <p class="mock-hint" data-i18n="UI_OP_USERS_HINT">Gestão de contas internas: responsáveis por ordens e bloqueios de edição. O acesso por perfil será endurecido nas próximas iterações.</p>
-                <p id="usr-panel-status" class="mock-hint mock-hint--status" hidden></p>
-                <form id="form-new-user" class="mock-form-inline">
-                  <input type="text" name="username" data-i18n-placeholder="UI_OP_PLACEHOLDER_USERNAME" placeholder="username" required maxlength="50" />
-                  <input type="email" name="email" data-i18n-placeholder="UI_OP_PLACEHOLDER_EMAIL" placeholder="email" maxlength="255" />
-                  <input type="text" name="first_name" data-i18n-placeholder="UI_OP_PLACEHOLDER_FIRST" placeholder="nome" maxlength="100" />
-                  <input type="text" name="last_name" data-i18n-placeholder="UI_OP_PLACEHOLDER_LAST" placeholder="apelido" maxlength="100" />
-                  <select name="access_type" title="access_type">
-                    <option value="CONSULTA">CONSULTA</option>
-                    <option value="OPERACAO">OPERACAO</option>
-                    <option value="ADMIN">ADMIN</option>
-                  </select>
-                  <button type="submit" class="mock-btn" data-i18n="UI_OP_BTN_ADD_USER">Adicionar</button>
-                </form>
-                <div class="mock-table-wrap">
-                  <table class="mock-table">
-                    <thead>
-                      <tr>
-                        <th data-i18n="UI_OP_COL_USERNAME">Utilizador</th>
-                        <th data-i18n="UI_OP_COL_EMAIL">E-mail</th>
-                        <th data-i18n="UI_OP_COL_ACCESS">Perfil</th>
-                        <th data-i18n="UI_OP_COL_USER_STATUS">Estado</th>
-                      </tr>
-                    </thead>
-                    <tbody id="users-tbody"></tbody>
-                  </table>
-                </div>
-              </section>
-
               <!-- MWM — Equipas; rotas 48h e deslocamentos virão da BD -->
               <section class="operacao-panel" data-panel="mwm" role="tabpanel">
                 <h4 class="mock-section-title" data-i18n="UI_OP_TEAMS_TITLE">Equipas em campo</h4>
@@ -537,8 +510,22 @@
 
               <section class="operacao-panel" data-panel="tmp" role="tabpanel">
                 <h4 class="mock-section-title" data-i18n="UI_OP_TMP_TITLE">Clima</h4>
-                <p class="mock-hint" data-i18n="UI_OP_MODULE_AUDIT_NOTE">Condicionantes meteorológicas e impacto em operações de campo em fase de ligação a fontes externas.</p>
-                <div class="mock-placeholder" data-i18n="UI_OP_TMP_PLACEHOLDER">Dados meteorológicos não disponíveis nesta vista. Configure a fonte para alertas de campo.</div>
+                <p class="mock-hint">
+                  Previsão indicativa para <strong>São Paulo (centro)</strong> via
+                  <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>
+                  (dados abertos, sem chave API nesta integração). Para <strong>alertas oficiais</strong> de tempestade, cheias ou descargas eléctricas no Brasil, avalie integração futura com
+                  <abbr title="Centro de Previsão de Tempo e Estudos Climáticos">CPTEC</abbr> / INMET ou serviços do operador de rede.
+                </p>
+                <p id="weather-panel-status" class="mock-hint mock-hint--status" hidden></p>
+                <div class="weather-toolbar">
+                  <button type="button" id="btn-weather-refresh" class="mock-btn">Atualizar previsão</button>
+                </div>
+                <div id="weather-panel-body" class="weather-panel-body">
+                  <p class="mock-hint">Carregue ou abra esta guia para obter dados.</p>
+                </div>
+                <p class="mock-hint" style="font-size: 11px; margin-top: 10px;">
+                  Atribuição: Weather data by Open-Meteo.com (CC-BY 4.0). Uso em utilities: apoio ao planeamento de deslocamentos de equipas; não substitui procedimentos de segurança em tensão.
+                </p>
               </section>
 
               <section class="operacao-panel" data-panel="aud" role="tabpanel">
@@ -897,6 +884,76 @@
             </div>
             <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
               <button class="nav-btn" style="background: var(--accent); color: #fff; border-color: var(--accent);" onclick="alert('Funcionalidade de guardar carece de backend.')">Guardar Alterações</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Modal Utilizadores (Configurações) ─────────── -->
+      <div id="modal-users" class="modal-overlay" style="display: none;" aria-hidden="true">
+        <div class="modal-content modal-content--users">
+          <div class="panel-header">
+            <h3 data-i18n="UI_OP_USERS_TITLE">Utilizadores</h3>
+            <button type="button" id="btn-close-users" class="close-btn" title="Fechar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p class="mock-hint" data-i18n="UI_OP_USERS_HINT">Gestão de contas internas: responsáveis por ordens e bloqueios de edição. O acesso por perfil será endurecido nas próximas iterações.</p>
+            <p id="usr-panel-status" class="mock-hint mock-hint--status" hidden></p>
+            <form id="form-new-user" class="mock-form-inline">
+              <input type="text" name="username" data-i18n-placeholder="UI_OP_PLACEHOLDER_USERNAME" placeholder="username" required maxlength="50" />
+              <input type="email" name="email" data-i18n-placeholder="UI_OP_PLACEHOLDER_EMAIL" placeholder="email" maxlength="255" />
+              <input type="text" name="first_name" data-i18n-placeholder="UI_OP_PLACEHOLDER_FIRST" placeholder="nome" maxlength="100" />
+              <input type="text" name="last_name" data-i18n-placeholder="UI_OP_PLACEHOLDER_LAST" placeholder="apelido" maxlength="100" />
+              <select name="access_type" title="access_type">
+                <option value="CONSULTA">CONSULTA</option>
+                <option value="OPERACAO">OPERACAO</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+              <button type="submit" class="mock-btn" data-i18n="UI_OP_BTN_ADD_USER">Adicionar</button>
+            </form>
+            <div class="mock-table-wrap" style="max-height: 50vh; overflow: auto;">
+              <table class="mock-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="UI_OP_COL_USERNAME">Utilizador</th>
+                    <th data-i18n="UI_OP_COL_EMAIL">E-mail</th>
+                    <th data-i18n="UI_OP_COL_ACCESS">Perfil</th>
+                    <th data-i18n="UI_OP_COL_USER_STATUS">Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="users-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Modal Tipos ref.* (Configurações) ──────────── -->
+      <div id="modal-ref-types" class="modal-overlay" style="display: none;" aria-hidden="true">
+        <div class="modal-content modal-content--ref-types">
+          <div class="panel-header">
+            <h3>Tipos de domínio (schema <code>ref</code>)</h3>
+            <button type="button" id="btn-close-ref-types" class="close-btn" title="Fechar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body ref-types-modal-body">
+            <p class="mock-hint">
+              Rótulos multilingues usados por equipamento, rede e OMS. O código interno (<code>code</code>) não é editável nesta vista.
+            </p>
+            <p id="ref-types-status" class="mock-hint mock-hint--status" hidden></p>
+            <div id="ref-types-tables-root"></div>
+            <div class="config-actions" style="margin-top: 14px;">
+              <button type="button" id="btn-ref-types-reload" class="nav-btn">Recarregar</button>
+              <button type="button" id="btn-ref-types-save" class="nav-btn" style="background: var(--accent); color: #fff; border-color: var(--accent);">Guardar alterações</button>
             </div>
           </div>
         </div>
