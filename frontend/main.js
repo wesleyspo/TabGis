@@ -13,6 +13,34 @@
 // ── Referência ao elemento de status no rodapé da sidebar ─────────────────
 const statusEl = document.getElementById("status");
 
+/**
+ * Menus da topbar (<details>): um só aberto de cada vez; clique fora fecha todos.
+ */
+function initTopbarMenuDetails() {
+  const topbar = document.querySelector(".topbar");
+  if (!topbar) return;
+  const allDetails = () => Array.from(topbar.querySelectorAll("details"));
+  allDetails().forEach((d) => {
+    d.addEventListener("toggle", () => {
+      if (!d.open) return;
+      allDetails().forEach((o) => {
+        if (o !== d) o.open = false;
+      });
+    });
+  });
+  document.addEventListener(
+    "click",
+    (ev) => {
+      if (topbar.contains(ev.target)) return;
+      allDetails().forEach((d) => {
+        d.open = false;
+      });
+    },
+    true
+  );
+}
+initTopbarMenuDetails();
+
 // ── Resolução de URLs base ────────────────────────────────────────────────
 
 /**
@@ -86,6 +114,9 @@ const map = L.map("map", {
   maxBoundsViscosity: 1.0 // Torna os limites "rígidos", o ecrã não foge
 });
 
+/** Mínimo absoluto (L.map); o indicador % e `setMinZoom` nunca ficam abaixo disto. */
+const MAP_ORIG_MIN_ZOOM = map.getMinZoom();
+
 /**
  * Pane dedicado para o satélite (raster de fundo).
  * zIndex 100 garante que fica abaixo das camadas vectoriais WMS
@@ -132,6 +163,22 @@ const satelliteLocalLayer = L.tileLayer(
     maxZoom: 20,
     minNativeZoom: 10,
     maxNativeZoom: 17,
+    tileSize: 256,
+  }
+);
+
+/**
+ * GeoSampa offline — ortofoto MBTiles servida pelo TileServer GL.
+ * Dataset esperado: /tiles/data/geosampa_offline/{z}/{x}/{y}.png
+ */
+const geosampaOfflineLayer = L.tileLayer(
+  `${getLocalTilesBase()}/data/geosampa_offline/{z}/{x}/{y}.png`,
+  {
+    pane: "satellite",
+    attribution: "GeoSampa (PMSP) — camada offline local (MBTiles)",
+    maxZoom: 22,
+    minNativeZoom: 10,
+    maxNativeZoom: 19,
     tileSize: 256,
   }
 );
@@ -186,8 +233,66 @@ const viasAlvoLayer = L.tileLayer.wms(geoserverWms, {
   version: "1.1.1",
 });
 
-/** Marcadores de ordens (cor = estado, raio ≈ tipo, traço ≈ equipa) */
+/** Rotas MWM demo (abaixo dos marcadores OMS) */
+const mwmDemoCrewRoutesGroup = L.layerGroup();
+
+/** Agregados por município / bairro (zoom afastado) */
+const omsAggregateMarkersGroup = L.layerGroup().addTo(map);
+
+/** Marcadores de ordens (cor = estado, raio ≈ tipo, traço ≈ equipe) */
 const workOrderMarkersGroup = L.layerGroup().addTo(map);
+
+/** Zoom: até 10 → município; 11–12 → bairro; ≥13 → ordens individuais */
+const OMS_ZOOM_MUNICIPIO_MAX = 10;
+const OMS_ZOOM_BAIRRO_MAX = 12;
+
+/** Alinhado a `enforceZoomValidation` das vias (WMS denso abaixo disto). */
+const VIAS_LAYER_MIN_ZOOM = 13;
+const LAYER_ZOOM_CFG_STORAGE_KEY = "tabgis_layer_zoom_cfg_v1";
+const DEFAULT_LAYER_ZOOM_CFG = {
+  override: false,
+  bairrosEnableMin: OMS_ZOOM_BAIRRO_MAX,
+  bairrosDisableBelow: OMS_ZOOM_BAIRRO_MAX,
+  viasEnableMin: VIAS_LAYER_MIN_ZOOM,
+  viasDisableBelow: VIAS_LAYER_MIN_ZOOM,
+};
+/** Tecto ao focar por «Ir para» (próximo do objeto; alinhado ao satélite online Esri z19). */
+const MAP_FOCUS_MAX_ZOOM = 19;
+const MAP_FOCUS_ZOOM_ORDER = 18;
+const MAP_FOCUS_ZOOM_TEAM = 18;
+const MAP_FOCUS_ZOOM_ADDRESS = 19;
+
+/** @type {'municipio' | 'bairro' | 'detail'} */
+let omsMapDisplayMode = 'detail';
+let omsAggregateFetchToken = 0;
+
+function clampZoomLevel(v, fallback) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(22, Math.round(n)));
+}
+
+function readLayerZoomCfg() {
+  try {
+    const raw = localStorage.getItem(LAYER_ZOOM_CFG_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_LAYER_ZOOM_CFG };
+    const parsed = JSON.parse(raw);
+    return {
+      override: !!parsed.override,
+      bairrosEnableMin: clampZoomLevel(parsed.bairrosEnableMin, DEFAULT_LAYER_ZOOM_CFG.bairrosEnableMin),
+      bairrosDisableBelow: clampZoomLevel(parsed.bairrosDisableBelow, DEFAULT_LAYER_ZOOM_CFG.bairrosDisableBelow),
+      viasEnableMin: clampZoomLevel(parsed.viasEnableMin, DEFAULT_LAYER_ZOOM_CFG.viasEnableMin),
+      viasDisableBelow: clampZoomLevel(parsed.viasDisableBelow, DEFAULT_LAYER_ZOOM_CFG.viasDisableBelow),
+    };
+  } catch {
+    return { ...DEFAULT_LAYER_ZOOM_CFG };
+  }
+}
+
+function getEffectiveLayerZoomCfg() {
+  const cfg = readLayerZoomCfg();
+  return cfg.override ? cfg : { ...DEFAULT_LAYER_ZOOM_CFG };
+}
 
 // Camadas ativas por defeito ao iniciar (apenas limites municipais e municípios)
 municipiosLayer.addTo(map);
@@ -208,7 +313,10 @@ function setVectorOverSatOpacity(on) {
 
 /** Relê o estado das camadas satélite e ajusta opacidade dos vectores. */
 function refreshSatelliteOpacity() {
-  const satActive = map.hasLayer(satelliteLayer) || map.hasLayer(satelliteLocalLayer);
+  const satActive =
+    map.hasLayer(satelliteLayer) ||
+    map.hasLayer(satelliteLocalLayer) ||
+    map.hasLayer(geosampaOfflineLayer);
   setVectorOverSatOpacity(satActive);
 }
 
@@ -220,15 +328,21 @@ function refreshSatelliteOpacity() {
  */
 document.getElementById("satellite_online").addEventListener("change", (event) => {
   const localCb = document.getElementById("satellite_local");
+  const geosampaCb = document.getElementById("geosampa_offline");
   if (event.target.checked) {
     localCb.checked = false;
+    geosampaCb.checked = false;
     map.removeLayer(satelliteLocalLayer);
+    map.removeLayer(geosampaOfflineLayer);
+    geosampaOfflineConfirmed = false;
     satelliteLayer.addTo(map);
     refreshSatelliteOpacity();
+    updateMapZoomPercentLabel();
     setStatus("Satélite online activo (UF/municípios mais transparentes).");
   } else {
     map.removeLayer(satelliteLayer);
     refreshSatelliteOpacity();
+    updateMapZoomPercentLabel();
     setStatus("Satélite online desligado.");
   }
 });
@@ -242,20 +356,27 @@ document.getElementById("satellite_online").addEventListener("change", (event) =
  */
 document.getElementById("satellite_local").addEventListener("change", async (event) => {
   const onlineCb = document.getElementById("satellite_online");
+  const geosampaCb = document.getElementById("geosampa_offline");
   if (event.target.checked) {
     onlineCb.checked = false;
+    geosampaCb.checked = false;
     map.removeLayer(satelliteLayer);
+    map.removeLayer(geosampaOfflineLayer);
     setStatus("A verificar TileServer…");
     try {
-      const meta = await checkTileServerHealth();
+      const meta = await checkLocalRasterHealth("sp_sat");
       satelliteLocalConfirmed = true;
+      geosampaOfflineConfirmed = false;
       satelliteLocalLayer.addTo(map);
       refreshSatelliteOpacity();
+      updateMapZoomPercentLabel();
       setStatus(
         `Satélite local activo — capital SP, zoom ${meta.minzoom}–${meta.maxzoom}.`
       );
     } catch {
       satelliteLocalConfirmed = false;
+      geosampaOfflineConfirmed = false;
+      spSatMbtilesBounds = null;
       event.target.checked = false;
       setStatus(
         "Falha tiles MBTiles. Gere sp_satellite.mbtiles e suba tileserver (ver docs/DEPLOY_POC.md)."
@@ -264,10 +385,160 @@ document.getElementById("satellite_local").addEventListener("change", async (eve
   } else {
     map.removeLayer(satelliteLocalLayer);
     satelliteLocalConfirmed = false;
+    geosampaOfflineConfirmed = false;
+    spSatMbtilesBounds = null;
     refreshSatelliteOpacity();
+    updateMapZoomPercentLabel();
     setStatus("Satélite local desligado.");
   }
 });
+
+/**
+ * Activação da ortofoto GeoSampa local com verificação de saúde prévia.
+ * Exclusão mútua com os satélites para evitar sobreposição de rasters.
+ */
+document.getElementById("geosampa_offline").addEventListener("change", async (event) => {
+  const onlineCb = document.getElementById("satellite_online");
+  const localCb = document.getElementById("satellite_local");
+  if (event.target.checked) {
+    onlineCb.checked = false;
+    localCb.checked = false;
+    map.removeLayer(satelliteLayer);
+    map.removeLayer(satelliteLocalLayer);
+    satelliteLocalConfirmed = false;
+    geosampaOfflineConfirmed = false;
+    spSatMbtilesBounds = null;
+    setStatus("A verificar TileServer (GeoSampa offline)…");
+    try {
+      const meta = await checkLocalRasterHealth("geosampa_offline");
+      geosampaOfflineConfirmed = true;
+      geosampaOfflineLayer.addTo(map);
+      refreshSatelliteOpacity();
+      updateMapZoomPercentLabel();
+      setStatus(
+        `GeoSampa - Offline activo — zoom ${meta.minzoom ?? "?"}–${meta.maxzoom ?? "?"}.`
+      );
+    } catch {
+      geosampaOfflineConfirmed = false;
+      event.target.checked = false;
+      setStatus(
+        "Falha na camada GeoSampa offline. Gere geosampa_offline.mbtiles e suba tileserver (ver docs/DEPLOY_POC.md)."
+      );
+    }
+  } else {
+    map.removeLayer(geosampaOfflineLayer);
+    geosampaOfflineConfirmed = false;
+    refreshSatelliteOpacity();
+    updateMapZoomPercentLabel();
+    setStatus("GeoSampa - Offline desligado.");
+  }
+});
+
+/**
+ * Zoom da última vista «Home» (0% no indicador). `null` até o primeiro encaixe de bounds.
+ * @type {number | null}
+ */
+let mapZoomPctBaselineZ = null;
+
+/**
+ * Extremos do indicador %: 100% = detalhe nativo do satélite activo (ou maxZoom).
+ */
+function getZoomPercentExtents() {
+  let zMax = map.getMaxZoom();
+  if (map.hasLayer(satelliteLayer)) {
+    zMax = satelliteLayer.options.maxNativeZoom ?? satelliteLayer.options.maxZoom ?? 19;
+  } else if (map.hasLayer(satelliteLocalLayer)) {
+    zMax = satelliteLocalLayer.options.maxNativeZoom ?? 17;
+  } else if (map.hasLayer(geosampaOfflineLayer)) {
+    zMax = geosampaOfflineLayer.options.maxNativeZoom ?? 19;
+  }
+  return { zMax };
+}
+
+/**
+ * Define 0% = zoom actual após vista Home; impede afastar mais que esse nível (`setMinZoom`).
+ */
+function applyZoomPctBaselineFromCurrentView() {
+  const z = map.getZoom();
+  mapZoomPctBaselineZ = z;
+  map.setMinZoom(Math.max(MAP_ORIG_MIN_ZOOM, z));
+  updateMapZoomPercentLabel();
+}
+
+function updateMapZoomPercentLabel() {
+  const el = document.getElementById("map-zoom-pct-value");
+  if (!el) return;
+  if (mapZoomPctBaselineZ == null) {
+    el.textContent = "—";
+    return;
+  }
+  const { zMax } = getZoomPercentExtents();
+  const z0 = mapZoomPctBaselineZ;
+  const span = Math.max(1e-6, zMax - z0);
+  const z = map.getZoom();
+  const pct = ((z - z0) / span) * 100;
+  el.textContent = `${Math.round(Math.max(0, Math.min(100, pct)))}%`;
+}
+
+/** Percentagem 0–100 igual ao indicador %; `null` se ainda não há baseline da vista Home. */
+function getCurrentMapZoomPercent() {
+  if (mapZoomPctBaselineZ == null) return null;
+  const { zMax } = getZoomPercentExtents();
+  const z0 = mapZoomPctBaselineZ;
+  const span = Math.max(1e-6, zMax - z0);
+  const z = map.getZoom();
+  return ((z - z0) / span) * 100;
+}
+
+/** Acima deste valor no indicador %, bairros e vias passam a ser mostrados automaticamente (se o zoom Leaflet permitir). */
+const MAP_ZOOM_PCT_AUTO_BAIRROS_VIAS = 50;
+
+/**
+ * Indicador de zoom ≥ 50%: activa checkboxes e camadas de bairros (z≥12) e vias (z≥13).
+ * Não desliga camadas quando o % baixa — só reforça o comportamento «aproximar para ver detalhe».
+ */
+function maybeAutoShowBairrosEViasByZoomPercent() {
+  const pct = getCurrentMapZoomPercent();
+  if (pct == null || pct < MAP_ZOOM_PCT_AUTO_BAIRROS_VIAS) return;
+  const cfg = getEffectiveLayerZoomCfg();
+  const z = map.getZoom();
+  const cbBairros = document.getElementById("bairros_alvo_sp");
+  const cbVias = document.getElementById("vias_alvo_sp");
+  if (z >= cfg.bairrosEnableMin) {
+    if (cbBairros && !cbBairros.checked) cbBairros.checked = true;
+    if (cbBairros?.checked && !map.hasLayer(bairrosAlvoLayer)) bairrosAlvoLayer.addTo(map);
+  }
+  if (z >= cfg.viasEnableMin) {
+    if (cbVias && !cbVias.checked) cbVias.checked = true;
+    if (cbVias?.checked && !map.hasLayer(viasAlvoLayer)) viasAlvoLayer.addTo(map);
+  }
+}
+
+function initMapZoomPercentIndicator() {
+  const topLeft = map.getContainer().querySelector(".leaflet-top.leaflet-left");
+  if (!topLeft || document.getElementById("map-zoom-pct-value")) return;
+  const zoomCtrl = topLeft.querySelector(".leaflet-control-zoom");
+  if (!zoomCtrl) return;
+
+  const strip = L.DomUtil.create("div", "leaflet-control map-zoom-strip");
+  topLeft.insertBefore(strip, zoomCtrl);
+  strip.appendChild(zoomCtrl);
+
+  const bar = L.DomUtil.create("div", "leaflet-bar leaflet-control map-zoom-pct");
+  const inner = L.DomUtil.create("span", "map-zoom-pct__value", bar);
+  inner.id = "map-zoom-pct-value";
+  inner.textContent = "—";
+  inner.setAttribute(
+    "title",
+    "Zoom: 0% = vista Home actual (não é possível afastar mais); 100% = detalhe máximo nativo do satélite activo (ou máximo do mapa sem satélite)."
+  );
+  strip.appendChild(bar);
+
+  L.DomEvent.disableClickPropagation(strip);
+  L.DomEvent.disableScrollPropagation(strip);
+  map.on("zoom zoomend", updateMapZoomPercentLabel);
+  updateMapZoomPercentLabel();
+}
 
 // ── Utilitários ───────────────────────────────────────────────────────────
 
@@ -279,6 +550,53 @@ document.getElementById("satellite_local").addEventListener("change", async (eve
  */
 function setStatus(message) {
   statusEl.textContent = message;
+}
+
+function initLayerZoomConfigUI() {
+  const overrideEl = document.getElementById("cfg-zoom-override");
+  const bEnEl = document.getElementById("cfg-zoom-bairros-enable");
+  const bDisEl = document.getElementById("cfg-zoom-bairros-disable");
+  const vEnEl = document.getElementById("cfg-zoom-vias-enable");
+  const vDisEl = document.getElementById("cfg-zoom-vias-disable");
+  const btnSave = document.getElementById("cfg-zoom-save");
+  const btnReset = document.getElementById("cfg-zoom-reset");
+  if (!overrideEl || !bEnEl || !bDisEl || !vEnEl || !vDisEl || !btnSave || !btnReset) return;
+
+  function fillForm() {
+    const cfg = readLayerZoomCfg();
+    overrideEl.checked = !!cfg.override;
+    bEnEl.value = String(cfg.bairrosEnableMin);
+    bDisEl.value = String(cfg.bairrosDisableBelow);
+    vEnEl.value = String(cfg.viasEnableMin);
+    vDisEl.value = String(cfg.viasDisableBelow);
+  }
+
+  btnSave.addEventListener("click", () => {
+    const nextCfg = {
+      override: overrideEl.checked,
+      bairrosEnableMin: clampZoomLevel(bEnEl.value, DEFAULT_LAYER_ZOOM_CFG.bairrosEnableMin),
+      bairrosDisableBelow: clampZoomLevel(bDisEl.value, DEFAULT_LAYER_ZOOM_CFG.bairrosDisableBelow),
+      viasEnableMin: clampZoomLevel(vEnEl.value, DEFAULT_LAYER_ZOOM_CFG.viasEnableMin),
+      viasDisableBelow: clampZoomLevel(vDisEl.value, DEFAULT_LAYER_ZOOM_CFG.viasDisableBelow),
+    };
+    localStorage.setItem(LAYER_ZOOM_CFG_STORAGE_KEY, JSON.stringify(nextCfg));
+    fillForm();
+    map.fire("zoomend");
+    setStatus(
+      nextCfg.override
+        ? "Configuração de zoom aplicada (sobreposição ativa)."
+        : "Configuração de zoom salva (regras atuais preservadas)."
+    );
+  });
+
+  btnReset.addEventListener("click", () => {
+    localStorage.removeItem(LAYER_ZOOM_CFG_STORAGE_KEY);
+    fillForm();
+    map.fire("zoomend");
+    setStatus("Configuração de zoom resetada para o padrão.");
+  });
+
+  fillForm();
 }
 
 /**
@@ -295,12 +613,14 @@ function fitBounds(minLon, minLat, maxLon, maxLat) {
 
 /**
  * Vista inicial: inset = metade da extensão em proporção ao bbox (menor inset ⇒ mais zoom).
+ * @param {number} [lonInsetFactor=1] — só longitude; valor menor que 1 aperta o enquadramento horizontal
+ *   (útil com satélite local + ecrã largo, para reduzir letterbox lateral).
  */
-function fitBoundsHomeInset(minLon, minLat, maxLon, maxLat, inset) {
+function fitBoundsHomeInset(minLon, minLat, maxLon, maxLat, inset, lonInsetFactor = 1) {
   const cLat = (minLat + maxLat) / 2;
   const cLon = (minLon + maxLon) / 2;
   const hLat = ((maxLat - minLat) / 2) * inset;
-  const hLon = ((maxLon - minLon) / 2) * inset;
+  const hLon = ((maxLon - minLon) / 2) * inset * lonInsetFactor;
   map.fitBounds([
     [cLat - hLat, cLon - hLon],
     [cLat + hLat, cLon + hLon],
@@ -312,6 +632,26 @@ const HOME_INSET_FULL = 0.9 * 1.04;
 
 /** Com painel 50%: ~8% mais zoom que a mesma cena em tela cheia (compensa metade da largura). */
 const HOME_INSET_SPLIT = HOME_INSET_FULL / 1.08;
+
+/** Mapa no quadrante inferior direito (layout CC): enquadramento ligeiramente distinto do 50/50. */
+const HOME_INSET_CCC = HOME_INSET_SPLIT * 0.94;
+
+/**
+ * Com satélite local MBTiles: ligeira compressão só em longitude no Home (ecrãs muito largos
+ * mostram mais lon que o rect vertical «cabe»; isto aproxima a moldura da cobertura raster).
+ */
+const HOME_LOCAL_SAT_LON_INSET_FACTOR = 0.88;
+
+const OPER_LAYOUT_STORAGE_KEY = "tabgis_oper_layout";
+
+/** @type {Map<string, object>} última listagem OMS por id (detalhe + marcadores). */
+let workOrderRowsById = new Map();
+
+/** Última resposta bruta da API (ordenação client-side). */
+let workOrdersListCache = [];
+
+/** Estado da ordenação na grelha OMS. */
+const omsSortState = { key: null, dir: /** @type {'asc' | 'desc'} */ ("asc") };
 
 /**
  * Constrói a string BBOX em EPSG:3857 para os pedidos WMS GetFeatureInfo.
@@ -352,19 +692,65 @@ function fitMapToGeoJSONFeatureCollection(data) {
  * normal para MBTiles de área parcial (bbox capital SP não cobre o estado inteiro).
  */
 let satelliteLocalConfirmed = false;
+let geosampaOfflineConfirmed = false;
+
+/**
+ * Bounds WGS84 do MBTiles (west,south,east,north) vindos do TileJSON, se disponíveis.
+ * @type {null | { west: number, south: number, east: number, north: number }}
+ */
+let spSatMbtilesBounds = null;
+
+/**
+ * Cruza o intervalo de longitude do Home com a extensão declarada do MBTiles,
+ * para não enquadrar área fora dos tiles (faixas laterais vazias).
+ * @returns {{ minLon: number, maxLon: number }}
+ */
+function clipHomeLonToSpSatMbtiles(minLon, maxLon) {
+  const t = spSatMbtilesBounds;
+  if (!t) return { minLon, maxLon };
+  const { west, east } = t;
+  if (!Number.isFinite(west) || !Number.isFinite(east) || east <= west) {
+    return { minLon, maxLon };
+  }
+  let a = Math.max(minLon, west);
+  let b = Math.min(maxLon, east);
+  if (b <= a) {
+    return { minLon: west, maxLon: east };
+  }
+  return { minLon: a, maxLon: b };
+}
 
 /**
  * Verifica a disponibilidade do TileServer consultando o endpoint de metadados
  * do dataset (não depende de coordenadas específicas de tile).
  * Devolve os metadados em caso de sucesso, ou lança excepção se inacessível.
- * @returns {Promise<{minzoom: number, maxzoom: number}>}
+ * @returns {Promise<object>}
  */
-async function checkTileServerHealth() {
-  const res = await fetch(`${getLocalTilesBase()}/data/sp_sat.json`, {
+async function checkLocalRasterHealth(datasetId) {
+  const res = await fetch(`${getLocalTilesBase()}/data/${datasetId}.json`, {
     signal: AbortSignal.timeout(5000),
   });
   if (!res.ok) throw new Error(`TileServer respondeu HTTP ${res.status}`);
-  return res.json();
+  const meta = await res.json();
+  const b = meta.bounds;
+  if (Array.isArray(b) && b.length >= 4) {
+    const west = Number(b[0]);
+    const south = Number(b[1]);
+    const east = Number(b[2]);
+    const north = Number(b[3]);
+    if (
+      [west, south, east, north].every(Number.isFinite) &&
+      east > west &&
+      north > south
+    ) {
+      spSatMbtilesBounds = { west, south, east, north };
+    } else {
+      spSatMbtilesBounds = null;
+    }
+  } else {
+    spSatMbtilesBounds = null;
+  }
+  return meta;
 }
 
 // ── Busca no mapa (WFS — municípios e bairros). Filtros ficam para a parte tabular. ──
@@ -469,12 +855,128 @@ function onBairroSelected(bairroNome) {
   const sel = document.getElementById("search-bairro");
   const gj = sel._bairrosGeoJSON;
   if (!gj) return;
-  
+
   const f = gj.features.find((x) => (x.properties?.bairro_nome || "") === bairroNome);
-  if (f) {
-    fitMapToGeoJSONFeatureCollection({ type: "FeatureCollection", features: [f] });
-    setStatus(`Bairro focado: ${bairroNome}`);
+  if (!f) return;
+  fitMapToGeoJSONFeatureCollection({ type: "FeatureCollection", features: [f] });
+  map.once("moveend", () => {
+    const cfg = getEffectiveLayerZoomCfg();
+    enableBairrosEViasNoMapa();
+    if (map.getZoom() < cfg.viasEnableMin) {
+      map.setZoom(cfg.viasEnableMin);
+    }
+    setStatus(`Bairro focado: ${bairroNome} — bairros e vias activos.`);
+  });
+}
+
+/** Preferência: geocodificação em PostGIS vs Nominatim (localStorage). */
+const ADDRESS_SEARCH_LOCAL_KEY = "tabgis_geocode_local";
+
+/** Marcador temporário após geocodificação. */
+let addressSearchPulseMarker = null;
+
+function initAddressSearch() {
+  const input = document.getElementById("search-address");
+  const btn = document.getElementById("search-address-btn");
+  const ul = document.getElementById("search-address-results");
+  const localCb = document.getElementById("search-address-local");
+  const hintEl = document.querySelector(".search-address-hint");
+  if (!input || !btn || !ul) return;
+
+  function updateAddressSearchHint() {
+    if (!hintEl) return;
+    const local = localCb instanceof HTMLInputElement && localCb.checked;
+    hintEl.textContent = local
+      ? uiText(
+          "UI_SEARCH_ADDRESS_HINT_LOCAL",
+          "Busca só nomes de vias nos municípios-alvo (PostGIS). Sem número de porta. Não usa Internet."
+        )
+      : uiText(
+          "UI_SEARCH_ADDRESS_HINT",
+          "Busca em linha (Nominatim / OSM), com prioridade na região de São Paulo. Requer Internet."
+        );
   }
+
+  if (localCb instanceof HTMLInputElement) {
+    localCb.checked = localStorage.getItem(ADDRESS_SEARCH_LOCAL_KEY) === "1";
+    localCb.addEventListener("change", () => {
+      localStorage.setItem(ADDRESS_SEARCH_LOCAL_KEY, localCb.checked ? "1" : "0");
+      updateAddressSearchHint();
+    });
+  }
+  updateAddressSearchHint();
+
+  async function runSearch() {
+    const q = input.value.trim();
+    if (q.length < 3) {
+      setStatus(uiText("UI_SEARCH_ADDRESS_SHORT", "Digite pelo menos 3 caracteres."));
+      return;
+    }
+    ul.innerHTML = "";
+    ul.hidden = true;
+    const useLocal = localCb instanceof HTMLInputElement && localCb.checked;
+    const url = useLocal
+      ? `/api/geocode-local?q=${encodeURIComponent(q)}`
+      : `/api/geocode?q=${encodeURIComponent(q)}`;
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      const results = Array.isArray(data.results) ? data.results : [];
+      if (!results.length) {
+        setStatus(uiText("UI_SEARCH_ADDRESS_NONE", "Nenhum resultado encontrado."));
+        return;
+      }
+      results.forEach((item) => {
+        const li = document.createElement("li");
+        const hit = document.createElement("button");
+        hit.type = "button";
+        hit.className = "search-address-hit";
+        hit.textContent = item.display_name || "—";
+        hit.addEventListener("click", () => focusAddressSearchResult(item));
+        li.appendChild(hit);
+        ul.appendChild(li);
+      });
+      ul.hidden = false;
+    } catch (e) {
+      console.error(e);
+      setStatus(
+        useLocal
+          ? uiText("UI_SEARCH_ADDRESS_FAIL_LOCAL", "Falha na busca local (base de dados).")
+          : uiText("UI_SEARCH_ADDRESS_FAIL", "Falha na busca de endereço (rede ou serviço indisponível).")
+      );
+    }
+  }
+
+  function focusAddressSearchResult(item) {
+    const lat = item.lat;
+    const lon = item.lon;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    focusMapWithVias(lat, lon, MAP_FOCUS_ZOOM_ADDRESS);
+    if (addressSearchPulseMarker && map.hasLayer(addressSearchPulseMarker)) {
+      map.removeLayer(addressSearchPulseMarker);
+    }
+    addressSearchPulseMarker = L.circleMarker([lat, lon], {
+      radius: 9,
+      color: "#0284c7",
+      weight: 2,
+      fillColor: "#38bdf8",
+      fillOpacity: 0.88,
+    });
+    addressSearchPulseMarker.addTo(map);
+    window.setTimeout(() => {
+      if (addressSearchPulseMarker && map.hasLayer(addressSearchPulseMarker)) {
+        map.removeLayer(addressSearchPulseMarker);
+      }
+      addressSearchPulseMarker = null;
+    }, 14000);
+    ul.hidden = true;
+    setStatus(uiText("UI_SEARCH_ADDRESS_OK", "Endereço localizado no mapa."));
+  }
+
+  btn.addEventListener("click", runSearch);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runSearch();
+  });
 }
 
 // ── GetFeatureInfo (clique no mapa) ───────────────────────────────────────
@@ -549,6 +1051,81 @@ function gfiJsonToHtml(json) {
     .join("<hr/>");
 }
 
+function operDetailBodyEl() {
+  return document.getElementById("oper-detail-body");
+}
+
+function setOperDetailMapQuery(html, latlng) {
+  const body = operDetailBodyEl();
+  if (!body) return;
+  const title = uiText("UI_OP_DETAIL_MAP_QUERY", "Consulta ao mapa (GetFeatureInfo)");
+  const sub =
+    latlng != null
+      ? `<p class="oper-detail-meta">${escapeHtml(`${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`)}</p>`
+      : "";
+  body.innerHTML = `<h4 class="oper-detail-heading">${escapeHtml(title)}</h4>${sub}<div class="oper-detail-scroll oper-detail-scroll--html">${html}</div>`;
+}
+
+function renderOperDetailPlaceholder() {
+  const body = operDetailBodyEl();
+  if (!body) return;
+  body.innerHTML = `<p class="mock-hint oper-detail-empty">${escapeHtml(
+    uiText("UI_OP_DETAIL_EMPTY", "Selecione uma ordem, uma equipe no painel ou uma feição no mapa.")
+  )}</p>`;
+}
+
+function renderOperDetailWorkOrder(r) {
+  const body = operDetailBodyEl();
+  if (!body || !r) return;
+  const title = uiText("UI_OP_DETAIL_ORDER", "Ordem de serviço");
+  const loc = [r.municipality_name, r.neighborhood_name].filter(Boolean).join(" · ") || "—";
+  const lines = [
+    ["Código", r.order_code || `#${r.id}`],
+    ["Resumo", r.summary || "—"],
+    ["Estado", orderStatusLabel(r.status)],
+    ["Categoria", orderCategoryLabel(r.category)],
+    ["Tipo", orderTypeLabel(r.order_type)],
+    ["Alimentador", r.feeder_code || "—"],
+    ["Equipa", r.team_code || "—"],
+    ["Responsável", r.owner_username || "—"],
+    ["Bloqueio", r.locked_by_username || "—"],
+    ["Actualização", formatUpdatedCompact(r.updated_at)],
+    ["Local", loc],
+    ["Equipamento", r.equipment_code || "—"],
+    ["Descrição", r.description ? String(r.description).slice(0, 400) : "—"],
+  ];
+  const rows = lines
+    .map(
+      ([k, v]) =>
+        `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(String(v))}</td></tr>`
+    )
+    .join("");
+  body.innerHTML = `<h4 class="oper-detail-heading">${escapeHtml(title)}</h4><table class="oper-detail-table"><tbody>${rows}</tbody></table>`;
+}
+
+function renderOperDetailTeam(t) {
+  const body = operDetailBodyEl();
+  if (!body || !t) return;
+  const title = uiText("UI_OP_DETAIL_TEAM", "Equipa em campo");
+  const lines = [
+    ["Equipa", t.team_code || "—"],
+    ["Líder", t.leader_name || "—"],
+    ["Skill", t.skill || "—"],
+    ["Tipo", t.team_type || "—"],
+    ["Unidade", t.owner_org || "—"],
+    ["Zona", t.zone || "—"],
+    ["Membros", t.member_count != null ? String(t.member_count) : "—"],
+    ["Estado", teamStatusLabel(t.status)],
+  ];
+  const rows = lines
+    .map(
+      ([k, v]) =>
+        `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(String(v))}</td></tr>`
+    )
+    .join("");
+  body.innerHTML = `<h4 class="oper-detail-heading">${escapeHtml(title)}</h4><table class="oper-detail-table"><tbody>${rows}</tbody></table>`;
+}
+
 /**
  * Executa GetFeatureInfo WMS no ponto clicado.
  * Estratégia de fallback:
@@ -590,14 +1167,16 @@ async function getFeatureInfoAtEvent(ev) {
     // Tentativa 1: JSON estruturado
     let res = await fetch(buildUrl("application/json"));
     let text = await res.text();
+    let jsonParsedOk = false;
     try {
       const json = JSON.parse(text);
+      jsonParsedOk = true;
       html = gfiJsonToHtml(json);
     } catch {
       html = "";
     }
-    // Fallback: texto bruto (útil para respostas de erro do GeoServer < 4 KB)
-    if (!html && text.length && text.length < 4000) {
+    // Só mostrar corpo bruto se *não* for JSON válido (evita FeatureCollection vazio cru no ecrã)
+    if (!html && !jsonParsedOk && text.length && text.length < 4000) {
       html = `<pre>${escapeHtml(text)}</pre>`;
     }
     // Tentativa 2: text/html nativo do GeoServer
@@ -611,34 +1190,86 @@ async function getFeatureInfoAtEvent(ev) {
       `Falha ao consultar feição. Verifique GeoServer em ${geoserverBase} (ver docs/DEPLOY_POC.md).`
     )}</p>`;
   }
-  if (!html) html = "<p>Sem dados neste ponto.</p>";
+  if (!html) {
+    html = `<p>${escapeHtml(uiText("UI_GFI_EMPTY_POINT", "Nenhuma feição identificada neste ponto."))}</p>`;
+  }
   L.popup({ autoPanPaddingTopLeft: [0, 80] }).setLatLng(ev.latlng).setContent(html).openOn(map);
+  const appEl = document.querySelector(".app");
+  if (
+    appEl?.classList.contains("has-left-panel") &&
+    appEl.classList.contains("app--oper-layout-ccc")
+  ) {
+    setOperDetailMapQuery(html, ev.latlng);
+  }
 }
 
 // ── Inicialização ─────────────────────────────────────────────────────────
 
 // Função Home: visão dependente do estado do painel lateral (mesmos parâmetros que ao abrir a URL)
 function setHomeView() {
+  // `applyZoomPctBaselineFromCurrentView` fixa minZoom ao zoom actual; sem repor aqui, um Home
+  // subsequente pode precisar de mais zoom-out do que o minZoom permite e o fit falha em silêncio.
+  map.setMinZoom(MAP_ORIG_MIN_ZOOM);
   map.invalidateSize();
-  const split = document.querySelector(".app").classList.contains("has-left-panel");
+  const appEl = document.querySelector(".app");
+  const split = appEl?.classList.contains("has-left-panel");
+  const ccc = split && appEl?.classList.contains("app--oper-layout-ccc");
   requestAnimationFrame(() => {
-    if (split) {
+    map.invalidateSize();
+    const useLocalSat = map.hasLayer(satelliteLocalLayer) && spSatMbtilesBounds != null;
+    const lonFac = useLocalSat ? HOME_LOCAL_SAT_LON_INSET_FACTOR : 1;
+    if (ccc) {
+      let minLon = -47.2496;
+      let maxLon = -46.2513;
+      if (useLocalSat) {
+        const cl = clipHomeLonToSpSatMbtiles(minLon, maxLon);
+        minLon = cl.minLon;
+        maxLon = cl.maxLon;
+      }
       fitBoundsHomeInset(
-        -47.2496,
+        minLon,
         -24.1088,
-        -46.2513,
+        maxLon,
         -23.1966,
-        HOME_INSET_SPLIT
+        HOME_INSET_CCC,
+        lonFac
+      );
+    } else if (split) {
+      let minLon = -47.2496;
+      let maxLon = -46.2513;
+      if (useLocalSat) {
+        const cl = clipHomeLonToSpSatMbtiles(minLon, maxLon);
+        minLon = cl.minLon;
+        maxLon = cl.maxLon;
+      }
+      fitBoundsHomeInset(
+        minLon,
+        -24.1088,
+        maxLon,
+        -23.1966,
+        HOME_INSET_SPLIT,
+        lonFac
       );
     } else {
+      let minLon = -47.648;
+      let maxLon = -45.918;
+      if (useLocalSat) {
+        const cl = clipHomeLonToSpSatMbtiles(minLon, maxLon);
+        minLon = cl.minLon;
+        maxLon = cl.maxLon;
+      }
       fitBoundsHomeInset(
-        -47.6480,
+        minLon,
         -24.0674,
-        -45.9180,
+        maxLon,
         -23.2733,
-        HOME_INSET_FULL
+        HOME_INSET_FULL,
+        lonFac
       );
     }
+    window.setTimeout(() => {
+      applyZoomPctBaselineFromCurrentView();
+    }, 400);
   });
 }
 
@@ -654,10 +1285,14 @@ function runInitialMapLayout() {
     mapInitialStatusDone = true;
     setStatus("Mapa carregado.");
   }
+  setTimeout(() => {
+    refreshOmsMarkersForZoom();
+  }, 450);
 }
 
 map.whenReady(() => {
   requestAnimationFrame(runInitialMapLayout);
+  initMapZoomPercentIndicator();
 });
 
 // Respaldo: contentor flex às vezes só tem altura definitiva após pintura
@@ -665,6 +1300,8 @@ setTimeout(runInitialMapLayout, 400);
 
 document.getElementById("search-municipio").addEventListener("change", (e) => onMunicipioSelected(e.target.value));
 document.getElementById("search-bairro").addEventListener("change", (e) => onBairroSelected(e.target.value));
+initAddressSearch();
+initLayerZoomConfigUI();
 document.getElementById("btn-home").addEventListener("click", setHomeView);
 
 // Lógica do Painel Esquerdo (Operação)
@@ -672,14 +1309,44 @@ const btnOperacao = document.getElementById("btn-operacao");
 const btnCloseOperacao = document.getElementById("btn-close-operacao");
 const appContainer = document.querySelector(".app");
 
+function readOperLayoutMode() {
+  const v = localStorage.getItem(OPER_LAYOUT_STORAGE_KEY);
+  return v === "split" ? "split" : "ccc";
+}
+
+function writeOperLayoutMode(mode) {
+  localStorage.setItem(OPER_LAYOUT_STORAGE_KEY, mode === "split" ? "split" : "ccc");
+}
+
+function applyOperLayoutClasses() {
+  if (!appContainer.classList.contains("has-left-panel")) {
+    appContainer.classList.remove("app--oper-layout-ccc", "app--oper-layout-split");
+    return;
+  }
+  const mode = readOperLayoutMode();
+  appContainer.classList.toggle("app--oper-layout-ccc", mode === "ccc");
+  appContainer.classList.toggle("app--oper-layout-split", mode === "split");
+  const operCccCb = document.getElementById("oper-layout-ccc-focus");
+  if (operCccCb instanceof HTMLInputElement) operCccCb.checked = mode === "ccc";
+  if (mode === "ccc") renderOperDetailPlaceholder();
+  else {
+    const body = operDetailBodyEl();
+    if (body) body.innerHTML = "";
+  }
+}
+
 function toggleLeftPanel() {
   const isOpening = !appContainer.classList.contains("has-left-panel");
   appContainer.classList.toggle("has-left-panel");
-  
+  if (appContainer.classList.contains("has-left-panel")) {
+    applyOperLayoutClasses();
+  } else {
+    appContainer.classList.remove("app--oper-layout-ccc", "app--oper-layout-split");
+  }
+
   // Aguardar a transição CSS (300ms) para invalidar o tamanho do mapa
   setTimeout(() => {
     map.invalidateSize();
-    // Se o painel está sendo aberto, foca na capital de modo que fique bem enquadrada nos 50%
     if (isOpening) {
       setHomeView();
       loadWorkOrdersFromApi();
@@ -690,6 +1357,72 @@ function toggleLeftPanel() {
 
 btnOperacao.addEventListener("click", toggleLeftPanel);
 btnCloseOperacao.addEventListener("click", toggleLeftPanel);
+
+(function initOperLayoutPicker() {
+  const operCccCb = document.getElementById("oper-layout-ccc-focus");
+  if (!(operCccCb instanceof HTMLInputElement)) return;
+  operCccCb.checked = readOperLayoutMode() === "ccc";
+  operCccCb.addEventListener("change", () => {
+    writeOperLayoutMode(operCccCb.checked ? "ccc" : "split");
+    applyOperLayoutClasses();
+    setTimeout(() => {
+      map.invalidateSize();
+      setHomeView();
+      refreshOmsMarkersForZoom();
+    }, 320);
+  });
+})();
+
+(function initToggleMwmRoutesButton() {
+  const btn = document.getElementById("btn-toggle-mwm-routes");
+  if (!btn) return;
+  const labelSpan = btn.querySelector("span");
+  btn.addEventListener("click", () => {
+    const visible = map.hasLayer(mwmDemoCrewRoutesGroup);
+    if (visible) {
+      map.removeLayer(mwmDemoCrewRoutesGroup);
+      btn.classList.add("mock-btn-ir--secondary");
+      btn.setAttribute("aria-pressed", "false");
+      if (labelSpan) labelSpan.textContent = "Exibir equipes em rota";
+    } else {
+      loadMwmDemoFieldRoutes().then(() => {
+        mwmDemoCrewRoutesGroup.addTo(map);
+      });
+      btn.classList.remove("mock-btn-ir--secondary");
+      btn.setAttribute("aria-pressed", "true");
+      if (labelSpan) labelSpan.textContent = "Ocultar equipes em rota";
+    }
+  });
+})();
+
+(function initOmsOrdersTableSort() {
+  const thead = document.querySelector("#oms-orders-table thead");
+  if (!thead) return;
+  thead.addEventListener("click", (e) => {
+    const th = e.target.closest("th[data-wo-sort]");
+    if (!th || workOrdersListCache.length === 0) return;
+    const key = th.getAttribute("data-wo-sort");
+    if (!key) return;
+    if (omsSortState.key === key) {
+      omsSortState.dir = omsSortState.dir === "asc" ? "desc" : "asc";
+    } else {
+      omsSortState.key = key;
+      omsSortState.dir = "asc";
+    }
+    renderOmsOrderRowsToTbody(getOmsSortedRows());
+    updateOmsSortHeaderUI();
+    refreshOmsMarkersForZoom();
+    const lang = document.getElementById("select-language")?.value || "pt";
+    loadTranslations(lang);
+  });
+  thead.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const th = e.target.closest("th[data-wo-sort]");
+    if (!th) return;
+    e.preventDefault();
+    th.click();
+  });
+})();
 
 // Guias do painel Operação (OMS, MWM, IND, …)
 (function initOperacaoTabs() {
@@ -716,7 +1449,12 @@ btnCloseOperacao.addEventListener("click", toggleLeftPanel);
 
     if (id === "usr") loadUsersFromApi();
     if (id === "oms") loadWorkOrdersFromApi();
-    if (id === "mwm") loadTeamsFromApi();
+    if (id === "mwm") {
+      loadTeamsFromApi();
+      loadMwmDemoFieldRoutes().then(() => {
+        if (!map.hasLayer(mwmDemoCrewRoutesGroup)) mwmDemoCrewRoutesGroup.addTo(map);
+      });
+    }
     if (id === "aud") loadAuditArchiveFromApi();
   });
 })();
@@ -818,8 +1556,159 @@ function rebuildWorkOrderMarkers(rows) {
         r.team_code || ""
       )}</span>`
     );
+    m.on("click", () => {
+      const full = workOrderRowsById.get(String(r.id));
+      if (full) renderOperDetailWorkOrder(full);
+    });
     m.addTo(workOrderMarkersGroup);
   });
+}
+
+function mwmDemoRouteColor(vehicleType) {
+  const v = String(vehicleType || "").toUpperCase();
+  if (v === "MOTO") return "#f97316";
+  if (v === "CARRINHO") return "#0ea5e9";
+  return "#22c55e";
+}
+
+function mwmDemoVehicleDivIcon(vehicleType) {
+  const v = String(vehicleType || "").toUpperCase();
+  const sym = v === "MOTO" ? "\u{1F3CD}" : v === "CARRINHO" ? "\u{1F6D2}" : "\u{1F697}";
+  return L.divIcon({
+    className: "mwm-crew-vehicle-marker",
+    html: `<span class="mwm-crew-vehicle-marker__ic" title="">${sym}</span>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  });
+}
+
+/**
+ * Recarrega marcadores OMS: zoom alto = ordens; intermédio = por bairro; baixo = por município.
+ */
+async function refreshOmsMarkersForZoom() {
+  const z = map.getZoom();
+  /** @type {'municipio' | 'bairro' | 'detail'} */
+  let mode = "detail";
+  if (z <= OMS_ZOOM_MUNICIPIO_MAX) mode = "municipio";
+  else if (z <= OMS_ZOOM_BAIRRO_MAX) mode = "bairro";
+
+  if (mode === "detail") {
+    omsAggregateMarkersGroup.clearLayers();
+    omsMapDisplayMode = "detail";
+    rebuildWorkOrderMarkers(getOmsSortedRows());
+    return;
+  }
+
+  omsMapDisplayMode = mode;
+  workOrderMarkersGroup.clearLayers();
+  omsAggregateMarkersGroup.clearLayers();
+
+  const token = ++omsAggregateFetchToken;
+  try {
+    const res = await fetch(`/api/oms/work-orders/aggregate?zoom=${encodeURIComponent(String(z))}`);
+    if (!res.ok) throw new Error("aggregate bad response");
+    const rows = await res.json();
+    if (token !== omsAggregateFetchToken) return;
+
+    rows.forEach((g) => {
+      const lat = g.center_lat != null ? parseFloat(g.center_lat) : NaN;
+      const lng = g.center_lng != null ? parseFloat(g.center_lng) : NaN;
+      if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+      const n = parseInt(String(g.orders_count), 10) || 0;
+      const rad = Math.min(10 + Math.sqrt(n) * 1.1, 22);
+      const hint = g.area_hint != null && String(g.area_hint).trim() !== "" ? String(g.area_hint).trim() : "";
+      const muni = g.municipality_name || "";
+      const bai = g.neighborhood_name || "";
+      const adminTitle = bai && muni ? `${bai} · ${muni}` : muni || bai;
+      const title = hint || adminTitle || uiText("UI_OP_AGG_CLUSTER_FALLBACK", "Agrupamento");
+      const cm = L.circleMarker([lat, lng], {
+        radius: rad,
+        color: "#38bdf8",
+        weight: 2,
+        fillColor: "#0284c7",
+        fillOpacity: 0.78,
+      });
+      cm.bindPopup(
+        `<strong>${escapeHtml(title)}</strong><br/>` +
+          `${n} ${escapeHtml(uiText("UI_OP_AGG_ORDERS_COUNT", "ordens"))}`
+      );
+      cm.bindTooltip(`${n} — ${escapeHtml(title)}`, { direction: "top" });
+      cm.addTo(omsAggregateMarkersGroup);
+    });
+  } catch (e) {
+    if (token === omsAggregateFetchToken) {
+      console.error("refreshOmsMarkersForZoom", e);
+    }
+  }
+}
+
+async function loadMwmDemoFieldRoutes() {
+  try {
+    const res = await fetch("/api/mwm/demo-routes");
+    if (!res.ok) throw new Error("demo-routes bad response");
+    const routes = await res.json();
+    mwmDemoCrewRoutesGroup.clearLayers();
+    routes.forEach((r) => {
+      const pts = Array.isArray(r.points) ? r.points : [];
+      const latlngs = pts
+        .map((p) => [parseFloat(p.lat), parseFloat(p.lng)])
+        .filter((ll) => ll.every((v) => Number.isFinite(v)));
+      if (latlngs.length < 2) return;
+      const color = mwmDemoRouteColor(r.vehicle_type);
+      const lineOpts = { color, weight: 3, opacity: 0.88 };
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (r.route_date && String(r.route_date).slice(0, 10) !== todayStr) lineOpts.dashArray = "6 4";
+      const poly = L.polyline(latlngs, lineOpts);
+      poly.bindPopup(
+        `<strong>${escapeHtml(r.crew_code || "")}</strong> ${escapeHtml(r.vehicle_type || "")}<br/>` +
+          `${escapeHtml(r.label || "")}<br/><span class="mock-hint">${escapeHtml(String(r.route_date || "").
+            slice(0, 10))}</span>`
+      );
+      poly.addTo(mwmDemoCrewRoutesGroup);
+      const last = latlngs[latlngs.length - 1];
+      const mk = L.marker(last, { icon: mwmDemoVehicleDivIcon(r.vehicle_type) });
+      mk.bindTooltip(`${escapeHtml(r.crew_code || "")} — ${escapeHtml(r.crew_name || "")}`, {
+        direction: "top",
+      });
+      mk.addTo(mwmDemoCrewRoutesGroup);
+    });
+  } catch (e) {
+    console.error("loadMwmDemoFieldRoutes", e);
+  }
+}
+
+map.on("zoomend", () => {
+  refreshOmsMarkersForZoom();
+});
+
+/**
+ * Activa checkboxes e camadas de bairros + vias (sem validar zoom — usar após `setView` com z adequado).
+ */
+function enableBairrosEViasNoMapa() {
+  const cbBairros = document.getElementById("bairros_alvo_sp");
+  const cbVias = document.getElementById("vias_alvo_sp");
+  if (cbBairros) cbBairros.checked = true;
+  if (cbVias) cbVias.checked = true;
+  if (!map.hasLayer(bairrosAlvoLayer)) bairrosAlvoLayer.addTo(map);
+  if (!map.hasLayer(viasAlvoLayer)) viasAlvoLayer.addTo(map);
+}
+
+/**
+ * Centra o mapa com zoom útil para vias (13–MAP_FOCUS_MAX_ZOOM) e garante bairros + vias visíveis.
+ * @param {number} lat
+ * @param {number} lng
+ * @param {number} targetZoom - desejado; será clampeado e alinhado a zoomSnap
+ */
+function focusMapWithVias(lat, lng, targetZoom) {
+  const cfg = getEffectiveLayerZoomCfg();
+  const raw = Math.min(
+    MAP_FOCUS_MAX_ZOOM,
+    Math.max(cfg.viasEnableMin, Number(targetZoom))
+  );
+  const snap = map.options.zoomSnap > 0 ? map.options.zoomSnap : 1;
+  const z = Math.round(raw / snap) * snap;
+  map.setView([lat, lng], z);
+  enableBairrosEViasNoMapa();
 }
 
 /**
@@ -832,16 +1721,10 @@ function focusOperationalMapOnWorkOrder(lat, lng) {
     setStatus(uiText("UI_OP_STATUS_ORDER_MAP_NO_COORD", "Esta ordem não tem coordenadas de foco."));
     return;
   }
-  map.setView([latNum, lngNum], 14);
+  focusMapWithVias(latNum, lngNum, MAP_FOCUS_ZOOM_ORDER);
   const cbMuni = document.getElementById("municipios_alvo_sp");
-  const cbBairros = document.getElementById("bairros_alvo_sp");
-  const cbVias = document.getElementById("vias_alvo_sp");
   if (cbMuni) cbMuni.checked = false;
   if (map.hasLayer(municipiosAlvoLayer)) map.removeLayer(municipiosAlvoLayer);
-  if (cbBairros) cbBairros.checked = true;
-  if (cbVias) cbVias.checked = true;
-  if (!map.hasLayer(bairrosAlvoLayer)) bairrosAlvoLayer.addTo(map);
-  if (!map.hasLayer(viasAlvoLayer)) viasAlvoLayer.addTo(map);
   setStatus(
     uiText(
       "UI_OP_STATUS_ORDER_MAP_FOCUS",
@@ -870,10 +1753,33 @@ function woFlagsCell(r) {
   )}</span>`;
 }
 
-/** Contador compacto: símbolo + valor (tooltip no contentor). */
-function woCounter(sym, title, value) {
-  const v = value != null && value !== "" && !Number.isNaN(Number(value)) ? String(value) : "—";
-  return `<span class="wo-ctr" title="${escapeHtml(title)}"><span class="wo-ctr-sym" aria-hidden="true">${sym}</span><span class="wo-ctr-val">${escapeHtml(v)}</span></span>`;
+/** Valor numérico na célula (ícone fica no cabeçalho da coluna). */
+function woNumericCell(value) {
+  if (value == null || value === "" || Number.isNaN(Number(value))) return "—";
+  return escapeHtml(String(value));
+}
+
+/** Horas desde início (API `hours_open` ou cálculo a partir de start_time / started_at / created_at). */
+function workOrderHoursOpen(r) {
+  const fromApi = r.hours_open;
+  if (fromApi != null && fromApi !== "" && !Number.isNaN(Number(fromApi))) {
+    return Math.round(Number(fromApi) * 10) / 10;
+  }
+  const startIso = r.start_time || r.started_at || r.created_at;
+  if (startIso == null || startIso === "") return null;
+  const t = Date.parse(String(startIso));
+  if (!Number.isFinite(t)) return null;
+  return Math.round(((Date.now() - t) / 3600000) * 10) / 10;
+}
+
+/** Prioridade tipo P1…P3 → dígito; caso contrário tenta número. */
+function parsePriorityNumeric(priority) {
+  if (priority == null || priority === "") return null;
+  const s = String(priority).trim();
+  const m = s.match(/^P\s*(\d+)$/i);
+  if (m) return parseInt(m[1], 10);
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
 }
 
 function formatStartCompact(iso) {
@@ -888,20 +1794,33 @@ function orderTypeAbbr(orderType) {
   return t.slice(0, 3).toUpperCase();
 }
 
-function woPriPosCell(r) {
-  const pri = r.priority != null && String(r.priority).trim() !== "" ? String(r.priority).trim() : "—";
-  const priTitle = uiText("UI_TT_PRIORITY_LETTER", "Prioridade operacional (P1…)");
-  const posTitle = uiText("UI_TT_POS_SCORE", "POS / peso numérico para triagem");
-  const posVal = r.priority_score != null ? String(r.priority_score) : "—";
-  return `<span class="wo-pripos"><abbr class="wo-pri-abbr" title="${escapeHtml(priTitle)}">${escapeHtml(pri)}</abbr><span class="wo-pos-wrap" title="${escapeHtml(posTitle)}"><span class="wo-pos-ic" aria-hidden="true">⌖</span><span class="wo-pos-val">${escapeHtml(posVal)}</span></span></span>`;
+function orderCategoryAbbr(category) {
+  const t = (category || "").toLowerCase();
+  if (!t) return "—";
+  return t.slice(0, 3).toUpperCase();
 }
 
-function woCallbackPhonesCell(r) {
-  const humOn = !!r.flag_customer_callback;
-  const autoOn = !!r.callback_auto;
-  const th = uiText("UI_TT_CALLBACK_HUM", "Callback humano (operador / contacto directo)");
-  const ta = uiText("UI_TT_CALLBACK_AUTO", "Callback automático (IVR, SMS, BOT)");
-  return `<span class="wo-cb-row"><span class="wo-cb wo-cb--hum ${humOn ? "wo-cb--on" : ""}" title="${escapeHtml(th)}">☎</span><span class="wo-cb wo-cb--auto ${autoOn ? "wo-cb--on" : ""}" title="${escapeHtml(ta)}">⚙</span></span>`;
+/** Última actualização (grelha): dd/mm HH:mm */
+function formatUpdatedCompact(iso) {
+  if (iso == null) return "—";
+  const s = String(iso).replace("T", " ").replace(/\.\d{3}Z?$/, "");
+  if (s.length < 16) return s.slice(0, 16);
+  return `${s.slice(8, 10)}/${s.slice(5, 7)} ${s.slice(11, 16)}`;
+}
+
+/** Uma linha de descrição técnica para a grelha. */
+function formatDescriptionGridLine(desc, maxLen) {
+  const n = maxLen != null ? maxLen : 52;
+  if (desc == null || String(desc).trim() === "") return "—";
+  const s = String(desc).replace(/\s+/g, " ").trim();
+  return s.length > n ? `${s.slice(0, n - 1)}…` : s;
+}
+
+function woLockCell(r) {
+  const lu = r.locked_by_username;
+  if (!lu) return "—";
+  const short = lu.length > 9 ? `${lu.slice(0, 8)}…` : lu;
+  return `<span class="wo-lock" title="${escapeHtml(lu)}"><span class="wo-lock-ic" aria-hidden="true">🔒</span>${escapeHtml(short)}</span>`;
 }
 
 async function resolvePocLockUserId() {
@@ -934,6 +1853,184 @@ function setUsrStatusMessage(msg, isError) {
   el.style.color = isError ? "var(--danger, #f87171)" : "";
 }
 
+function omsSortScalar(r, key) {
+  switch (key) {
+    case "code":
+      return (r.order_code || "").toLowerCase();
+    case "start":
+      return Date.parse(String(r.start_time || r.created_at || "")) || 0;
+    case "hours":
+      return workOrderHoursOpen(r) ?? 0;
+    case "type":
+      return (r.order_type || "").toLowerCase();
+    case "category":
+      return (r.category || "").toLowerCase();
+    case "feeder":
+      return (r.feeder_code || "").toLowerCase();
+    case "updated":
+      return Date.parse(String(r.updated_at || "")) || 0;
+    case "lock":
+      return (r.locked_by_username || "").toLowerCase();
+    case "descr":
+      return (r.description || "").toLowerCase();
+    case "org":
+      return (r.organization_label || "").toLowerCase();
+    case "loc":
+      return [r.municipality_name, r.neighborhood_name].filter(Boolean).join(" ").toLowerCase();
+    case "equip":
+      return (r.equipment_code || "").toLowerCase();
+    case "affected":
+      return Number(r.affected_customers_count) || 0;
+    case "complaints":
+      return Number(r.complaints_linked_count) || 0;
+    case "flags":
+      return (!!r.flag_safety_risk ? 4 : 0) + (!!r.flag_critical_infra ? 2 : 0);
+    case "priority": {
+      const n = parsePriorityNumeric(r.priority);
+      return n == null ? -1e9 : n;
+    }
+    case "pos": {
+      const n = Number(r.priority_score);
+      return Number.isFinite(n) ? n : -1e9;
+    }
+    case "cb_hum":
+      return r.flag_customer_callback ? 1 : 0;
+    case "cb_auto":
+      return r.callback_auto ? 1 : 0;
+    case "team":
+      return (r.team_code || "").toLowerCase();
+    case "owner":
+      return (r.owner_username || "").toLowerCase();
+    case "status":
+      return (r.status || "").toLowerCase();
+    case "summary":
+      return (r.summary || "").toLowerCase();
+    default:
+      return "";
+  }
+}
+
+function compareOmsRows(a, b, key, dir) {
+  const mul = dir === "desc" ? -1 : 1;
+  const va = omsSortScalar(a, key);
+  const vb = omsSortScalar(b, key);
+  if (typeof va === "number" && typeof vb === "number") {
+    if (va !== vb) return mul * (va < vb ? -1 : 1);
+  } else {
+    const c = String(va).localeCompare(String(vb), "pt", { numeric: true, sensitivity: "base" });
+    if (c !== 0) return mul * c;
+  }
+  return Number(a.id) - Number(b.id);
+}
+
+function sortWorkOrdersForDisplay(rows, key, dir) {
+  if (!key || !rows.length) return rows;
+  return [...rows].sort((a, b) => compareOmsRows(a, b, key, dir));
+}
+
+function getOmsSortedRows() {
+  return sortWorkOrdersForDisplay(workOrdersListCache, omsSortState.key, omsSortState.dir);
+}
+
+function updateOmsSortHeaderUI() {
+  const thead = document.querySelector("#oms-orders-table thead");
+  if (!thead) return;
+  thead.querySelectorAll("th[data-wo-sort]").forEach((th) => {
+    th.classList.remove("wo-sortable--asc", "wo-sortable--desc");
+    th.removeAttribute("aria-sort");
+  });
+  if (!omsSortState.key) return;
+  const th = thead.querySelector(`th[data-wo-sort="${omsSortState.key}"]`);
+  if (!th) return;
+  const asc = omsSortState.dir === "asc";
+  th.classList.add(asc ? "wo-sortable--asc" : "wo-sortable--desc");
+  th.setAttribute("aria-sort", asc ? "ascending" : "descending");
+}
+
+function buildWorkOrderTr(r) {
+  const tr = document.createElement("tr");
+  tr.className = "order-row-api";
+  tr.setAttribute("data-order-id", String(r.id));
+  tr.setAttribute("data-priority", r.priority != null ? String(r.priority) : "—");
+  tr.setAttribute(
+    "data-created",
+    r.created_at ? String(r.created_at).replace("T", " ").slice(0, 16) : "—"
+  );
+  tr.setAttribute("data-team", r.team_code ? `${r.team_code} — ${r.team_name || ""}`.trim() : "—");
+  tr.setAttribute("data-owner", r.owner_username || "—");
+  tr.setAttribute("data-locked", r.locked_by_username || "—");
+  tr.setAttribute("role", "button");
+  tr.tabIndex = 0;
+  const statusSpan = document.createElement("span");
+  statusSpan.className = orderStatusBadgeClass(r.status);
+  statusSpan.textContent = orderStatusLabel(r.status);
+  const lat = r.focus_lat != null ? parseFloat(r.focus_lat) : NaN;
+  const lng = r.focus_lng != null ? parseFloat(r.focus_lng) : NaN;
+  const hasPos = !Number.isNaN(lat) && !Number.isNaN(lng);
+  const mapBtn = hasPos
+    ? `<button type="button" class="mock-btn-ir mock-btn-wo-map" data-lat="${lat}" data-lng="${lng}" title="${escapeHtml(
+        uiText("UI_OP_GO_MAP_ORDER", "Ir para o mapa (bairros e vias)")
+      )}">${i18nCache.UI_OP_GO_MAP || "Ir para"}</button>`
+    : `<span class="mock-hint">—</span>`;
+  const affTitle = uiText("UI_TT_AFFECTED", "Número de clientes afectados (decisório)");
+  const compTitle = uiText("UI_TT_COMPLAINTS", "Reclamações ligadas a esta ordem");
+  const hoursTitle = uiText("UI_TT_HOURS_OPEN", "Tempo em curso (horas desde o início)");
+  const catTitle = uiText("UI_TT_CATEGORY_GRID", "Categoria operacional (reclamação, reparo, …)");
+  const updTitle = uiText("UI_TT_GRID_UPDATED", "Última actualização do registo");
+  const lockTitle = uiText("UI_TT_GRID_LOCK", "Bloqueio de edição (outro utilizador)");
+  const descTitle = uiText("UI_TT_GRID_DESC", "Descrição técnica (primeira linha)");
+  const mun = r.municipality_name || "—";
+  const bai = r.neighborhood_name || "—";
+  const loc = mun === "—" && bai === "—" ? "—" : `${mun} · ${bai}`;
+  const priNum = parsePriorityNumeric(r.priority);
+  const priDisp = priNum != null ? String(priNum) : "—";
+  const posRaw =
+    r.priority_score != null && !Number.isNaN(Number(r.priority_score))
+      ? String(r.priority_score)
+      : "—";
+  const cbHum = r.flag_customer_callback ? "1" : "0";
+  const cbAuto = r.callback_auto ? "1" : "0";
+  const descLine = formatDescriptionGridLine(r.description, 48);
+  const teamTitle = [r.team_code, r.team_name].filter(Boolean).join(" — ") || "";
+  tr.innerHTML = `
+    <td class="wo-sticky-code">${escapeHtml(r.order_code)}</td>
+    <td class="wo-start">${escapeHtml(formatStartCompact(r.start_time || r.created_at))}</td>
+    <td class="wo-num-cell" title="${escapeHtml(hoursTitle)}">${woNumericCell(workOrderHoursOpen(r))}</td>
+    <td data-col="status"></td>
+    <td><abbr title="${escapeHtml(catTitle)}: ${escapeHtml(orderCategoryLabel(r.category))}">${escapeHtml(orderCategoryAbbr(r.category))}</abbr></td>
+    <td><abbr title="${escapeHtml(orderTypeLabel(r.order_type))}">${escapeHtml(orderTypeAbbr(r.order_type))}</abbr></td>
+    <td class="wo-ellipsis" title="${escapeHtml(r.organization_label || "")}">${escapeHtml(r.organization_label || "—")}</td>
+    <td class="wo-ellipsis" title="${escapeHtml(loc)}">${escapeHtml(loc)}</td>
+    <td class="wo-ellipsis">${escapeHtml(r.equipment_code || "—")}</td>
+    <td class="wo-ellipsis" title="${escapeHtml(r.feeder_code || "")}">${escapeHtml(r.feeder_code || "—")}</td>
+    <td class="wo-num-cell" title="${escapeHtml(affTitle)}">${woNumericCell(r.affected_customers_count)}</td>
+    <td class="wo-num-cell" title="${escapeHtml(compTitle)}">${woNumericCell(r.complaints_linked_count)}</td>
+    <td class="wo-icon-cell">${woFlagsCell(r)}</td>
+    <td class="wo-num-cell" title="${escapeHtml(uiText("UI_TT_PRIORITY_LETTER", "Prioridade operacional (P1…)"))}">${escapeHtml(priDisp)}</td>
+    <td class="wo-num-cell" title="${escapeHtml(uiText("UI_TT_POS_SCORE", "POS / peso numérico para triagem"))}">${escapeHtml(posRaw)}</td>
+    <td class="wo-num-cell" title="${escapeHtml(uiText("UI_TT_CALLBACK_HUM", "Callback humano (operador / contacto directo)"))}">${cbHum}</td>
+    <td class="wo-num-cell" title="${escapeHtml(uiText("UI_TT_CALLBACK_AUTO", "Callback automático (IVR, SMS, BOT)"))}">${cbAuto}</td>
+    <td class="wo-ellipsis" title="${escapeHtml(teamTitle)}">${escapeHtml(r.team_code || "—")}</td>
+    <td class="wo-ellipsis">${escapeHtml(r.owner_username || "—")}</td>
+    <td class="wo-start wo-muted" title="${escapeHtml(updTitle)}">${escapeHtml(formatUpdatedCompact(r.updated_at))}</td>
+    <td class="wo-lock-cell wo-ellipsis" title="${escapeHtml(lockTitle)}">${woLockCell(r)}</td>
+    <td class="wo-desc-cell wo-ellipsis" title="${escapeHtml(descTitle)}">${escapeHtml(descLine)}</td>
+    <td class="wo-summary-cell">${escapeHtml(r.summary || "—")}</td>
+    <td><button type="button" class="mock-btn-open-order" data-i18n="UI_OP_OPEN_DETAIL">${i18nCache.UI_OP_OPEN_DETAIL || "Folha"}</button></td>
+    <td>${mapBtn}</td>
+  `;
+  const statusTd = tr.querySelector('td[data-col="status"]');
+  if (statusTd) statusTd.appendChild(statusSpan);
+  return tr;
+}
+
+function renderOmsOrderRowsToTbody(rows) {
+  const tbody = document.getElementById("oms-orders-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  rows.forEach((r) => tbody.appendChild(buildWorkOrderTr(r)));
+}
+
 async function loadWorkOrdersFromApi() {
   const tbody = document.getElementById("oms-orders-tbody");
   if (!tbody) return;
@@ -942,63 +2039,11 @@ async function loadWorkOrdersFromApi() {
     const res = await fetch("/api/work-orders");
     if (!res.ok) throw new Error("bad response");
     const rows = await res.json();
-    tbody.innerHTML = "";
-    rows.forEach((r) => {
-      const tr = document.createElement("tr");
-      tr.className = "order-row-api";
-      tr.setAttribute("data-order-id", String(r.id));
-      tr.setAttribute("data-priority", r.priority != null ? String(r.priority) : "—");
-      tr.setAttribute(
-        "data-created",
-        r.created_at ? String(r.created_at).replace("T", " ").slice(0, 16) : "—"
-      );
-      tr.setAttribute("data-team", r.team_code ? `${r.team_code} — ${r.team_name || ""}`.trim() : "—");
-      tr.setAttribute("data-owner", r.owner_username || "—");
-      tr.setAttribute("data-locked", r.locked_by_username || "—");
-      tr.setAttribute("role", "button");
-      tr.tabIndex = 0;
-      const statusSpan = document.createElement("span");
-      statusSpan.className = orderStatusBadgeClass(r.status);
-      statusSpan.textContent = orderStatusLabel(r.status);
-      const lat = r.focus_lat != null ? parseFloat(r.focus_lat) : NaN;
-      const lng = r.focus_lng != null ? parseFloat(r.focus_lng) : NaN;
-      const hasPos = !Number.isNaN(lat) && !Number.isNaN(lng);
-      const mapBtn = hasPos
-        ? `<button type="button" class="mock-btn-ir mock-btn-wo-map" data-lat="${lat}" data-lng="${lng}" title="${escapeHtml(
-            uiText("UI_OP_GO_MAP_ORDER", "Ir para o mapa (bairros e vias)")
-          )}">${i18nCache.UI_OP_GO_MAP || "Ir para"}</button>`
-        : `<span class="mock-hint">—</span>`;
-      const affTitle = uiText("UI_TT_AFFECTED", "Número de clientes afectados (decisório)");
-      const compTitle = uiText("UI_TT_COMPLAINTS", "Reclamações ligadas a esta ordem");
-      const hoursTitle = uiText("UI_TT_HOURS_OPEN", "Tempo em curso (horas desde o início)");
-      const mun = r.municipality_name || "—";
-      const bai = r.neighborhood_name || "—";
-      const loc = mun === "—" && bai === "—" ? "—" : `${mun} · ${bai}`;
-      tr.innerHTML = `
-        <td>${escapeHtml(r.order_code)}</td>
-        <td class="wo-start">${escapeHtml(formatStartCompact(r.start_time || r.created_at))}</td>
-        <td class="wo-icon-cell">${woCounter("⏱", hoursTitle, r.hours_open)}</td>
-        <td><abbr title="${escapeHtml(orderTypeLabel(r.order_type))}">${escapeHtml(orderTypeAbbr(r.order_type))}</abbr></td>
-        <td class="wo-ellipsis" title="${escapeHtml(r.organization_label || "")}">${escapeHtml(r.organization_label || "—")}</td>
-        <td class="wo-ellipsis" title="${escapeHtml(loc)}">${escapeHtml(loc)}</td>
-        <td class="wo-ellipsis">${escapeHtml(r.equipment_code || "—")}</td>
-        <td class="wo-icon-cell">${woCounter("⌂", affTitle, r.affected_customers_count)}</td>
-        <td class="wo-icon-cell">${woCounter("◆", compTitle, r.complaints_linked_count)}</td>
-        <td class="wo-icon-cell">${woFlagsCell(r)}</td>
-        <td class="wo-pripos-cell">${woPriPosCell(r)}</td>
-        <td class="wo-icon-cell">${woCallbackPhonesCell(r)}</td>
-        <td>${escapeHtml(r.team_code || "—")}</td>
-        <td>${escapeHtml(r.owner_username || "—")}</td>
-        <td data-col="status"></td>
-        <td class="wo-summary-cell">${escapeHtml(r.summary || "—")}</td>
-        <td><button type="button" class="mock-btn-open-order" data-i18n="UI_OP_OPEN_DETAIL">${i18nCache.UI_OP_OPEN_DETAIL || "Folha"}</button></td>
-        <td>${mapBtn}</td>
-      `;
-      const statusTd = tr.querySelector('td[data-col="status"]');
-      if (statusTd) statusTd.appendChild(statusSpan);
-      tbody.appendChild(tr);
-    });
-    rebuildWorkOrderMarkers(rows);
+    workOrdersListCache = rows;
+    workOrderRowsById = new Map(rows.map((r) => [String(r.id), r]));
+    renderOmsOrderRowsToTbody(getOmsSortedRows());
+    updateOmsSortHeaderUI();
+    refreshOmsMarkersForZoom();
     setOmsStatusMessage(
       rows.length ? "" : i18nCache.UI_OP_NO_ORDERS || "Sem ordens na base.",
       false
@@ -1006,6 +2051,11 @@ async function loadWorkOrdersFromApi() {
     const lang = document.getElementById("select-language")?.value || "pt";
     loadTranslations(lang);
   } catch {
+    workOrdersListCache = [];
+    workOrderRowsById = new Map();
+    tbody.innerHTML = "";
+    updateOmsSortHeaderUI();
+    refreshOmsMarkersForZoom();
     setOmsStatusMessage(
       "Falha ao carregar ordens. Verifique o serviço API e a base de dados (ver docs/DEPLOY_POC.md).",
       true
@@ -1051,7 +2101,7 @@ function setAuditStatusMessage(msg, isError) {
 async function loadTeamsFromApi() {
   const tbody = document.getElementById("teams-tbody");
   if (!tbody) return;
-  setTeamsStatusMessage(i18nCache.UI_OP_STATUS_LOADING_TEAMS || "A carregar equipas…", false);
+  setTeamsStatusMessage(i18nCache.UI_OP_STATUS_LOADING_TEAMS || "Carregando equipes…", false);
   try {
     const res = await fetch("/api/teams");
     if (!res.ok) throw new Error("bad response");
@@ -1082,14 +2132,26 @@ async function loadTeamsFromApi() {
         <td>${mapBtn}</td>
       `;
       tr.querySelector("td:nth-child(10)").appendChild(statusSpan);
+      tr.classList.add("team-row-api");
+      tr.dataset.teamCode = r.team_code ?? "";
+      tr.dataset.leaderName = r.leader_name ?? "";
+      tr.dataset.skill = r.skill ?? "";
+      tr.dataset.teamType = r.team_type ?? "";
+      tr.dataset.ownerOrg = r.owner_org ?? "";
+      tr.dataset.zone = r.zone ?? "";
+      tr.dataset.memberCount =
+        r.member_count != null && r.member_count !== "" ? String(r.member_count) : "";
+      tr.dataset.status = r.status ?? "";
+      tr.setAttribute("role", "button");
+      tr.tabIndex = 0;
       tbody.appendChild(tr);
     });
-    setTeamsStatusMessage(rows.length ? "" : i18nCache.UI_OP_NO_TEAMS || "Sem equipas registadas.", false);
+    setTeamsStatusMessage(rows.length ? "" : i18nCache.UI_OP_NO_TEAMS || "Sem equipes registradas.", false);
     const lang = document.getElementById("select-language")?.value || "pt";
     loadTranslations(lang);
   } catch {
     setTeamsStatusMessage(
-      "Falha ao carregar equipas. Verifique o serviço API (ver docs/DEPLOY_POC.md).",
+      "Falha ao carregar equipes. Verifique o serviço API (ver docs/DEPLOY_POC.md).",
       true
     );
   }
@@ -1288,6 +2350,22 @@ async function openOrderSheetModal(orderId) {
   }
 }
 
+function teamRowToDetailObject(tr) {
+  return {
+    team_code: tr.dataset.teamCode || "",
+    leader_name: tr.dataset.leaderName || "",
+    skill: tr.dataset.skill || "",
+    team_type: tr.dataset.teamType || "",
+    owner_org: tr.dataset.ownerOrg || "",
+    zone: tr.dataset.zone || "",
+    member_count:
+      tr.dataset.memberCount != null && tr.dataset.memberCount !== ""
+        ? Number(tr.dataset.memberCount)
+        : null,
+    status: tr.dataset.status || "",
+  };
+}
+
 (function initOperacaoPanelActions() {
   const panels = document.querySelector(".operacao-panels");
   if (!panels) return;
@@ -1307,10 +2385,10 @@ async function openOrderSheetModal(orderId) {
       const lat = parseFloat(irBtn.getAttribute("data-lat") || "");
       const lng = parseFloat(irBtn.getAttribute("data-lng") || "");
       if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-        map.setView([lat, lng], 15);
+        focusMapWithVias(lat, lng, MAP_FOCUS_ZOOM_TEAM);
         setStatus(
           i18nCache.UI_OP_STATUS_MAP_CENTERED ||
-            "Mapa centrado na última posição conhecida da equipa."
+            "Mapa centrado na última posição conhecida da equipe."
         );
       }
       return;
@@ -1321,24 +2399,59 @@ async function openOrderSheetModal(orderId) {
       e.stopPropagation();
       const row = openBtn.closest(".order-row-api");
       const id = row?.getAttribute("data-order-id");
+      const full = id ? workOrderRowsById.get(String(id)) : null;
+      if (full) renderOperDetailWorkOrder(full);
       if (id) openOrderSheetModal(id);
+      return;
+    }
+
+    const teamRow = e.target.closest(".team-row-api");
+    if (teamRow && !e.target.closest("button")) {
+      renderOperDetailTeam(teamRowToDetailObject(teamRow));
       return;
     }
 
     const row = e.target.closest(".order-row-api");
     if (row && !e.target.closest("button")) {
       const id = row.getAttribute("data-order-id");
-      if (id) openOrderSheetModal(id);
+      const full = id ? workOrderRowsById.get(String(id)) : null;
+      if (full) renderOperDetailWorkOrder(full);
     }
   });
 
+  panels.addEventListener("dblclick", (e) => {
+    const row = e.target.closest(".order-row-api");
+    if (!row || e.target.closest("button")) return;
+    const id = row.getAttribute("data-order-id");
+    if (!id) return;
+    const full = workOrderRowsById.get(String(id));
+    if (full) renderOperDetailWorkOrder(full);
+    openOrderSheetModal(id);
+  });
+
   panels.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter" && e.key !== " ") return;
+    const teamRow = e.target.closest?.(".team-row-api");
+    if (teamRow && !e.target.closest("button")) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      renderOperDetailTeam(teamRowToDetailObject(teamRow));
+      return;
+    }
     const row = e.target.closest?.(".order-row-api");
     if (!row || e.target.closest("button")) return;
+    if (e.key === "Enter" && e.ctrlKey) {
+      e.preventDefault();
+      const id = row.getAttribute("data-order-id");
+      const full = id ? workOrderRowsById.get(String(id)) : null;
+      if (full) renderOperDetailWorkOrder(full);
+      if (id) openOrderSheetModal(id);
+      return;
+    }
+    if (e.key !== "Enter" && e.key !== " ") return;
     e.preventDefault();
     const id = row.getAttribute("data-order-id");
-    if (id) openOrderSheetModal(id);
+    const full = id ? workOrderRowsById.get(String(id)) : null;
+    if (full) renderOperDetailWorkOrder(full);
   });
 })();
 
@@ -1517,8 +2630,11 @@ document.getElementById("form-new-user")?.addEventListener("submit", async (ev) 
 
 // Lógica do Modal de Traduções (Configurações)
 const modalTranslations = document.getElementById("modal-translations");
+const modalVisualization = document.getElementById("modal-visualization");
 const btnOpenTranslations = document.getElementById("btn-open-translations");
 const btnCloseTranslations = document.getElementById("btn-close-translations");
+const btnOpenVisualization = document.getElementById("btn-open-visualization");
+const btnCloseVisualization = document.getElementById("btn-close-visualization");
 const configDropdown = document.querySelector(".config-dropdown");
 const selectLanguage = document.getElementById("select-language");
 
@@ -1531,6 +2647,28 @@ btnOpenTranslations.addEventListener("click", () => {
 btnCloseTranslations.addEventListener("click", () => {
   modalTranslations.style.display = "none";
 });
+
+if (btnOpenVisualization && modalVisualization) {
+  btnOpenVisualization.addEventListener("click", () => {
+    modalVisualization.style.display = "flex";
+    if (configDropdown) configDropdown.removeAttribute("open");
+  });
+}
+
+if (btnCloseVisualization && modalVisualization) {
+  btnCloseVisualization.addEventListener("click", () => {
+    modalVisualization.style.display = "none";
+  });
+}
+
+const btnOpenHelp = document.getElementById("btn-open-help");
+if (btnOpenHelp) {
+  btnOpenHelp.addEventListener("click", () => {
+    if (configDropdown) configDropdown.removeAttribute("open");
+    const base = window.location.origin + (window.location.pathname.replace(/\/[^/]*$/, "") || "");
+    window.open(`${base}/help.html`, "_blank", "noopener,noreferrer");
+  });
+}
 
 selectLanguage.addEventListener("change", async (e) => {
   const lang = e.target.value;
@@ -1571,6 +2709,12 @@ async function loadTranslations(lang) {
         el.setAttribute("placeholder", translations[key]);
       }
     });
+    document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+      const key = el.getAttribute("data-i18n-title");
+      if (translations[key]) {
+        el.setAttribute("title", translations[key]);
+      }
+    });
     return translations;
   } catch (error) {
     console.error("Error loading translations:", error);
@@ -1598,13 +2742,19 @@ document.addEventListener("click", (event) => {
   if (event.target === modalTranslations) {
     modalTranslations.style.display = "none";
   }
+  if (event.target === modalVisualization) {
+    modalVisualization.style.display = "none";
+  }
 });
 
 // Auto exibir Limite do Estado (UF) em zooms muito distantes
 // Auto habilitar Bairros (e desabilitar Municípios) em zooms muito próximos
 map.on("zoomend", () => {
   const zoom = map.getZoom();
-  
+  const cfg = getEffectiveLayerZoomCfg();
+
+  maybeAutoShowBairrosEViasByZoomPercent();
+
   // Lógica UF (Estado)
   const temUF = map.hasLayer(ufLayer);
   if (zoom < 9 && !temUF) {
@@ -1620,7 +2770,7 @@ map.on("zoomend", () => {
   const checkboxMunicipios = document.getElementById("municipios_alvo_sp");
   const bairrosPretendidos = checkboxBairros && checkboxBairros.checked;
 
-  if (zoom >= 12) {
+  if (zoom >= cfg.bairrosEnableMin) {
     if (bairrosPretendidos) {
       if (!temBairros) bairrosAlvoLayer.addTo(map);
       if (temMunicipios) {
@@ -1635,7 +2785,7 @@ map.on("zoomend", () => {
       }
     }
   } else {
-    if (temBairros) {
+    if (zoom < cfg.bairrosDisableBelow && temBairros) {
       map.removeLayer(bairrosAlvoLayer);
       if (checkboxBairros) checkboxBairros.checked = false;
     }
@@ -1643,6 +2793,13 @@ map.on("zoomend", () => {
       municipiosAlvoLayer.addTo(map);
       if (checkboxMunicipios) checkboxMunicipios.checked = true;
     }
+  }
+
+  const checkboxVias = document.getElementById("vias_alvo_sp");
+  const temVias = map.hasLayer(viasAlvoLayer);
+  if (zoom < cfg.viasDisableBelow && temVias) {
+    map.removeLayer(viasAlvoLayer);
+    if (checkboxVias) checkboxVias.checked = false;
   }
 });
 
@@ -1706,20 +2863,23 @@ console.log("Dica Dev: Usa a função copyBboxToClipboard() na consola para obte
 /**
  * tileerror no satélite local pode ter duas causas distintas:
  *
- * 1. TileServer inacessível / MBTiles não gerado → satelliteLocalConfirmed=false
+ * 1. TileServer inacessível / MBTiles não gerado → *Confirmed=false
  *    → mostrar mensagem de remediação completa.
  *
  * 2. Tile fora da cobertura do MBTiles (bbox capital SP) → TileServer responde
- *    404 normalmente; quando satelliteLocalConfirmed=true este erro é silenciado
+ *    404 normalmente; quando *Confirmed=true este erro é silenciado
  *    pois é comportamento esperado de um pacote de área parcial.
  */
-satelliteLocalLayer.on("tileerror", () => {
-  if (!satelliteLocalConfirmed) {
+[satelliteLocalLayer, geosampaOfflineLayer].forEach((layer) => layer.on("tileerror", () => {
+  const confirmed = layer === geosampaOfflineLayer
+    ? geosampaOfflineConfirmed
+    : satelliteLocalConfirmed;
+  if (!confirmed) {
     setStatus(
-      "Falha tiles MBTiles. Gere sp_satellite.mbtiles e suba tileserver (ver docs/DEPLOY_POC.md)."
+      "Falha tiles MBTiles. Gere o pacote local e suba tileserver (ver docs/DEPLOY_POC.md)."
     );
   }
-});
+}));
 
 // ── Toggles de camadas ────────────────────────────────────────────────────
 
@@ -1760,11 +2920,13 @@ document.getElementById("municipios_alvo_sp").addEventListener("change", (event)
 
 // Camadas com restrição de zoom
 document.getElementById("bairros_alvo_sp").addEventListener("change", (event) => {
-  enforceZoomValidation(event, bairrosAlvoLayer, "Bairros", 12, 20);
+  const cfg = getEffectiveLayerZoomCfg();
+  enforceZoomValidation(event, bairrosAlvoLayer, "Bairros", cfg.bairrosEnableMin, 20);
 });
 
 document.getElementById("vias_alvo_sp").addEventListener("change", (event) => {
-  enforceZoomValidation(event, viasAlvoLayer, "Vias", 13, 20);
+  const cfg = getEffectiveLayerZoomCfg();
+  enforceZoomValidation(event, viasAlvoLayer, "Vias", cfg.viasEnableMin, 20);
 });
 
 // ── Botões de navegação rápida ────────────────────────────────────────────

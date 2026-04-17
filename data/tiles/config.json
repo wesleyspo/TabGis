@@ -7,6 +7,9 @@
   "data": {
     "sp_sat": {
       "mbtiles": "sp_satellite.mbtiles"
+    },
+    "geosampa_offline": {
+      "mbtiles": "geosampa_offline.mbtiles"
     }
   }
 }

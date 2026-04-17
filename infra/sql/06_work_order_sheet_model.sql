@@ -17,9 +17,15 @@ ALTER TABLE operations.work_order ADD COLUMN IF NOT EXISTS flag_customer_callbac
 ALTER TABLE operations.work_order ADD COLUMN IF NOT EXISTS priority_score SMALLINT;
 ALTER TABLE operations.work_order ADD COLUMN IF NOT EXISTS focus_lat DOUBLE PRECISION;
 ALTER TABLE operations.work_order ADD COLUMN IF NOT EXISTS focus_lng DOUBLE PRECISION;
+ALTER TABLE operations.work_order ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ;
+ALTER TABLE operations.work_order ADD COLUMN IF NOT EXISTS callback_auto BOOLEAN NOT NULL DEFAULT FALSE;
 
 COMMENT ON COLUMN operations.work_order.order_type IS 'Tipo operacional da ordem (repair, maintenance, inspection, emergency, restoration, incident). Não usar event aqui.';
 COMMENT ON COLUMN operations.work_order.complaints_linked_count IS 'Número de reclamações ligadas (denormalizado; actualizado por trigger).';
+COMMENT ON COLUMN operations.work_order.started_at IS 'Início operacional da ordem (grelha OMS); alinhado a created_at quando nulo.';
+COMMENT ON COLUMN operations.work_order.callback_auto IS 'Callback automático (IVR/BOT); complementa flag_customer_callback (humano).';
+
+UPDATE operations.work_order wo SET started_at = COALESCE(wo.started_at, wo.created_at) WHERE wo.started_at IS NULL;
 
 -- Criação de tabelas de filhos (idempotente)
 CREATE TABLE IF NOT EXISTS operations.work_order_task (

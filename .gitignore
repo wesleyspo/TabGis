@@ -6,4 +6,6 @@ data/tiles/*.mbtiles.tmp
 data/raw/
 
 infra/scripts/.venv/
+__pycache__/
+*.pyc
 node_modules/

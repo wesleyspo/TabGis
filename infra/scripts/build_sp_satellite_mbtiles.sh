@@ -2,7 +2,7 @@
 # Gera data/tiles/sp_satellite.mbtiles a partir de tiles Esri (XYZ).
 # Cria infra/scripts/.venv e instala requirements-mbtiles.txt (PEP 668 seguro).
 #
-# Defaults: BBOX = recorte capital SP, ZMIN=10, ZMAX=16.
+# Defaults: BBOX = capital SP com margem W/E extra (ver DEFAULT_BBOX no .py), ZMIN=10, ZMAX=17.
 #
 #   Escala de tempo e disco por ZMAX (bbox capital SP ~1°×0.9°):
 #     ZMAX=14 →    2 959 tiles  ~  4 min   ~  50 MB   (rápido, resolução 9 m/px)

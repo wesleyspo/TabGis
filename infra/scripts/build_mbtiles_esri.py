@@ -31,8 +31,9 @@ from pathlib import Path
 import mercantile
 import requests
 
-# Recorte padrão: capital SP — equilibra tempo, disco e cobertura para a POC
-DEFAULT_BBOX = (-47.2, -24.1, -46.2, -23.2)
+# Recorte padrão: capital SP + margem W/E (~25–30 km cada lado) para alinhar ao
+# enquadramento Home no mapa e reduzir faixas vazias em ecrãs largos (POC).
+DEFAULT_BBOX = (-47.5, -24.12, -45.9, -23.18)
 
 # Template XYZ Esri World Imagery (nota: {y} no URL Esri é TMS-row, não XYZ-y;
 # a função flip_y_to_mbtiles_row resolve a conversão antes de persistir)

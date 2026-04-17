@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TabGis — Ajuda</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .help-page {
+      min-height: 100vh;
+      background: var(--bg-app);
+      color: var(--text-primary);
+      padding: 24px 20px 48px;
+      max-width: 900px;
+      margin: 0 auto;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .help-page h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+    .help-page .help-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+    .help-page h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 28px 0 10px;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+    .help-page h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 18px 0 8px;
+      color: var(--text-secondary);
+    }
+    .help-page p,
+    .help-page li {
+      color: var(--text-muted);
+      margin: 0 0 10px;
+    }
+    .help-page ul {
+      margin: 0 0 12px;
+      padding-left: 1.25rem;
+    }
+    .help-page a {
+      color: var(--accent-hover);
+      text-decoration: none;
+    }
+    .help-page a:hover {
+      text-decoration: underline;
+    }
+    .help-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent);
+    }
+    .help-note {
+      font-size: 12px;
+      padding: 10px 12px;
+      background: var(--bg-section);
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      margin: 12px 0;
+    }
+    .help-kbd {
+      font-family: ui-monospace, monospace;
+      font-size: 0.85em;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-input);
+    }
+  </style>
+</head>
+<body>
+  <div class="help-page">
+    <a class="help-back" href="index.html">← Voltar ao mapa</a>
+    <h1>TabGis — Ajuda do utilizador</h1>
+    <p class="help-meta">
+      Documento derivado do escopo do projecto GeoUtil / TabGis e do estado operacional da POC
+      (<code>docs/Escopo_Projeto_GeoUtil.md</code>, <code>docs/CONTEXT_STATE.md</code>). Actualizado com as funcionalidades de interface descritas abaixo.
+    </p>
+
+    <h2>1. O que é o TabGis</h2>
+    <p>
+      Plataforma web para gestão e visualização de redes de <strong>utilities</strong> (energia, telecomunicações, águas, gás, etc.),
+      no contexto académico do projecto <strong>GeoUtil</strong>. A POC actual concentra-se em mapa, basemap offline, painel de operação e integração com PostGIS / GeoServer.
+    </p>
+
+    <h2>2. Arranque e ambiente</h2>
+    <ul>
+      <li><strong>URL recomendado:</strong> frontend servido pelo nginx na porta <strong>8088</strong> (same-origin para <code>/geoserver</code>, <code>/tiles</code> e <code>/api</code>).</li>
+      <li><strong>Stack:</strong> PostGIS, GeoServer (WMS/WFS), TileServer GL (MBTiles raster), API Node (<code>/api</code>), MongoDB (reservado a eventos futuros).</li>
+      <li>Mensagens de erro na barra de estado seguem o padrão: recurso, remediação e referência a runbooks quando aplicável.</li>
+    </ul>
+
+    <h2>3. Topbar (barra superior)</h2>
+    <h3>Esquerda</h3>
+    <ul>
+      <li><strong>Início</strong> — repõe a vista inicial do mapa (enquadramento depende de tela cheia vs. painel Operação aberto e do layout CC).</li>
+      <li><strong>Operação</strong> — abre ou fecha o painel lateral de operação (split com o mapa).</li>
+      <li>Com Operação aberta pode haver opção de <strong>layout</strong> (ex.: foco no centro de controlo vs. mapa), conforme a sua configuração.</li>
+    </ul>
+    <h3>Direita</h3>
+    <ul>
+      <li><strong>Estado</strong> — texto curto com feedback (carregamento, erros, confirmações); posicionado para não deslocar os menus.</li>
+      <li><strong>Busca</strong> — painel em <code>&lt;details&gt;</code>: municípios e bairros (WFS), endereço (Nominatim online ou geocodificação local PostGIS).</li>
+      <li><strong>Camadas</strong> — imagem de fundo (satélite online/local, GeoSampa offline), vias, limites administrativos, municípios-alvo e bairros com toggles e <em>pills</em> OMS/MWM/GIS/LAND.</li>
+      <li><strong>Configurações</strong> (engrenagem) — idioma, <strong>Gerenciar visualização</strong>, <strong>Gerenciar Traduções</strong>, <strong>Ajuda</strong> (esta página).</li>
+    </ul>
+    <p class="help-note">Só um menu entre Busca, Camadas e Configurações fica aberto de cada vez; clique fora da topbar fecha os painéis.</p>
+
+    <h2>4. Mapa</h2>
+    <ul>
+      <li>Camadas vectoriais via <strong>WMS</strong> (GeoServer, workspace <code>base_sp</code>).</li>
+      <li><strong>Clique no mapa</strong> — GetFeatureInfo onde configurado; ao clicar, os dropdowns da topbar fecham.</li>
+      <li><strong>Limite UF</strong> — pode aparecer automaticamente em zoom muito afastado (lógica de zoom da aplicação).</li>
+      <li><strong>Bairros vs. municípios-alvo</strong> — em zoom mais próximo, com o toggle de bairros activo, o sistema pode trocar o destaque de municípios-alvo por bairros; isto interage com os limiares configuráveis (ver secção 8).</li>
+    </ul>
+
+    <h2>5. Indicador de zoom (%)</h2>
+    <p>
+      Junto aos botões <strong>+ / −</strong> do Leaflet aparece uma percentagem: <strong>0&nbsp;%</strong> corresponde ao zoom da última vista <strong>Início</strong> (baseline);
+      <strong>100&nbsp;%</strong> ao detalhe máximo nativo da imagem de fundo activa (satélite online, MBTiles local ou GeoSampa offline), ou ao máximo do mapa se não houver raster activo.
+    </p>
+    <p>
+      Com percentagem elevada (por defeito, a partir de <strong>50&nbsp;%</strong>), a aplicação pode <strong>activar automaticamente</strong> as camadas de <strong>bairros</strong> e <strong>vias</strong> quando o nível de zoom Leaflet o permitir, para alinhar detalhe visual e vectorização.
+    </p>
+
+    <h2>6. Busca</h2>
+    <h3>Município e bairro</h3>
+    <ul>
+      <li>Listas alimentadas por <strong>WFS</strong> sobre municípios-alvo e bairros-alvo.</li>
+      <li>Ao escolher um <strong>bairro</strong>, o mapa enquadra o polígono e, por defeito, <strong>activa bairros e vias</strong> no painel Camadas, garantindo zoom mínimo adequado às vias.</li>
+    </ul>
+    <h3>Endereço ou lugar</h3>
+    <ul>
+      <li><strong>Online:</strong> Nominatim (OSM), com viewbox na região de São Paulo — requer Internet no servidor/API conforme configuração.</li>
+      <li><strong>Local:</strong> substring nos nomes de vias em PostGIS (<code>landbase.vias_alvo_sp</code>), com normalização <strong>sem acentos</strong> (extensão <code>unaccent</code> na base); não substitui geocodificação completa com número de porta.</li>
+    </ul>
+
+    <h2>7. Painel Operação</h2>
+    <p>Guias previstas: OMS (ordens de serviço), utilizadores, MWM (equipas/rotas), DMS, IND, SMT, TMP, AUD. Na POC, <strong>OMS</strong> e <strong>USR</strong> consomem a API REST (listagens, folha de ordem com tarefas e reclamações, etc.).</p>
+    <ul>
+      <li><strong>Ir para o mapa</strong> — a partir de uma ordem, centra o mapa e activa vista operacional (bairros/vias; regras de zoom aplicam-se).</li>
+      <li>Outras guias podem estar em mock ou evolução contínua — consulte <code>docs/CONTEXT_STATE.md</code> para o estado exacto.</li>
+    </ul>
+
+    <h2>8. Gerenciar visualização</h2>
+    <p>Modal aberto a partir de <strong>Configurações → Gerenciar visualização</strong>. Permite definir:</p>
+    <ul>
+      <li>Níveis de zoom (Leaflet) para <strong>activar</strong> e <strong>desactivar</strong> as camadas <strong>Bairros</strong> e <strong>Vias</strong>.</li>
+      <li><strong>Sobrepor regras atuais</strong> — se ligado, estes valores substituem os limiares por defeito da aplicação; se desligado, mantém-se o comportamento «hard-coded» por defeito (valores usados apenas como referência gravada, conforme implementação).</li>
+      <li>Os valores são guardados no navegador (<span class="help-kbd">localStorage</span>, chave técnica <code>tabgis_layer_zoom_cfg_v1</code>). <strong>Salvar</strong> aplica de imediato; <strong>Resetar</strong> repõe o padrão.</li>
+    </ul>
+
+    <h2>9. Imagens de fundo offline</h2>
+    <ul>
+      <li><strong>Satélite local</strong> — MBTiles servidos pelo TileServer (<code>/tiles/data/sp_sat/…</code>); geração descrita nos runbooks (<code>build_sp_satellite_mbtiles.sh</code>).</li>
+      <li><strong>GeoSampa — Offline</strong> — segundo pacote MBTiles quando disponível (<code>geosampa_offline.mbtiles</code>); activação verifica metadados no TileServer antes de mostrar a camada.</li>
+      <li>Satélite online (Esri) e camadas locais são em geral <strong>mutuamente exclusivos</strong> no toggle de fundo para evitar sobreposição.</li>
+    </ul>
+
+    <h2>10. Gerenciar Traduções</h2>
+    <p>Modal para edição espelhada de chaves <code>config.translation</code> (EN/PT/ES/IT). O idioma da sessão altera-se pelo selector na engrenagem; as traduções são carregadas via <code>GET /api/translations/:lang</code>.</p>
+
+    <h2>11. Documentação técnica no repositório</h2>
+    <ul>
+      <li><code>docs/Escopo_Projeto_GeoUtil.md</code> — objectivos e arquitectura.</li>
+      <li><code>docs/CONTEXT_STATE.md</code> — estado da POC, portas, SQL, frontend.</li>
+      <li><code>docs/DEPLOY_POC.md</code> — deploy e ordem de carregamento.</li>
+      <li><code>frontend/README.md</code> — notas do cliente web.</li>
+    </ul>
+
+    <p class="help-note" style="margin-top: 32px;">
+      Esta página é um resumo para operadores e investigadores. Para pormenores de versão de camadas, tamanhos de MBTiles e procedimentos de build, consulte sempre <code>docs/CONTEXT_STATE.md</code> no repositório.
+    </p>
+  </div>
+</body>
+</html>

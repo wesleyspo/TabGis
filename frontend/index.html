@@ -21,7 +21,7 @@
     <div class="app">
       <!-- ── Topbar ──────────────────────────────────────── -->
       <header class="topbar">
-        <!-- Títulos decorativos: Mapa centrado; com Operação aberta, CC e Mapa centrados em cada metade -->
+        <!-- Título decorativo «Mapa» só sem Operação; com painel aberto os rádios 75%/50% substituem títulos CC/Mapa (evita sobreposição) -->
         <div class="topbar-titles-layer">
           <div class="topbar-title-pane topbar-title-pane--solo">
             <span class="topbar-hero-title topbar-hero-title--map" data-i18n="UI_SPLIT_MAP">Mapa</span>
@@ -77,10 +77,30 @@
               </svg>
               <span data-i18n="UI_BTN_OPERATION">Operação</span>
             </button>
+            <div id="oper-layout-toolbar" class="oper-layout-toolbar oper-layout-toolbar--toggle" role="group" data-i18n-title="UI_OP_LAYOUT_GROUP_ARIA" title="Disposição do mapa em relação ao painel de operação">
+              <div class="toggle-row oper-layout-toggle-row">
+                <span class="toggle-label oper-layout-toggle-label">
+                  <span data-i18n="UI_OP_LAYOUT_CCC_FOCUS">Foco no centro de controlo (~75%)</span>
+                </span>
+                <label class="toggle-switch" data-i18n-title="UI_OP_LAYOUT_CCC_FOCUS" title="Foco no centro de controlo (~75%)">
+                  <input type="checkbox" id="oper-layout-ccc-focus" checked />
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
         <div class="topbar-right">
+        <!-- ── Status bar ─────────────────────────────────── -->
+        <div class="topbar-footer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p class="status" id="status">Carregando mapa…</p>
+        </div>
         <div class="topbar-menus">
           <!-- ── Secção: Busca (mapa); filtros tabulares são módulo à parte ── -->
           <details class="panel-section" style="border-left: 1px solid var(--border);">
@@ -117,6 +137,40 @@
                     <polyline points="6 9 12 15 18 9"/>
                   </svg>
                 </div>
+              </div>
+
+              <div class="field-group" style="margin-top: 12px;">
+                <label class="field-label" data-i18n="UI_SEARCH_ADDRESS_LABEL">Endereço ou lugar</label>
+                <div class="search-address-row">
+                  <input
+                    type="search"
+                    id="search-address"
+                    class="search-address-input"
+                    data-i18n-placeholder="UI_SEARCH_ADDRESS_PLACEHOLDER"
+                    placeholder="Rua, número, cidade…"
+                    autocomplete="off"
+                  />
+                  <button type="button" id="search-address-btn" class="search-address-btn" data-i18n="UI_SEARCH_ADDRESS_GO">
+                    Ir
+                  </button>
+                </div>
+                <ul id="search-address-results" class="search-address-results" hidden></ul>
+                <div class="toggle-row search-address-local-toggle">
+                  <span class="toggle-label">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                      <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>
+                    </svg>
+                    <span data-i18n="UI_SEARCH_ADDRESS_LOCAL_LABEL">Busca local (vias na base)</span>
+                  </span>
+                  <label class="toggle-switch" title="Usar PostGIS (sem Internet) em vez de Nominatim">
+                    <input type="checkbox" id="search-address-local" />
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  </label>
+                </div>
+                <p class="mock-hint search-address-hint">
+                  Busca em linha (Nominatim / OSM), com prioridade na região de São Paulo. Requer Internet.
+                </p>
               </div>
             </div>
           </details>
@@ -167,6 +221,22 @@
                 </span>
                 <label class="toggle-switch">
                   <input type="checkbox" id="satellite_local" />
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </label>
+              </div>
+
+              <div class="toggle-row">
+                <span class="toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6l4-2 4 2 4-2 4 2 2-1v12l-2 1-4-2-4 2-4-2-4 2-2-1z"/>
+                    <polyline points="7 4 7 18"/>
+                    <polyline points="15 4 15 18"/>
+                  </svg>
+                  <span>GeoSampa - Offline</span>
+                  <span class="badge badge-local">MBTiles</span>
+                </span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="geosampa_offline" />
                   <span class="toggle-track"><span class="toggle-thumb"></span></span>
                 </label>
               </div>
@@ -264,16 +334,6 @@
           </details>
         </div>
 
-        <!-- ── Status bar ─────────────────────────────────── -->
-        <div class="topbar-footer">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <p class="status" id="status">Carregando mapa…</p>
-        </div>
-
         <!-- ── Configurações (Engrenagem) ───────────────────── -->
         <details class="config-dropdown" style="position: relative; margin-left: 10px; margin-right: 18px;">
           <summary class="nav-btn" style="padding: 0; display: inline-flex; height: 32px; width: 32px; align-items: center; justify-content: center; list-style: none; margin: 0;">
@@ -297,8 +357,17 @@
                 </svg>
               </div>
             </div>
-            <div style="margin-top: 16px;">
+            <!-- Configuração avançada de zoom movida para o modal "Gerenciar visualização". -->
+            <div style="margin-top: 12px;">
+              <button id="btn-open-visualization" class="nav-btn" style="width: 100%; justify-content: center;">
+                Gerenciar visualização
+              </button>
+            </div>
+            <div style="margin-top: 12px;">
               <button id="btn-open-translations" class="nav-btn" style="width: 100%; justify-content: center; background: var(--accent); color: #fff; border-color: var(--accent);">Gerenciar Traduções</button>
+            </div>
+            <div style="margin-top: 12px;">
+              <button id="btn-open-help" type="button" class="nav-btn" style="width: 100%; justify-content: center;">Ajuda</button>
             </div>
           </div>
         </details>
@@ -307,7 +376,7 @@
 
       <!-- ── Container Principal (Left Panel + Mapa) ─────── -->
       <main class="main-content">
-        <div class="split-main-row">
+        <div class="split-main-row" id="split-main-row">
         <!-- ── Painel Esquerdo (Operação) ───────────────────── -->
         <aside id="left-panel" class="left-panel">
           <div class="panel-body panel-body--operacao">
@@ -318,7 +387,7 @@
               <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="usr"
                 title="Utilizadores do sistema (security.users)."><span data-i18n="UI_OP_TAB_USR">Utilizadores</span></button>
               <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="mwm"
-                title="Equipas em campo, rotas (48h) e deslocamentos — primeiro foco: estrutura de equipas (MWM)."><span data-i18n="UI_OP_TAB_MWM">Equipas, rotas e deslocamentos</span></button>
+                title="Equipes em campo, rotas (48h) e deslocamentos — primeiro foco: estrutura de equipes (MWM)."><span data-i18n="UI_OP_TAB_MWM">Equipes, rotas e deslocamentos</span></button>
               <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="dms"
                 title="Telecomando e comando remoto de dispositivos e pontos de rede (DMS)."><span data-i18n="UI_OP_TAB_DMS">Telecomando remoto</span></button>
               <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="ind"
@@ -341,29 +410,40 @@
             <div class="operacao-panels">
               <!-- OMS — ordem → tarefas / reclamações (eventos fora desta listagem) -->
               <section class="operacao-panel active" data-panel="oms" role="tabpanel">
-                <h4 class="mock-section-title" data-i18n="UI_OP_ORDERS_TITLE">Ordens de serviço</h4>
-                <p class="mock-hint" data-i18n="UI_OP_ORDERS_HINT">Ordens activas (sem eventos). Clique numa linha para abrir a folha com tarefas e reclamações. O mapa distingue tipo, equipa e estado.</p>
+                <div class="mock-form-inline" style="margin-bottom: 4px;">
+                  <button type="button" id="btn-toggle-mwm-routes" class="mock-btn-ir mock-btn-ir--secondary" aria-pressed="false">
+                    <span data-i18n="UI_OP_BTN_SHOW_TEAMS">Exibir equipes em rota</span>
+                  </button>
+                  <p class="mock-hint mock-hint--oms-above-grid" data-i18n="UI_OP_ORDERS_HINT">Ordens ativas (sem eventos). Clique em uma linha para abrir a folha com tarefas e reclamações. O mapa distingue tipo, equipe e estado.</p>
+                </div>
                 <p id="oms-orders-status" class="mock-hint mock-hint--status" hidden></p>
-                <div class="mock-table-wrap mock-table-wrap--orders-wide">
-                  <table class="mock-table mock-table--orders-wide mock-table--orders-compact">
+                <div class="oms-orders-table-scroll mock-table-wrap mock-table-wrap--orders-wide mock-table-wrap--orders-refined">
+                  <table id="oms-orders-table" class="mock-table mock-table--orders-wide mock-table--orders-compact mock-table--orders-oms">
                     <thead>
                       <tr>
-                        <th data-i18n="UI_OP_COL_ORDER_CODE">Cód.</th>
-                        <th data-i18n="UI_OP_COL_START_TIME">Início</th>
-                        <th class="wo-icon-col" data-i18n="UI_OP_COL_HOURS">Δh</th>
-                        <th data-i18n="UI_OP_COL_TYPE_ABBR">T</th>
-                        <th data-i18n="UI_OP_COL_ORG_SHORT">Org.</th>
-                        <th data-i18n="UI_OP_COL_LOC_SHORT">Loc.</th>
-                        <th data-i18n="UI_OP_COL_EQUIP_SHORT">Eq.</th>
-                        <th class="wo-icon-col" data-i18n="UI_OP_COL_AFFECTED">Cli.</th>
-                        <th class="wo-icon-col" data-i18n="UI_OP_COL_COMPLAINTS">Rec.</th>
-                        <th class="wo-icon-col" data-i18n="UI_OP_COL_FLAGS_SHORT">⚑</th>
-                        <th data-i18n="UI_OP_COL_PRI_POS">Pri.·POS</th>
-                        <th class="wo-icon-col" data-i18n="UI_OP_COL_CALLBACK">CB</th>
-                        <th data-i18n="UI_OP_COL_TEAM">Eqp.</th>
-                        <th data-i18n="UI_OP_COL_ORDER_OWNER">Resp.</th>
-                        <th data-i18n="UI_OP_COL_ORDER_STATUS">Est.</th>
-                        <th data-i18n="UI_OP_COL_ORDER_SUMMARY">Resumo</th>
+                        <th class="wo-sortable wo-th-sticky" tabindex="0" role="columnheader" data-wo-sort="code" data-i18n="UI_OP_COL_ORDER_CODE">Nº Ordem</th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="start" data-i18n="UI_OP_COL_START_TIME">Início</th>
+                        <th class="wo-icon-col wo-th-ico wo-sortable" tabindex="0" role="columnheader" data-wo-sort="hours" data-i18n-title="UI_TT_HOURS_OPEN"><span aria-hidden="true">⏱</span></th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="status" data-i18n="UI_OP_COL_ORDER_STATUS">Est.</th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="category" data-i18n="UI_OP_COL_CAT">Cat.</th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="type" data-i18n="UI_OP_COL_TYPE_ABBR">T</th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="org" data-i18n="UI_OP_COL_ORG_SHORT">Org.</th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="loc" data-i18n="UI_OP_COL_LOC_SHORT">Loc.</th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="equip" data-i18n="UI_OP_COL_EQUIP_SHORT">Eq.</th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="feeder" data-i18n="UI_OP_COL_FEEDER" data-i18n-title="UI_TT_FEEDER_GRID">Alim.</th>
+                        <th class="wo-icon-col wo-th-ico wo-sortable" tabindex="0" role="columnheader" data-wo-sort="affected" data-i18n-title="UI_TT_AFFECTED"><span aria-hidden="true">⌂</span></th>
+                        <th class="wo-icon-col wo-th-ico wo-sortable" tabindex="0" role="columnheader" data-wo-sort="complaints" data-i18n-title="UI_TT_COMPLAINTS"><span aria-hidden="true">◆</span></th>
+                        <th class="wo-icon-col wo-th-ico wo-sortable" tabindex="0" role="columnheader" data-wo-sort="flags" data-i18n-title="UI_OP_COL_FLAGS_SHORT"><span aria-hidden="true">⚑</span></th>
+                        <th class="wo-icon-col wo-th-ico wo-sortable" tabindex="0" role="columnheader" data-wo-sort="priority" data-i18n-title="UI_TT_PRIORITY_LETTER"><span aria-hidden="true">#</span></th>
+                        <th class="wo-icon-col wo-th-ico wo-sortable" tabindex="0" role="columnheader" data-wo-sort="pos" data-i18n-title="UI_TT_POS_SCORE"><span aria-hidden="true">⌖</span></th>
+                        <th class="wo-icon-col wo-th-ico wo-sortable" tabindex="0" role="columnheader" data-wo-sort="cb_hum" data-i18n-title="UI_TT_CALLBACK_HUM"><span class="wo-th-emoji" aria-hidden="true">📞</span></th>
+                        <th class="wo-icon-col wo-th-ico wo-sortable" tabindex="0" role="columnheader" data-wo-sort="cb_auto" data-i18n-title="UI_TT_CALLBACK_AUTO"><span class="wo-th-emoji" aria-hidden="true">💻</span></th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="team" data-i18n="UI_OP_COL_TEAM">Eqp.</th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="owner" data-i18n="UI_OP_COL_ORDER_OWNER">Resp.</th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="updated" data-i18n="UI_OP_COL_ACT">Act.</th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="lock" data-i18n="UI_OP_COL_BLOQ">Blq.</th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="descr" data-i18n="UI_OP_COL_DET">Det.</th>
+                        <th class="wo-sortable" tabindex="0" role="columnheader" data-wo-sort="summary" data-i18n="UI_OP_COL_ORDER_SUMMARY">Resumo</th>
                         <th></th>
                         <th></th>
                       </tr>
@@ -408,7 +488,7 @@
               <!-- MWM — Equipas; rotas 48h e deslocamentos virão da BD -->
               <section class="operacao-panel" data-panel="mwm" role="tabpanel">
                 <h4 class="mock-section-title" data-i18n="UI_OP_TEAMS_TITLE">Equipas em campo</h4>
-                <p class="mock-hint" data-i18n="UI_OP_TEAMS_HINT">Posição mais recente reportada por equipa. Utilize «Ir para o mapa» para centrar a vista operacional na última coordenada conhecida.</p>
+                <p class="mock-hint" data-i18n="UI_OP_TEAMS_HINT">Posição mais recente reportada por equipe. Utilize «Ir para o mapa» para centrar a vista operacional na última coordenada conhecida.</p>
                 <p id="teams-panel-status" class="mock-hint mock-hint--status" hidden></p>
                 <div class="mock-table-wrap mock-table-wrap--wide">
                   <table class="mock-table mock-table--teams">
@@ -432,7 +512,7 @@
                   </table>
                 </div>
                 <div class="mock-actions">
-                  <button type="button" class="mock-btn" disabled data-i18n="UI_OP_BTN_NEW_TEAM">+ Nova equipa</button>
+                  <button type="button" class="mock-btn" disabled data-i18n="UI_OP_BTN_NEW_TEAM">+ Nova equipe</button>
                   <button type="button" class="mock-btn mock-btn--ghost" disabled data-i18n="UI_OP_BTN_IMPORT">Importar CSV</button>
                 </div>
               </section>
@@ -484,6 +564,11 @@
               </section>
             </div>
           </div>
+        </aside>
+
+        <aside id="oper-detail-pane" class="oper-detail-pane" aria-label="Detalhe da selecção">
+          <div class="oper-detail-pane__head" data-i18n="UI_OP_DETAIL_TITLE">Detalhe da selecção</div>
+          <div id="oper-detail-body" class="oper-detail-pane__body"></div>
         </aside>
 
         <!-- ── Mapa ───────────────────────────────────────── -->
@@ -812,6 +897,54 @@
             </div>
             <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
               <button class="nav-btn" style="background: var(--accent); color: #fff; border-color: var(--accent);" onclick="alert('Funcionalidade de guardar carece de backend.')">Guardar Alterações</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Modal Visualização ─────────────────────────── -->
+      <div id="modal-visualization" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 540px;">
+          <div class="panel-header">
+            <h3>Gerenciar visualização</h3>
+            <button id="btn-close-visualization" class="close-btn" title="Fechar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="field-group">
+              <label class="field-label">Zoom de Camadas</label>
+              <p class="mock-hint" style="font-size: 11px;">
+                Defina quando activar/desactivar Bairros e Vias.
+              </p>
+              <div class="toggle-row" style="margin-top: 8px;">
+                <span class="toggle-label">Sobrepor regras atuais</span>
+                <label class="toggle-switch" title="Quando ativo, usa os níveis configurados abaixo">
+                  <input type="checkbox" id="cfg-zoom-override" />
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </label>
+              </div>
+              <div class="config-zoom-grid">
+                <label>Ativar Bairros (>=)
+                  <input type="number" id="cfg-zoom-bairros-enable" min="0" max="22" step="1" />
+                </label>
+                <label>Desativar Bairros (&lt;)
+                  <input type="number" id="cfg-zoom-bairros-disable" min="0" max="22" step="1" />
+                </label>
+                <label>Ativar Vias (>=)
+                  <input type="number" id="cfg-zoom-vias-enable" min="0" max="22" step="1" />
+                </label>
+                <label>Desativar Vias (&lt;)
+                  <input type="number" id="cfg-zoom-vias-disable" min="0" max="22" step="1" />
+                </label>
+              </div>
+              <div class="config-actions">
+                <button type="button" id="cfg-zoom-save" class="nav-btn">Salvar</button>
+                <button type="button" id="cfg-zoom-reset" class="nav-btn">Resetar</button>
+              </div>
             </div>
           </div>
         </div>

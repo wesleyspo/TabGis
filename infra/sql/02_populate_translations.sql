@@ -426,15 +426,15 @@ BEGIN
     ('UI_OP_ORDERS_TITLE', es_id, 'Órdenes de servicio'),
     ('UI_OP_ORDERS_TITLE', it_id, 'Ordini di lavoro'),
 
-    ('UI_OP_ORDERS_HINT', en_id, 'Active work orders (events excluded). Click a row for the sheet with tasks and complaints. Map markers reflect type, team and status.'),
-    ('UI_OP_ORDERS_HINT', pt_id, 'Ordens activas (sem eventos). Clique numa linha para a folha com tarefas e reclamações. Marcadores: tipo, equipa e estado.'),
-    ('UI_OP_ORDERS_HINT', es_id, 'Órdenes activas (sin eventos). Pulse una fila para la hoja con tareas y reclamaciones. Marcadores: tipo, equipo y estado.'),
-    ('UI_OP_ORDERS_HINT', it_id, 'Ordini attivi (eventi esclusi). Clicca una riga per il foglio con attività e reclami. Marcatori: tipo, squadra e stato.'),
+    ('UI_OP_ORDERS_HINT', en_id, 'Active work orders (events excluded). Single click: detail in the panel; double-click or Ctrl+Enter: order sheet (tasks and complaints). The toolbar next to Operation sets map layout (ops focus / 50-50). Markers reflect type, team and status.'),
+    ('UI_OP_ORDERS_HINT', pt_id, 'Ordens ativas (sem eventos). Clique simples: detalhe no painel; duplo clique ou Ctrl+Enter: folha da ordem (tarefas e reclamações). A barra ao lado de \"Operação\" define o layout do mapa (CC dominante / 50/50). Marcadores: tipo, equipe e estado.'),
+    ('UI_OP_ORDERS_HINT', es_id, 'Órdenes activas (sin eventos). Clic: detalle en el panel; doble clic o Ctrl+Enter: hoja del pedido (tareas y reclamaciones). La barra junto a «Operación» ajusta el mapa (énfasis operaciones / 50/50). Marcadores: tipo, equipo y estado.'),
+    ('UI_OP_ORDERS_HINT', it_id, 'Ordini attivi (eventi esclusi). Click: dettaglio nel pannello; doppio click o Ctrl+Invio: foglio ordine (attività e reclami). La barra accanto a «Operazioni» imposta il layout mappa (focus operazioni / 50-50). Marcatori: tipo, squadra e stato.'),
 
-    ('UI_OP_COL_ORDER_CODE', en_id, 'Code'),
-    ('UI_OP_COL_ORDER_CODE', pt_id, 'Código'),
-    ('UI_OP_COL_ORDER_CODE', es_id, 'Código'),
-    ('UI_OP_COL_ORDER_CODE', it_id, 'Codice'),
+    ('UI_OP_COL_ORDER_CODE', en_id, 'Order no.'),
+    ('UI_OP_COL_ORDER_CODE', pt_id, 'Nº Ordem'),
+    ('UI_OP_COL_ORDER_CODE', es_id, 'N.º orden'),
+    ('UI_OP_COL_ORDER_CODE', it_id, 'N. ordine'),
 
     ('UI_OP_COL_ORDER_CATEGORY', en_id, 'Category'),
     ('UI_OP_COL_ORDER_CATEGORY', pt_id, 'Categoria'),
@@ -445,6 +445,56 @@ BEGIN
     ('UI_OP_COL_ORDER_SUMMARY', pt_id, 'Resumo'),
     ('UI_OP_COL_ORDER_SUMMARY', es_id, 'Resumen'),
     ('UI_OP_COL_ORDER_SUMMARY', it_id, 'Riassunto'),
+
+    ('UI_OP_COL_CAT', en_id, 'Cat.'),
+    ('UI_OP_COL_CAT', pt_id, 'Cat.'),
+    ('UI_OP_COL_CAT', es_id, 'Cat.'),
+    ('UI_OP_COL_CAT', it_id, 'Cat.'),
+
+    ('UI_OP_COL_FEEDER', en_id, 'Feed.'),
+    ('UI_OP_COL_FEEDER', pt_id, 'Alim.'),
+    ('UI_OP_COL_FEEDER', es_id, 'Alim.'),
+    ('UI_OP_COL_FEEDER', it_id, 'Alim.'),
+
+    ('UI_OP_COL_ACT', en_id, 'Updated'),
+    ('UI_OP_COL_ACT', pt_id, 'Act.'),
+    ('UI_OP_COL_ACT', es_id, 'Act.'),
+    ('UI_OP_COL_ACT', it_id, 'Agg.'),
+
+    ('UI_OP_COL_BLOQ', en_id, 'Lock'),
+    ('UI_OP_COL_BLOQ', pt_id, 'Blq.'),
+    ('UI_OP_COL_BLOQ', es_id, 'Bloq.'),
+    ('UI_OP_COL_BLOQ', it_id, 'Blocco'),
+
+    ('UI_OP_COL_DET', en_id, 'Detail'),
+    ('UI_OP_COL_DET', pt_id, 'Det.'),
+    ('UI_OP_COL_DET', es_id, 'Det.'),
+    ('UI_OP_COL_DET', it_id, 'Det.'),
+
+    ('UI_TT_CATEGORY_GRID', en_id, 'Operational category (complaint, repair, …)'),
+    ('UI_TT_CATEGORY_GRID', pt_id, 'Categoria operacional (reclamação, reparo, …)'),
+    ('UI_TT_CATEGORY_GRID', es_id, 'Categoría operativa (reclamo, reparación, …)'),
+    ('UI_TT_CATEGORY_GRID', it_id, 'Categoria operativa (reclamo, riparazione, …)'),
+
+    ('UI_TT_FEEDER_GRID', en_id, 'Feeder / upstream segment'),
+    ('UI_TT_FEEDER_GRID', pt_id, 'Alimentador / troço a montante'),
+    ('UI_TT_FEEDER_GRID', es_id, 'Alimentador / tramo aguas arriba'),
+    ('UI_TT_FEEDER_GRID', it_id, 'Alimentatore / tratto a monte'),
+
+    ('UI_TT_GRID_UPDATED', en_id, 'Last record update'),
+    ('UI_TT_GRID_UPDATED', pt_id, 'Última actualização do registo'),
+    ('UI_TT_GRID_UPDATED', es_id, 'Última actualización del registro'),
+    ('UI_TT_GRID_UPDATED', it_id, 'Ultimo aggiornamento del record'),
+
+    ('UI_TT_GRID_LOCK', en_id, 'Edit lock (another user)'),
+    ('UI_TT_GRID_LOCK', pt_id, 'Bloqueio de edição (outro utilizador)'),
+    ('UI_TT_GRID_LOCK', es_id, 'Bloqueo de edición (otro usuario)'),
+    ('UI_TT_GRID_LOCK', it_id, 'Blocco modifica (altro utente)'),
+
+    ('UI_TT_GRID_DESC', en_id, 'Technical description (first line)'),
+    ('UI_TT_GRID_DESC', pt_id, 'Descrição técnica (primeira linha)'),
+    ('UI_TT_GRID_DESC', es_id, 'Descripción técnica (primera línea)'),
+    ('UI_TT_GRID_DESC', it_id, 'Descrizione tecnica (prima riga)'),
 
     ('UI_OP_COL_ORDER_STATUS', en_id, 'Status'),
     ('UI_OP_COL_ORDER_STATUS', pt_id, 'Estado'),
@@ -580,6 +630,51 @@ BEGIN
     ('UI_OP_COL_CALLBACK', pt_id, 'CB'),
     ('UI_OP_COL_CALLBACK', es_id, 'CB'),
     ('UI_OP_COL_CALLBACK', it_id, 'CB'),
+
+    ('UI_OP_LAYOUT_CCC', en_id, '75%'),
+    ('UI_OP_LAYOUT_CCC', pt_id, '75%'),
+    ('UI_OP_LAYOUT_CCC', es_id, '75%'),
+    ('UI_OP_LAYOUT_CCC', it_id, '75%'),
+
+    ('UI_OP_LAYOUT_SPLIT', en_id, '50%'),
+    ('UI_OP_LAYOUT_SPLIT', pt_id, '50%'),
+    ('UI_OP_LAYOUT_SPLIT', es_id, '50%'),
+    ('UI_OP_LAYOUT_SPLIT', it_id, '50%'),
+
+    ('UI_OP_LAYOUT_GROUP_ARIA', en_id, 'Toggle: control-center focus (~75% map) versus map and panel split 50/50'),
+    ('UI_OP_LAYOUT_GROUP_ARIA', pt_id, 'Interruptor: foco no centro de controlo (~75% mapa) ou mapa e painel 50/50'),
+    ('UI_OP_LAYOUT_GROUP_ARIA', es_id, 'Interruptor: foco en centro de control (~75% mapa) o mapa y panel 50/50'),
+    ('UI_OP_LAYOUT_GROUP_ARIA', it_id, 'Interruttore: focus centro controllo (~75% mappa) oppure mappa e pannello 50/50'),
+
+    ('UI_OP_LAYOUT_CCC_FOCUS', en_id, 'Control center focus (~75%)'),
+    ('UI_OP_LAYOUT_CCC_FOCUS', pt_id, 'Foco no centro de controle (~75%)'),
+    ('UI_OP_LAYOUT_CCC_FOCUS', es_id, 'Foco en centro de control (~75%)'),
+    ('UI_OP_LAYOUT_CCC_FOCUS', it_id, 'Focus centro controllo (~75%)'),
+
+    ('UI_OP_DETAIL_TITLE', en_id, 'Order: identifier'),
+    ('UI_OP_DETAIL_TITLE', pt_id, 'Ordem: identificador'),
+    ('UI_OP_DETAIL_TITLE', es_id, 'Orden: identificador'),
+    ('UI_OP_DETAIL_TITLE', it_id, 'Ordine: identificatore'),
+
+    ('UI_OP_DETAIL_EMPTY', en_id, 'Select an order, a team row, or a map feature.'),
+    ('UI_OP_DETAIL_EMPTY', pt_id, 'Seleccione uma ordem, uma linha de equipa ou uma feição no mapa.'),
+    ('UI_OP_DETAIL_EMPTY', es_id, 'Seleccione un pedido, una fila de equipo o una entidad en el mapa.'),
+    ('UI_OP_DETAIL_EMPTY', it_id, 'Selezionare un ordine, una riga squadra o una feature sulla mappa.'),
+
+    ('UI_OP_DETAIL_MAP_QUERY', en_id, 'Map query (GetFeatureInfo)'),
+    ('UI_OP_DETAIL_MAP_QUERY', pt_id, 'Consulta ao mapa (GetFeatureInfo)'),
+    ('UI_OP_DETAIL_MAP_QUERY', es_id, 'Consulta al mapa (GetFeatureInfo)'),
+    ('UI_OP_DETAIL_MAP_QUERY', it_id, 'Interrogazione mappa (GetFeatureInfo)'),
+
+    ('UI_OP_DETAIL_ORDER', en_id, 'Work order'),
+    ('UI_OP_DETAIL_ORDER', pt_id, 'Ordem de serviço'),
+    ('UI_OP_DETAIL_ORDER', es_id, 'Orden de servicio'),
+    ('UI_OP_DETAIL_ORDER', it_id, 'Ordine di lavoro'),
+
+    ('UI_OP_DETAIL_TEAM', en_id, 'Field team'),
+    ('UI_OP_DETAIL_TEAM', pt_id, 'Equipa em campo'),
+    ('UI_OP_DETAIL_TEAM', es_id, 'Equipo de campo'),
+    ('UI_OP_DETAIL_TEAM', it_id, 'Squadra sul campo'),
 
     ('UI_OP_COL_PRIORITY_SCORE', en_id, 'Score'),
     ('UI_OP_COL_PRIORITY_SCORE', pt_id, 'Peso'),

@@ -1,6 +1,12 @@
 const express = require('express');
 const cors = require('cors');
+const https = require('https');
 const { Pool } = require('pg');
+
+/** Obrigatório pela política de uso do Nominatim (https://operations.osmfoundation.org/policies/nominatim/). */
+const NOMINATIM_USER_AGENT =
+  process.env.NOMINATIM_USER_AGENT ||
+  'TabGis-POC/1.0 (academic utility mapping; https://github.com/wesleyspo/TabGis)';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -14,6 +20,126 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'tabgis_db',
   user: process.env.DB_USER || 'tabgis_admin',
   password: process.env.DB_PASSWORD || 'password123',
+});
+
+/**
+ * Geocodificação por texto (endereço / lugar) via Nominatim (OpenStreetMap).
+ * GET /api/geocode?q=... — resultados limitados ao Brasil, com viewbox na RMSP.
+ * Requer Internet no servidor API.
+ */
+app.get('/api/geocode', async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (q.length < 3) {
+    return res.status(400).json({ error: 'Query too short', results: [] });
+  }
+
+  const url = new URL('https://nominatim.openstreetmap.org/search');
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('q', q);
+  url.searchParams.set('limit', '10');
+  url.searchParams.set('addressdetails', '1');
+  url.searchParams.set('accept-language', 'pt-BR,pt,en');
+  url.searchParams.set('countrycodes', 'br');
+  url.searchParams.set('bounded', '1');
+  url.searchParams.set('viewbox', '-47.2,-24.08,-45.45,-23.18');
+
+  try {
+    const body = await new Promise((resolve, reject) => {
+      const reqN = https.get(
+        url,
+        {
+          headers: {
+            'User-Agent': NOMINATIM_USER_AGENT,
+            Accept: 'application/json',
+          },
+        },
+        (r) => {
+          let d = '';
+          r.on('data', (c) => {
+            d += c;
+          });
+          r.on('end', () => resolve(d));
+        }
+      );
+      reqN.on('error', reject);
+      reqN.setTimeout(15000, () => {
+        reqN.destroy();
+        reject(new Error('Geocode request timeout'));
+      });
+    });
+
+    const parsed = JSON.parse(body);
+    if (!Array.isArray(parsed)) {
+      return res.status(502).json({ error: 'Unexpected geocoder response', results: [] });
+    }
+
+    const results = parsed.map((item) => ({
+      lat: parseFloat(item.lat),
+      lon: parseFloat(item.lon),
+      display_name: item.display_name,
+      type: item.type,
+      class: item.class,
+    }));
+
+    res.json({ results });
+  } catch (error) {
+    console.error('GET /api/geocode', error);
+    res.status(502).json({ error: 'Geocoding failed', results: [] });
+  }
+});
+
+/**
+ * Geocodificação local: nomes de vias em landbase.vias_alvo_sp (recorte municípios-alvo).
+ * Sem Internet; não resolve número de porta nem CEP — substring no nome OSM
+ * com normalização sem acentos (extensão `unaccent`; ver infra/sql/12_unaccent_geocode_local.sql).
+ * GET /api/geocode-local?q=...
+ */
+app.get('/api/geocode-local', async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (q.length < 3) {
+    return res.status(400).json({ error: 'Query too short', results: [] });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT ON (unaccent(lower(btrim(v.name)))), COALESCE(v.municipio_nome, ''))
+         v.name,
+         v.highway,
+         v.municipio_nome,
+         ST_Y(ST_Transform(ST_LineInterpolatePoint(v.geom, 0.5), 4326))::double precision AS lat,
+         ST_X(ST_Transform(ST_LineInterpolatePoint(v.geom, 0.5), 4326))::double precision AS lon
+       FROM landbase.vias_alvo_sp v
+       WHERE v.name IS NOT NULL
+         AND btrim(v.name) <> ''
+         AND strpos(unaccent(lower(v.name)), unaccent(lower($1::text))) > 0
+       ORDER BY unaccent(lower(btrim(v.name))),
+                COALESCE(v.municipio_nome, ''),
+                ST_Length(v.geom::geography) DESC
+       LIMIT 15`,
+      [q]
+    );
+
+    const results = rows.map((r) => {
+      const mun = r.municipio_nome || '';
+      const hw = r.highway || '';
+      const display = mun
+        ? `${r.name} — ${mun}${hw ? ` (${hw})` : ''}`
+        : `${r.name}${hw ? ` (${hw})` : ''}`;
+      return {
+        lat: r.lat,
+        lon: r.lon,
+        display_name: display,
+        type: 'way',
+        class: 'highway',
+        source: 'local',
+      };
+    });
+
+    res.json({ results });
+  } catch (error) {
+    console.error('GET /api/geocode-local', error);
+    res.status(500).json({ error: 'Local geocoding failed', results: [] });
+  }
 });
 
 app.get('/api/translations/:lang', async (req, res) => {
@@ -106,6 +232,93 @@ app.get('/api/work-orders', async (_req, res) => {
   } catch (error) {
     console.error('GET /api/work-orders', error);
     res.status(500).json({ error: 'Failed to list work orders' });
+  }
+});
+
+/** Lado da célula da grelha métrica (UTM 23S), em metros — semelhante a Supercluster / MarkerClusterer. */
+function omsAggregateCellMetersFromZoom(zoom) {
+  const z = Number(zoom);
+  if (!Number.isFinite(z)) return 5500;
+  if (z <= 8) return 12000;
+  if (z <= 9) return 8000;
+  if (z <= 10) return 5500;
+  if (z <= 11) return 3500;
+  if (z <= 12) return 1800;
+  return 900;
+}
+
+/**
+ * Agregação de ordens OMS para o mapa.
+ * - Com zoom= (Leaflet): agrupamento espacial por grelha métrica (PostGIS ST_SnapToGrid), ordens próximas no mesmo marcador.
+ * - Legado: group=municipio | bairro (vistas por nome administrativo).
+ */
+app.get('/api/oms/work-orders/aggregate', async (req, res) => {
+  try {
+    const zoomRaw = req.query.zoom;
+    if (zoomRaw !== undefined && String(zoomRaw).trim() !== '') {
+      const cellM = omsAggregateCellMetersFromZoom(zoomRaw);
+      const { rows } = await pool.query(
+        `SELECT cluster_id, orders_count, center_lat, center_lng,
+                first_started_at, last_updated_at, area_hint
+         FROM operations.fn_oms_orders_spatial_clusters($1::double precision, 1)
+         ORDER BY orders_count DESC, cluster_id`,
+        [cellM]
+      );
+      return res.json(rows);
+    }
+
+    const group = String(req.query.group || 'municipio').toLowerCase();
+    let sql;
+    if (group === 'bairro') {
+      sql = `SELECT municipality_name, neighborhood_name, orders_count,
+                    first_started_at, last_updated_at, center_lat, center_lng
+             FROM operations.v_oms_orders_agg_bairro
+             ORDER BY municipality_name, neighborhood_name`;
+    } else {
+      sql = `SELECT municipality_name, orders_count,
+                    first_started_at, last_updated_at, center_lat, center_lng
+             FROM operations.v_oms_orders_agg_municipio
+             ORDER BY municipality_name`;
+    }
+    const { rows } = await pool.query(sql);
+    res.json(rows);
+  } catch (error) {
+    console.error('GET /api/oms/work-orders/aggregate', error);
+    res.status(500).json({ error: 'Failed to aggregate work orders' });
+  }
+});
+
+/**
+ * Rotas de campo de demonstração (mwm.demo_field_*) — equipas com CARRINHO / CARRO / MOTO.
+ */
+app.get('/api/mwm/demo-routes', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT r.id AS route_id, r.route_date::text AS route_date, r.label,
+              c.id AS crew_id, c.crew_code, c.name AS crew_name, c.vehicle_type,
+              COALESCE(
+                (SELECT json_agg(
+                   json_build_object(
+                     'seq', p.seq_no,
+                     'lat', ST_Y(p.geom),
+                     'lng', ST_X(p.geom),
+                     't', p.recorded_at
+                   )
+                   ORDER BY p.seq_no
+                 )
+                 FROM mwm.demo_field_route_point p
+                 WHERE p.route_id = r.id),
+                '[]'::json
+              ) AS points
+       FROM mwm.demo_field_route r
+       JOIN mwm.demo_field_crew c ON c.id = r.crew_id
+       WHERE r.route_date >= (CURRENT_DATE - INTERVAL '1 day')
+       ORDER BY c.crew_code, r.route_date DESC, r.id`
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('GET /api/mwm/demo-routes', error);
+    res.status(500).json({ error: 'Failed to load demo field routes' });
   }
 });
 
