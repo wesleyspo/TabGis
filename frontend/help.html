@@ -179,6 +179,19 @@
       <li><strong>GeoSampa — Offline</strong> — segundo pacote MBTiles quando disponível (<code>geosampa_offline.mbtiles</code>); activação verifica metadados no TileServer antes de mostrar a camada.</li>
       <li>Satélite online (Esri) e camadas locais são em geral <strong>mutuamente exclusivos</strong> no toggle de fundo para evitar sobreposição.</li>
     </ul>
+    <div class="help-doc-links" style="margin: 14px 0 18px; padding: 14px 16px; border: 1px solid var(--border-input); border-radius: var(--radius-sm); background: var(--bg-section);">
+      <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">Documentação GeoSampa offline</div>
+      <p style="margin: 0 0 8px; font-size: 13px;">
+        <strong>Funcional</strong> — gerar, reparar buracos, reiniciar TileServer, validar no mapa:
+        <a href="https://github.com/wesleyspo/TabGis/blob/main/docs/GeoSampa_offline_operacao.md" target="_blank" rel="noopener noreferrer">GeoSampa_offline_operacao.md</a>
+        <span style="color: var(--text-muted);">(no repositório: <code>docs/GeoSampa_offline_operacao.md</code>)</span>
+      </p>
+      <p style="margin: 0; font-size: 13px;">
+        <strong>Técnica</strong> — MBTiles, variáveis de ambiente, WMS, semântica de falhas e scripts:
+        <a href="https://github.com/wesleyspo/TabGis/blob/main/docs/GeoSampa_offline_tecnico.md" target="_blank" rel="noopener noreferrer">GeoSampa_offline_tecnico.md</a>
+        <span style="color: var(--text-muted);">(no repositório: <code>docs/GeoSampa_offline_tecnico.md</code>)</span>
+      </p>
+    </div>
 
     <h2>10. Gerenciar Traduções</h2>
     <p>Modal para edição espelhada de chaves <code>config.translation</code> (EN/PT/ES/IT). O idioma da sessão altera-se pelo selector na engrenagem; as traduções são carregadas via <code>GET /api/translations/:lang</code>.</p>
@@ -195,6 +208,7 @@
       <li><code>docs/Escopo_Projeto_GeoUtil.md</code> — objectivos e arquitectura.</li>
       <li><code>docs/CONTEXT_STATE.md</code> — estado da POC, portas, SQL, frontend.</li>
       <li><code>docs/DEPLOY_POC.md</code> — deploy e ordem de carregamento.</li>
+      <li><code>docs/GeoSampa_offline_operacao.md</code> / <code>docs/GeoSampa_offline_tecnico.md</code> — GeoSampa MBTiles (ver também secção 9).</li>
       <li><code>frontend/README.md</code> — notas do cliente web.</li>
     </ul>
 

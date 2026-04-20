@@ -16,6 +16,9 @@ Variáveis de ambiente (opcional):
   TIMEOUT_SEC   timeout por pedido
   WMS_MAX_ATTEMPTS  tentativas por tile, incl. a 1.ª (default: 3)
   RETRY_DELAY_MS    pausa base entre tentativas (default: 500); multiplica pelo índice da tentativa
+
+Reparação incremental (só tiles em falta no MBTiles existente):
+  infra/scripts/repair_geosampa_offline_mbtiles.sh  (ver docs/GeoSampa_offline_*.md)
 """
 from __future__ import annotations
 

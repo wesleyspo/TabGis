@@ -128,6 +128,8 @@ Script de geração: `infra/scripts/setup_municipios_alvo_sp.sh`
 | `infra/sql/08_oms_test_orders_extra.sql` … `infra/sql/13_oms_bulk_clustered_demo.sql` | Dados de teste / vistas OMS-MWM opcionais (ambiente de laboratório) | aplicar manualmente conforme necessidade |
 | `infra/sql/14_gis_equipment_network_demo.sql` | Massa idempotente `gis.equipment` + `gis.consumer` (prefixos `POC_DEMO_` / `POC-DEMO-`) | — |
 | `infra/scripts/apply_poc_test_mass.sh` | Executa o SQL 14 contra o contentor `db` (`psql`) | — |
+| `infra/scripts/repair_geosampa_mbtiles.py` | Reparação incremental do MBTiles GeoSampa (só tiles em falta na tabela `tiles`) | `docs/GeoSampa_offline_tecnico.md` |
+| `infra/scripts/repair_geosampa_offline_mbtiles.sh` | Wrapper venv para a reparação; típico em background: `nohup … >> /tmp/geosampa_repair.log &` | `docs/GeoSampa_offline_operacao.md` |
 | `infra/scripts/setup_landbase_sp_estado.sh` | Importa IBGE + OSM → PostGIS + GeoServer (SP estado) | `docs/RUNBOOK_BASEMAP_SP_ESTADO.md` |
 | `infra/scripts/setup_landbase_sp.sh` | Basemap São Paulo Centro (legado) | `docs/RUNBOOK_BASEMAP_SP.md` |
 | `infra/scripts/setup_municipios_alvo_sp.sh` | Municípios-alvo + bairros + vias | — |
