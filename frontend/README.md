@@ -1,6 +1,6 @@
 # Frontend TabGis (landbase `base_sp`)
 
-Cliente web **HTML + CSS + JavaScript** com **Leaflet** (CDN) para WMS/WFS, **GetFeatureInfo**, satélite online/offline e painel **Operação** (POC). O mapa consome o workspace GeoServer `base_sp` e textos dinâmicos via **`GET /api/translations/:lang`** (tabela `config.translation`).
+Cliente web **HTML + CSS + JavaScript** com **Leaflet** (CDN) para WMS/WFS, **GetFeatureInfo**, satélite online/offline e painel **Operação**. O mapa consome o workspace GeoServer `base_sp` e textos dinâmicos via **`GET /api/translations/:lang`** (tabela `config.translation`).
 
 ## Modo recomendado (mesma origem, sem CORS)
 
@@ -21,7 +21,7 @@ Abrir `http://127.0.0.1:8088/` (ou o IP do homeserver na LAN).
 
 Em [main.js](main.js), `GEOSERVER_BASE = window.location.origin + '/geoserver'` — WFS e GetFeatureInfo funcionam sem CORS.
 
-Garantir que os scripts SQL `01` → `03` foram aplicados na PostGIS e que `02` foi seguido de `restart api` se as traduções mudaram (ver [docs/DEPLOY_POC.md](../docs/DEPLOY_POC.md)).
+Garantir que os scripts SQL `01` → `03` foram aplicados na PostGIS e que `02` foi seguido de `restart api` se as traduções mudaram (ver [docs/DEPLOY.md](../docs/DEPLOY.md) e [docs/DEPLOY_POC.md](../docs/DEPLOY_POC.md) para detalhe legado).
 
 ## Modo desenvolvimento (servidor estático)
 
@@ -65,7 +65,7 @@ Abrir `http://<host>:5173`. O script aponta WMS frequentemente para `:8080/geose
 
 ## Mensagens de erro
 
-Padrão: `Falha em [recurso]. [Remediação] (ver docs/DEPLOY_POC.md).` — texto no elemento `#status` da topbar.
+Padrão: `Falha em [recurso]. [Remediação] (ver docs/DEPLOY.md).` — texto no elemento `#status` da topbar.
 
 ## Offline total (Leaflet)
 
@@ -75,7 +75,9 @@ Sem Internet, copiar Leaflet para `frontend/vendor/` e alterar [index.html](inde
 
 | Ficheiro | Conteúdo |
 |----------|----------|
-| [docs/DEPLOY_POC.md](../docs/DEPLOY_POC.md) | Compose, ordem SQL 01–03, SLD, diagnóstico |
+| [docs/DEPLOY.md](../docs/DEPLOY.md) | Deploy principal, same-origin, diagnóstico rápido |
+| [docs/DEPLOY_POC.md](../docs/DEPLOY_POC.md) | Legado: Compose alargado, ordem SQL, SLD |
 | [docs/CONTEXT_STATE.md](../docs/CONTEXT_STATE.md) | Stack, frontend detalhado, SLD alvo, i18n |
-| [docs/Escopo_Projeto_GeoUtil.md](../docs/Escopo_Projeto_GeoUtil.md) | Escopo e roadmap |
+| [docs/Escopo_Projeto_TabGis.md](../docs/Escopo_Projeto_TabGis.md) | Escopo de produto e roadmap |
+| [docs/Escopo_Projeto_GeoUtil.md](../docs/Escopo_Projeto_GeoUtil.md) | Referência histórica |
 | [docs/RUNBOOK_BASEMAP_SP_ESTADO.md](../docs/RUNBOOK_BASEMAP_SP_ESTADO.md) | Pipeline landbase SP estado |

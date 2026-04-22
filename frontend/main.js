@@ -163,7 +163,7 @@ const satelliteLocalLayer = L.tileLayer(
   `${getLocalTilesBase()}/data/sp_sat/{z}/{x}/{y}.png`,
   {
     pane: "satellite",
-    attribution: "Imagem local (MBTiles / POC — respeitar termos da fonte original)",
+    attribution: "Imagem local (MBTiles — respeitar termos da fonte original)",
     maxZoom: 20,
     minNativeZoom: 10,
     maxNativeZoom: 17,
@@ -383,7 +383,7 @@ document.getElementById("satellite_local").addEventListener("change", async (eve
       spSatMbtilesBounds = null;
       event.target.checked = false;
       setStatus(
-        "Falha tiles MBTiles. Gere sp_satellite.mbtiles e suba tileserver (ver docs/DEPLOY_POC.md)."
+        "Falha tiles MBTiles. Gere sp_satellite.mbtiles e suba tileserver (ver docs/DEPLOY.md)."
       );
     }
   } else {
@@ -426,7 +426,7 @@ document.getElementById("geosampa_offline").addEventListener("change", async (ev
       geosampaOfflineConfirmed = false;
       event.target.checked = false;
       setStatus(
-        "Falha na camada GeoSampa offline. Gere geosampa_offline.mbtiles e suba tileserver (ver docs/DEPLOY_POC.md)."
+        "Falha na camada GeoSampa offline. Gere geosampa_offline.mbtiles e suba tileserver (ver docs/DEPLOY.md)."
       );
     }
   } else {
@@ -849,7 +849,7 @@ async function loadBairrosWfs(municipioNome) {
     sel._bairrosGeoJSON = gj;
   } catch (e) {
     setStatus(
-      `Falha na busca de bairros. Verifique GeoServer em ${geoserverBase} (ver docs/DEPLOY_POC.md).`
+      `Falha na busca de bairros. Verifique GeoServer em ${geoserverBase} (ver docs/DEPLOY.md).`
     );
   }
 }
@@ -1191,7 +1191,7 @@ async function getFeatureInfoAtEvent(ev) {
     }
   } catch (e) {
     html = `<p>${escapeHtml(
-      `Falha ao consultar feição. Verifique GeoServer em ${geoserverBase} (ver docs/DEPLOY_POC.md).`
+      `Falha ao consultar feição. Verifique GeoServer em ${geoserverBase} (ver docs/DEPLOY.md).`
     )}</p>`;
   }
   if (!html) {
@@ -1720,7 +1720,7 @@ const ORDER_TYPE_I18N = {
 };
 
 let selectedWorkOrderId = null;
-let pocLockUserId = null;
+let lockUserIdCache = null;
 
 function orderCategoryLabel(category) {
   const key = ORDER_CATEGORY_I18N[category];
@@ -2061,14 +2061,14 @@ function woLockCell(r) {
 }
 
 async function resolvePocLockUserId() {
-  if (pocLockUserId != null) return pocLockUserId;
+  if (lockUserIdCache != null) return lockUserIdCache;
   try {
     const res = await fetch("/api/users");
     if (!res.ok) return null;
     const users = await res.json();
     const op = users.find((u) => u.username === "operador1");
-    pocLockUserId = op ? op.id : users[0]?.id ?? null;
-    return pocLockUserId;
+    lockUserIdCache = op ? op.id : users[0]?.id ?? null;
+    return lockUserIdCache;
   } catch {
     return null;
   }
@@ -2294,7 +2294,7 @@ async function loadWorkOrdersFromApi() {
     updateOmsSortHeaderUI();
     refreshOmsMarkersForZoom();
     setOmsStatusMessage(
-      "Falha ao carregar ordens. Verifique o serviço API e a base de dados (ver docs/DEPLOY_POC.md).",
+      "Falha ao carregar ordens. Verifique o serviço API e a base de dados (ver docs/DEPLOY.md).",
       true
     );
   }
@@ -2388,7 +2388,7 @@ async function loadTeamsFromApi() {
     loadTranslations(lang);
   } catch {
     setTeamsStatusMessage(
-      "Falha ao carregar equipes. Verifique o serviço API (ver docs/DEPLOY_POC.md).",
+      "Falha ao carregar equipes. Verifique o serviço API (ver docs/DEPLOY.md).",
       true
     );
   }
@@ -2423,7 +2423,7 @@ async function loadAuditArchiveFromApi() {
     setAuditStatusMessage("", false);
   } catch {
     setAuditStatusMessage(
-      "Falha ao carregar arquivo de auditoria. Verifique a API (ver docs/DEPLOY_POC.md).",
+      "Falha ao carregar arquivo de auditoria. Verifique a API (ver docs/DEPLOY.md).",
       true
     );
   }
@@ -2451,7 +2451,7 @@ async function loadUsersFromApi() {
     setUsrStatusMessage("", false);
   } catch {
     setUsrStatusMessage(
-      'Falha ao carregar utilizadores. Verifique API (ver docs/DEPLOY_POC.md).',
+      'Falha ao carregar utilizadores. Verifique API (ver docs/DEPLOY.md).',
       true
     );
   }
@@ -2714,7 +2714,7 @@ document.getElementById("modal-order-sheet")?.addEventListener("click", async (e
       setStatus(i18nCache.UI_OP_TASK_STATUS_OK || "Tarefa actualizada.");
       await openOrderSheetModal(selectedWorkOrderId);
     } catch {
-      setStatus("Falha ao actualizar tarefa. Verifique a API (ver docs/DEPLOY_POC.md).");
+      setStatus("Falha ao actualizar tarefa. Verifique a API (ver docs/DEPLOY.md).");
     }
     return;
   }
@@ -2742,7 +2742,7 @@ document.getElementById("modal-order-sheet")?.addEventListener("click", async (e
       await openOrderSheetModal(selectedWorkOrderId);
       await loadWorkOrdersFromApi();
     } catch {
-      setStatus("Falha ao criar tarefa. Verifique a API (ver docs/DEPLOY_POC.md).");
+      setStatus("Falha ao criar tarefa. Verifique a API (ver docs/DEPLOY.md).");
     }
   }
 });
@@ -2790,7 +2790,7 @@ document.getElementById("btn-order-sheet-save")?.addEventListener("click", async
     await loadWorkOrdersFromApi();
     await openOrderSheetModal(selectedWorkOrderId);
   } catch {
-    setStatus("Falha ao guardar folha. Verifique a API (ver docs/DEPLOY_POC.md).");
+    setStatus("Falha ao guardar folha. Verifique a API (ver docs/DEPLOY.md).");
   }
 });
 
@@ -2814,7 +2814,7 @@ document.getElementById("btn-order-sheet-assume-lock")?.addEventListener("click"
     loadWorkOrdersFromApi();
     openOrderSheetModal(selectedWorkOrderId);
   } catch {
-    setStatus("Falha ao reservar edição. Verifique a API (ver docs/DEPLOY_POC.md).");
+    setStatus("Falha ao reservar edição. Verifique a API (ver docs/DEPLOY.md).");
   }
 });
 
@@ -2831,7 +2831,7 @@ document.getElementById("btn-order-sheet-release-lock")?.addEventListener("click
     loadWorkOrdersFromApi();
     openOrderSheetModal(selectedWorkOrderId);
   } catch {
-    setStatus("Falha ao libertar edição. Verifique a API (ver docs/DEPLOY_POC.md).");
+    setStatus("Falha ao libertar edição. Verifique a API (ver docs/DEPLOY.md).");
   }
 });
 
@@ -3191,7 +3191,7 @@ map.on("zoomend", () => {
 // Carrega municípios-alvo no arranque; CORS pode bloquear em dev :5173 — preferir :8088
 loadMunicipiosAlvoWfs().catch(() => {
   setStatus(
-    `Falha ao carregar municípios (WFS). Prefira http://HOST:8088 e verifique GeoServer (ver docs/DEPLOY_POC.md).`
+    `Falha ao carregar municípios (WFS). Prefira http://HOST:8088 e verifique GeoServer (ver docs/DEPLOY.md).`
   );
 });
 
@@ -3202,7 +3202,7 @@ map.on("click", (ev) => {
 
   getFeatureInfoAtEvent(ev).catch(() =>
     setStatus(
-      `Falha ao consultar feição. Verifique GeoServer em ${geoserverBase} (ver docs/DEPLOY_POC.md).`
+      `Falha ao consultar feição. Verifique GeoServer em ${geoserverBase} (ver docs/DEPLOY.md).`
     )
   );
 });
@@ -3240,7 +3240,7 @@ console.log("Dica Dev: Usa a função copyBboxToClipboard() na consola para obte
   .forEach((layer) => {
     layer.on("tileerror", () => {
       setStatus(
-        `Falha ao carregar tiles WMS. Verifique GeoServer em ${geoserverBase} (ver docs/DEPLOY_POC.md).`
+        `Falha ao carregar tiles WMS. Verifique GeoServer em ${geoserverBase} (ver docs/DEPLOY.md).`
       );
     });
   });
@@ -3261,7 +3261,7 @@ console.log("Dica Dev: Usa a função copyBboxToClipboard() na consola para obte
     : satelliteLocalConfirmed;
   if (!confirmed) {
     setStatus(
-      "Falha tiles MBTiles. Gere o pacote local e suba tileserver (ver docs/DEPLOY_POC.md)."
+      "Falha tiles MBTiles. Gere o pacote local e suba tileserver (ver docs/DEPLOY.md)."
     );
   }
 }));

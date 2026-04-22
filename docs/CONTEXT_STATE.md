@@ -1,7 +1,7 @@
 # PROJECT CONTEXT STATE — TabGis (Para uso com IA)
 
 > **Leitura obrigatória antes de qualquer sessão de desenvolvimento.**
-> Este ficheiro é a fonte de verdade do estado operacional da POC.
+> Este ficheiro é a fonte de verdade do estado operacional do TabGis.
 > Actualize-o sempre que um componente mudar de estado.
 
 ---
@@ -25,7 +25,7 @@
 |-----------|-------------|
 | **Repositório Git (remoto)** | `https://github.com/wesleyspo/TabGis.git` |
 | **Cópia de trabalho (homeserver)** | `/home/wesley/projects/TabGis` |
-| **Release V0 (POC completo)** | **v0.1.0** — *tag* anotada Git |
+| **Release V0 (marco base)** | **v0.1.0** — *tag* anotada Git |
 | **Ficheiro de versão** | `VERSION` na raiz (ex.: `0.1.0`) |
 
 O código da aplicação (frontend, `infra/`, `backend/`, SQL, documentação) está versionado neste repositório Git. A linha temporal oficial é o histórico de *commits* em `main`; marcos estáveis assinalam-se com *tags* `vMAJOR.MINOR.PATCH` (SemVer). Dados pesados e artefactos gerados localmente **não** entram no Git — ver `.gitignore` (`data/raw/`, `*.mbtiles`, `*.mbtiles.tmp`, etc.).
@@ -55,7 +55,7 @@ git push origin v0.1.0           # ou: git push origin --tags
 | `infra-geoserver-1` | `oscarfonts/geoserver:latest` | **8080** | WMS / WFS / SLD |
 | `infra-tileserver-1` | `maptiler/tileserver-gl:latest` | **8081** | MBTiles raster (satélite local) |
 | `infra-web-1` | `nginx:alpine` | **8088** | Frontend + proxy `/geoserver`, `/tiles`, `/api` |
-| `infra-api-1` | build `backend/` (Node) | **3000** | API REST (via `:8088/api/`): `GET /api/translations/:lang`; `GET/POST /api/users`; `GET/PATCH /api/work-orders`; `GET/POST/PATCH` folha e tarefas em `/api/work-orders/:id`…; `GET /api/geocode`, `GET /api/geocode-local`; **`GET`/`PUT /api/ref/types`** (rótulos `ref.*` POC); `GET /api/teams`; `GET /api/mwm/demo-routes`; `GET /api/oms/work-orders/aggregate`; `GET /api/oms/work-orders`; `GET /api/audit/operations-archive` |
+| `infra-api-1` | build `backend/` (Node) | **3000** | API REST (via `:8088/api/`): `GET /api/translations/:lang`; `GET/POST /api/users`; `GET/PATCH /api/work-orders`; `GET/POST/PATCH` folha e tarefas em `/api/work-orders/:id`…; `GET /api/geocode`, `GET /api/geocode-local`; **`GET`/`PUT /api/ref/types`** (rótulos `ref.*`, dev sem autenticação por rota); `GET /api/teams`; `GET /api/mwm/demo-routes`; `GET /api/oms/work-orders/aggregate`; `GET /api/oms/work-orders`; `GET /api/audit/operations-archive` |
 | `infra-mongodb-1` | `mongo:latest` | **27017** | Logs / event_report (uso futuro) |
 
 ### Portas de acesso (de outro notebook na mesma rede ou via SSH tunnel)
@@ -68,7 +68,7 @@ git push origin v0.1.0           # ou: git push origin --tags
 | PostGIS | `homeserver:5432` | Só admin / psql |
 | MongoDB | `homeserver:27017` | Só admin |
 
-### Credenciais POC (trocar em produção)
+### Credenciais de desenvolvimento (trocar em produção)
 
 | Serviço | Utilizador | Password |
 |---------|-----------|---------|
@@ -117,14 +117,14 @@ Script de geração: `infra/scripts/setup_municipios_alvo_sp.sh`
 
 | Script | Função | Runbook |
 |--------|--------|---------|
-| `infra/sql/01_init_schemas.sql` | Schemas `landbase`, `config`, `security`, `audit` (tabelas base, parâmetros, histórico) | `docs/DEPLOY_POC.md` §2 |
-| `infra/sql/02_populate_translations.sql` | Chaves `config.translation` (EN/PT/ES/IT), `ON CONFLICT DO UPDATE` | `docs/DEPLOY_POC.md` §2 |
-| `infra/sql/03_operations_schema.sql` | Schema `operations` + arquivo `audit.operations_row_archive` + triggers `BEFORE DELETE`; `work_order.owner_id` / `locked_by_id` → `security.users` | `docs/DEPLOY_POC.md` §2 |
-| `infra/sql/04_gis_oms_mwm_domain.sql` | Schemas `ref`, `gis`, `oms`, `mwm`; `audit.domain_event`; utilizadores e ordens iniciais | `docs/DEPLOY_POC.md` §2 |
-| `infra/sql/05_operational_demo_data.sql` | Dados fictícios operacionais (equipas com coordenadas, mais ordens e utilizadores) | `docs/DEPLOY_POC.md` §2 |
-| `infra/sql/06_work_order_sheet_model.sql` | Colunas decisórias; tabelas `work_order_task` / `work_order_complaint`; dados de exemplo; normalização de prefixos em `order_code` legado | `docs/DEPLOY_POC.md` §2 |
-| `infra/sql/06_work_order_sheet_model_functions_triggers.sql` | `generate_work_order_code()` (YYYYMMDD + sequência diária SP); triggers de código, contagem de reclamações e arquivo pré-delete | `docs/DEPLOY_POC.md` §2 |
-| `infra/sql/07_work_order_oms_grid_columns.sql` | Grelha OMS: `started_at`, `callback_auto` | `docs/DEPLOY_POC.md` §2 |
+| `infra/sql/01_init_schemas.sql` | Schemas `landbase`, `config`, `security`, `audit` (tabelas base, parâmetros, histórico) | `docs/DEPLOY.md` §2 |
+| `infra/sql/02_populate_translations.sql` | Chaves `config.translation` (EN/PT/ES/IT), `ON CONFLICT DO UPDATE` | `docs/DEPLOY.md` §2 |
+| `infra/sql/03_operations_schema.sql` | Schema `operations` + arquivo `audit.operations_row_archive` + triggers `BEFORE DELETE`; `work_order.owner_id` / `locked_by_id` → `security.users` | `docs/DEPLOY.md` §2 |
+| `infra/sql/04_gis_oms_mwm_domain.sql` | Schemas `ref`, `gis`, `oms`, `mwm`; `audit.domain_event`; utilizadores e ordens iniciais | `docs/DEPLOY.md` §2 |
+| `infra/sql/05_operational_demo_data.sql` | Dados fictícios operacionais (equipas com coordenadas, mais ordens e utilizadores) | `docs/DEPLOY.md` §2 |
+| `infra/sql/06_work_order_sheet_model.sql` | Colunas decisórias; tabelas `work_order_task` / `work_order_complaint`; dados de exemplo; normalização de prefixos em `order_code` legado | `docs/DEPLOY.md` §2 |
+| `infra/sql/06_work_order_sheet_model_functions_triggers.sql` | `generate_work_order_code()` (YYYYMMDD + sequência diária SP); triggers de código, contagem de reclamações e arquivo pré-delete | `docs/DEPLOY.md` §2 |
+| `infra/sql/07_work_order_oms_grid_columns.sql` | Grelha OMS: `started_at`, `callback_auto` | `docs/DEPLOY.md` §2 |
 | `infra/sql/08_oms_test_orders_extra.sql` … `infra/sql/13_oms_bulk_clustered_demo.sql` | Dados de teste / vistas OMS-MWM opcionais (ambiente de laboratório) | aplicar manualmente conforme necessidade |
 | `infra/sql/14_gis_equipment_network_demo.sql` | Massa idempotente `gis.equipment` + `gis.consumer` (prefixos `POC_DEMO_` / `POC-DEMO-`) | — |
 | `infra/scripts/apply_poc_test_mass.sh` | Executa o SQL 14 contra o contentor `db` (`psql`) | — |
@@ -161,7 +161,7 @@ Estilos SLD versionados: `infra/geoserver/styles/*.sld`
 | 15 | 11 331 | ~25 min | ~200 MB | 5 m/px |
 | 16 | 44 271 | ~1h15 | ~763 MB | 2,4 m/px |
 | **17** | **175 306** | **~3,5 h** | **~3 GB** | **1,2 m/px** ← instalado |
-| 18 | 697 270 | ~14 h | ~12 GB | 0,6 m/px (impraticável POC) |
+| 18 | 697 270 | ~14 h | ~12 GB | 0,6 m/px (impraticável neste recorte) |
 
 ### Procedimento de upgrade (aprovado: ZMAX=17)
 
@@ -216,7 +216,7 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 - **Ordem das guias (tab bar):** 1) **OMS**, 2) **MWM**, 3) **DMS**, 4) **IND**, 5) **SMT**, 6) **TMP** (clima: cartões Open-Meteo + opcional **radar RainViewer** e **círculo de referência** no mapa Leaflet, controlos na própria guia), 7) **AUD**. A guia **Utilizadores** foi **retirada da barra**: a gestão de `security.users` passou para **Configurações → Gerenciar utilizadores** (modal). OMS consome `/api/work-orders` (e folha); utilizadores consomem `/api/users` a partir desse modal.
 - **Cabeçalho do painel:** sem linha separada «Operação»; primeira linha = grelha de guias + botão fechar (`.operacao-top`).
 - **Conteúdo:** tabelas e detalhe de ordens (OMS), equipas/rotas demo (MWM), política de auditoria (AUD); textos com `data-i18n` (prefixo `UI_OP_*`).
-- **Tipos de domínio (`ref.*`):** não há guia no painel; edição de `label_en` / `label_pt` (códigos fixos) em **Configurações → Tipos de domínio (ref)** com **`GET`/`PUT /api/ref/types`** (POC sem autenticação por rota).
+- **Tipos de domínio (`ref.*`):** não há guia no painel; edição de `label_en` / `label_pt` (códigos fixos) em **Configurações → Tipos de domínio (ref)** com **`GET`/`PUT /api/ref/types`** (ambiente dev sem autenticação por rota).
 
 ### Vista inicial do mapa (`main.js`)
 
@@ -266,11 +266,11 @@ Todas as falhas em `main.js` seguem:
 
 | Ponto de falha | Mensagem |
 |----------------|---------|
-| Tiles WMS | `Falha ao carregar tiles WMS. Verifique GeoServer em <URL> (ver docs/DEPLOY_POC.md).` |
-| Tiles MBTiles | `Falha tiles MBTiles. Gere sp_satellite.mbtiles e suba tileserver (ver docs/DEPLOY_POC.md).` |
-| WFS municípios | `Falha ao carregar municípios (WFS). Prefira http://HOST:8088 e verifique GeoServer (ver docs/DEPLOY_POC.md).` |
-| Busca de bairros | `Falha na busca de bairros. Verifique GeoServer em <URL> (ver docs/DEPLOY_POC.md).` |
-| GetFeatureInfo | `Falha ao consultar feição. Verifique GeoServer em <URL> (ver docs/DEPLOY_POC.md).` |
+| Tiles WMS | `Falha ao carregar tiles WMS. Verifique GeoServer em <URL> (ver docs/DEPLOY.md).` |
+| Tiles MBTiles | `Falha tiles MBTiles. Gere sp_satellite.mbtiles e suba tileserver (ver docs/DEPLOY.md).` |
+| WFS municípios | `Falha ao carregar municípios (WFS). Prefira http://HOST:8088 e verifique GeoServer (ver docs/DEPLOY.md).` |
+| Busca de bairros | `Falha na busca de bairros. Verifique GeoServer em <URL> (ver docs/DEPLOY.md).` |
+| GetFeatureInfo | `Falha ao consultar feição. Verifique GeoServer em <URL> (ver docs/DEPLOY.md).` |
 
 ---
 
@@ -320,7 +320,7 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 | 2 | UI Operação + schema `operations` + arquivo `audit.operations_row_archive` | **✅ Estrutura base + mock UI** |
 | 3 | Modelagem explícita da topologia de rede (schema PostGIS) | Pendente |
 | 4 | APIs/backend para edição, ordens, rotas 48h e logs MongoDB (`event_report`) | **Parcial:** `GET/POST /api/users`, `GET/PATCH /api/work-orders`, `GET /api/oms/work-orders`; MongoDB pendente |
-| 5 | Endurecimento de segurança (credenciais, TLS) | Fora do âmbito da POC |
+| 5 | Endurecimento de segurança (credenciais, TLS) | Fora do âmbito desta fase |
 
 ---
 
@@ -329,8 +329,10 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 | Ficheiro | Conteúdo |
 |----------|-----------|
 | `docs/CONTEXT_STATE.md` | Este ficheiro — estado da stack, frontend, SQL, estilos |
-| `docs/Escopo_Projeto_GeoUtil.md` | Escopo académico, arquitectura, roadmap |
-| `docs/DEPLOY_POC.md` | Deploy Docker, ordem dos scripts SQL, diagnóstico |
+| `docs/Escopo_Projeto_TabGis.md` | Escopo de produto TabGis, arquitectura e roadmap |
+| `docs/Escopo_Projeto_GeoUtil.md` | Referência histórica de escopo académico |
+| `docs/DEPLOY.md` | Guia principal de deploy |
+| `docs/DEPLOY_POC.md` | Deploy Docker legado, ordem SQL alargada, diagnóstico |
 | `docs/RUNBOOK_BASEMAP_SP_ESTADO.md` | Pipeline landbase SP estado |
 | `docs/RUNBOOK_BASEMAP_SP.md` | Pipeline SP Centro (legado) |
 | `frontend/README.md` | Cliente web, modos :8088 / :5173, camadas |

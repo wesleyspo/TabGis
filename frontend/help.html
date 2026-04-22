@@ -11,54 +11,46 @@
   <style>
     .help-page {
       min-height: 100vh;
-      background: var(--bg-app);
+      background: radial-gradient(1200px 600px at 10% -10%, rgba(59, 130, 246, 0.12), transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, rgba(139, 92, 246, 0.08), transparent 50%),
+        var(--bg-app);
       color: var(--text-primary);
-      padding: 24px 20px 48px;
-      max-width: 900px;
+      padding: 0 20px 56px;
+      max-width: 920px;
       margin: 0 auto;
       font-size: 14px;
-      line-height: 1.55;
+      line-height: 1.6;
     }
-    .help-page h1 {
-      font-size: 1.5rem;
+    .help-header {
+      padding: 32px 0 24px;
+      border-bottom: 1px solid var(--border-input);
+      margin-bottom: 24px;
+    }
+    .help-brand {
+      font-size: 11px;
       font-weight: 600;
-      margin: 0 0 8px;
-      letter-spacing: -0.02em;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent-hover);
+      margin-bottom: 8px;
     }
-    .help-page .help-meta {
+    .help-header h1 {
+      font-size: 1.65rem;
+      font-weight: 700;
+      margin: 0 0 10px;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+    }
+    .help-lead {
+      font-size: 15px;
+      color: var(--text-secondary);
+      max-width: 52rem;
+      margin: 0;
+    }
+    .help-meta {
       font-size: 12px;
       color: var(--text-muted);
-      margin-bottom: 28px;
-    }
-    .help-page h2 {
-      font-size: 1.05rem;
-      font-weight: 600;
-      margin: 28px 0 10px;
-      color: var(--text-primary);
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 6px;
-    }
-    .help-page h3 {
-      font-size: 0.95rem;
-      font-weight: 600;
-      margin: 18px 0 8px;
-      color: var(--text-secondary);
-    }
-    .help-page p,
-    .help-page li {
-      color: var(--text-muted);
-      margin: 0 0 10px;
-    }
-    .help-page ul {
-      margin: 0 0 12px;
-      padding-left: 1.25rem;
-    }
-    .help-page a {
-      color: var(--accent-hover);
-      text-decoration: none;
-    }
-    .help-page a:hover {
-      text-decoration: underline;
+      margin-top: 14px;
     }
     .help-back {
       display: inline-flex;
@@ -69,155 +61,837 @@
       font-weight: 500;
       color: var(--accent);
     }
+    .help-back:hover {
+      color: var(--accent-hover);
+    }
+    .help-toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+      padding: 14px 16px;
+      margin-bottom: 28px;
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-md);
+    }
+    .help-toc a {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent-hover);
+      text-decoration: none;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-section);
+      border: 1px solid transparent;
+    }
+    .help-toc a:hover {
+      border-color: var(--border-input);
+      background: var(--bg-section-hv);
+    }
+    .help-section {
+      margin-bottom: 36px;
+      scroll-margin-top: 16px;
+    }
+    .help-section h2 {
+      font-size: 1.08rem;
+      font-weight: 600;
+      margin: 0 0 12px;
+      color: var(--text-primary);
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-input);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .help-section h2 .help-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.65rem;
+      height: 1.65rem;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 8px;
+      background: var(--accent-glow);
+      color: var(--accent-hover);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+    }
+    .help-section h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 20px 0 8px;
+      color: var(--text-secondary);
+    }
+    .help-section p,
+    .help-section li {
+      color: var(--text-muted);
+      margin: 0 0 10px;
+    }
+    .help-section ul {
+      margin: 0 0 12px;
+      padding-left: 1.25rem;
+    }
+    .help-section a {
+      color: var(--accent-hover);
+      text-decoration: none;
+    }
+    .help-section a:hover {
+      text-decoration: underline;
+    }
     .help-note {
       font-size: 12px;
-      padding: 10px 12px;
+      padding: 12px 14px;
       background: var(--bg-section);
       border: 1px solid var(--border-input);
       border-radius: var(--radius-sm);
       color: var(--text-muted);
-      margin: 12px 0;
+      margin: 14px 0;
     }
     .help-kbd {
       font-family: ui-monospace, monospace;
       font-size: 0.85em;
-      padding: 1px 6px;
+      padding: 2px 7px;
       border-radius: 4px;
       background: var(--bg-input);
       border: 1px solid var(--border-input);
+      color: var(--text-secondary);
+    }
+    .help-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0 16px;
+    }
+    .help-tag {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--bg-section);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-input);
+    }
+    .help-tag--data {
+      border-color: rgba(16, 185, 129, 0.35);
+      color: var(--badge-alvo);
+    }
+    .help-tag--net {
+      border-color: rgba(14, 165, 233, 0.35);
+      color: var(--badge-online);
+    }
+    .help-tag--local {
+      border-color: rgba(139, 92, 246, 0.35);
+      color: var(--badge-local);
+    }
+    .help-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 16px 0;
+    }
+    @media (max-width: 720px) {
+      .help-grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+    .help-card {
+      padding: 16px 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-input);
+      background: var(--bg-sidebar);
+    }
+    .help-card__label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .help-card--func .help-card__label {
+      color: var(--badge-alvo);
+    }
+    .help-card--tech .help-card__label {
+      color: var(--badge-local);
+    }
+    .help-card ul {
+      margin: 0;
+      padding-left: 1.1rem;
+      font-size: 13px;
+    }
+    .help-card li {
+      margin-bottom: 8px;
+    }
+    .help-card li:last-child {
+      margin-bottom: 0;
+    }
+    .help-md-links {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-input);
+      font-size: 12px;
+    }
+    .help-md-links a {
+      font-weight: 500;
+    }
+    .help-table-wrap {
+      overflow-x: auto;
+      margin: 14px 0;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-input);
+    }
+    .help-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .help-table th,
+    .help-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-input);
+    }
+    .help-table th {
+      background: var(--bg-section);
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+    .help-table tr:last-child td {
+      border-bottom: none;
+    }
+    .help-table td {
+      color: var(--text-muted);
+      vertical-align: top;
+    }
+    .help-pill {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .help-pill--on {
+      background: rgba(14, 165, 233, 0.2);
+      color: var(--badge-online);
+    }
+    .help-pill--off {
+      background: rgba(139, 92, 246, 0.2);
+      color: var(--badge-local);
+    }
+    .help-pre {
+      margin: 12px 0;
+      padding: 12px 14px;
+      background: #020617;
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .help-pre code {
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      color: #cbd5e1;
+    }
+    .help-stack-groups {
+      display: grid;
+      gap: 14px;
+      margin-top: 8px;
+    }
+    @media (min-width: 640px) {
+      .help-stack-groups {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .help-stack-group {
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+    }
+    .help-stack-group h3 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+    .help-stack-group ul {
+      margin: 0;
+      padding-left: 1.1rem;
+      font-size: 13px;
+    }
+
+    /* ── Wireframes (esquemas da shell, não capturas de ecrã) ── */
+    .help-wire-list {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      margin: 20px 0 8px;
+    }
+    .help-figure {
+      margin: 0;
+    }
+    .help-figure figcaption {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+    .help-figure .help-fig-sub {
+      display: block;
+      font-weight: 400;
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    .help-wf {
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+      max-height: 340px;
+      display: flex;
+      flex-direction: column;
+      background: #020617;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+    }
+    .help-wf-top {
+      flex: 0 0 auto;
+      height: 52px;
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border-input);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 10px;
+      font-size: 9px;
+      color: var(--text-muted);
+    }
+    .help-wf-brand {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 10px;
+      flex-shrink: 0;
+      letter-spacing: -0.02em;
+    }
+    .help-wf-brand svg {
+      width: 14px;
+      height: 14px;
+      opacity: 0.9;
+    }
+    .help-wf-top-mid {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+    }
+    .help-wf-top-mid--solo span {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: -0.02em;
+    }
+    .help-wf-top-mid--split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      width: 100%;
+      max-width: 72%;
+      margin: 0 auto;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      gap: 4px;
+    }
+    .help-wf-top-mid--split span:last-child {
+      color: rgba(148, 163, 184, 0.85);
+    }
+    .help-wf-pills {
+      flex-shrink: 0;
+      display: flex;
+      gap: 3px;
+      font-size: 7px;
+      color: var(--text-muted);
+      opacity: 0.85;
+    }
+    .help-wf-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: row;
+    }
+    .help-wf-map {
+      flex: 1;
+      min-width: 0;
+      background: linear-gradient(155deg, #0c4a6e 0%, #155e75 42%, #0d9488 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(241, 245, 249, 0.42);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      outline: 1px dashed rgba(148, 163, 184, 0.22);
+      outline-offset: -5px;
+    }
+    .help-wf-panel {
+      background: var(--bg-section);
+      outline: 1px dashed rgba(100, 116, 139, 0.35);
+      outline-offset: -4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 8px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      min-width: 0;
+    }
+    .help-wf-tabs {
+      font-size: 8px;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-top: 5px;
+      line-height: 1.35;
+      max-width: 95%;
+    }
+    .help-wf--full .help-wf-body {
+      flex-direction: column;
+    }
+    .help-wf--full .help-wf-map {
+      flex: 1;
+    }
+    .help-wf--split50 .help-wf-body > .help-wf-panel {
+      flex: 0 0 50%;
+      width: 50%;
+    }
+    .help-wf--split50 .help-wf-body > .help-wf-map {
+      flex: 0 0 50%;
+      width: 50%;
+    }
+    .help-wf--ccc .help-wf-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      grid-template-areas:
+        "opctl opctl"
+        "opdet opmap";
+      gap: 3px;
+      padding: 3px;
+      background: var(--border-input);
+    }
+    .help-wf--ccc .help-wf-opctl {
+      grid-area: opctl;
+      background: var(--bg-section);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      min-height: 0;
+    }
+    .help-wf--ccc .help-wf-opdet {
+      grid-area: opdet;
+      background: #1e293b;
+    }
+    .help-wf--ccc .help-wf-opmap {
+      grid-area: opmap;
+      background: linear-gradient(155deg, #0c4a6e 0%, #155e75 45%, #0d9488 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(241, 245, 249, 0.45);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      outline: 1px dashed rgba(148, 163, 184, 0.25);
+      outline-offset: -4px;
+    }
+    .help-wf-legend {
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
     }
   </style>
 </head>
 <body>
   <div class="help-page">
     <a class="help-back" href="index.html">← Voltar ao mapa</a>
-    <h1>TabGis — Ajuda do utilizador</h1>
-    <p class="help-meta">
-      Documento derivado do escopo do projecto GeoUtil / TabGis e do estado operacional da POC
-      (<code>docs/Escopo_Projeto_GeoUtil.md</code>, <code>docs/CONTEXT_STATE.md</code>). Actualizado com as funcionalidades de interface descritas abaixo.
-    </p>
 
-    <h2>1. O que é o TabGis</h2>
-    <p>
-      Plataforma web para gestão e visualização de redes de <strong>utilities</strong> (energia, telecomunicações, águas, gás, etc.),
-      no contexto académico do projecto <strong>GeoUtil</strong>. A POC actual concentra-se em mapa, basemap offline, painel de operação e integração com PostGIS / GeoServer.
-    </p>
+    <header class="help-header">
+      <div class="help-brand">TabGis Platform</div>
+      <h1>Ajuda do utilizador e referência técnica</h1>
+      <p class="help-lead">
+        Plataforma web para <strong>utilities</strong> (energia, telecomunicações, águas, gás, etc.) com mapa operacional,
+        basemap vectorial em PostGIS/GeoServer, fundos raster em MBTiles e painel de operação. Esta página resume a interface,
+        o modo <strong>online</strong> versus <strong>offline</strong> e aponta para a documentação Markdown do repositório.
+      </p>
+      <p class="help-meta">
+        Fontes: <code>docs/Escopo_Projeto_TabGis.md</code>, <code>docs/CONTEXT_STATE.md</code>,
+        <code>docs/GeoSampa_offline_operacao.md</code>, <code>docs/GeoSampa_offline_tecnico.md</code>.
+      </p>
+    </header>
 
-    <h2>2. Arranque e ambiente</h2>
-    <ul>
-      <li><strong>URL recomendado:</strong> frontend servido pelo nginx na porta <strong>8088</strong> (same-origin para <code>/geoserver</code>, <code>/tiles</code> e <code>/api</code>).</li>
-      <li><strong>Stack:</strong> PostGIS, GeoServer (WMS/WFS), TileServer GL (MBTiles raster), API Node (<code>/api</code>), MongoDB (reservado a eventos futuros).</li>
-      <li>Mensagens de erro na barra de estado seguem o padrão: recurso, remediação e referência a runbooks quando aplicável.</li>
-    </ul>
+    <nav class="help-toc" aria-label="Índice">
+      <a href="#intro">Introdução</a>
+      <a href="#stack">Tecnologias</a>
+      <a href="#online-offline">Online / offline</a>
+      <a href="#geosampa">GeoSampa MBTiles</a>
+      <a href="#sat-local">Satélite local</a>
+      <a href="#layouts-wire">Layouts da UI</a>
+      <a href="#topbar">Topbar e mapa</a>
+      <a href="#busca">Busca</a>
+      <a href="#operacao">Operação</a>
+      <a href="#config">Configurações</a>
+      <a href="#qa-docs">Testes e docs</a>
+    </nav>
 
-    <h2>3. Topbar (barra superior)</h2>
-    <h3>Esquerda</h3>
-    <ul>
-      <li><strong>Início</strong> — repõe a vista inicial do mapa (enquadramento depende de tela cheia vs. painel Operação aberto e do layout CC).</li>
-      <li><strong>Operação</strong> — abre ou fecha o painel lateral de operação (split com o mapa).</li>
-      <li>Com Operação aberta pode haver opção de <strong>layout</strong> (ex.: foco no centro de controlo vs. mapa), conforme a sua configuração.</li>
-    </ul>
-    <h3>Direita</h3>
-    <ul>
-      <li><strong>Estado</strong> — texto curto com feedback (carregamento, erros, confirmações); posicionado para não deslocar os menus.</li>
-      <li><strong>Clima (atalho)</strong> — botão em forma de <strong>cápsula sol + nuvem</strong> à esquerda de Busca: abre o painel Operação na guia TMP (previsão e sobreposição no mapa).</li>
-      <li><strong>Busca</strong> — painel em <code>&lt;details&gt;</code>: municípios e bairros (WFS), endereço (Nominatim online ou geocodificação local PostGIS).</li>
-      <li><strong>Camadas</strong> — imagem de fundo (satélite online/local, GeoSampa offline), vias, limites administrativos, municípios-alvo e bairros com toggles e <em>pills</em> OMS/MWM/GIS/LAND.</li>
-      <li><strong>Configurações</strong> (engrenagem) — idioma, <strong>Gerenciar visualização</strong>, <strong>Gerenciar utilizadores</strong> (modal, API <code>/api/users</code>), <strong>Tipos de domínio (ref)</strong> (modal, <code>GET</code>/<code>PUT /api/ref/types</code>), <strong>Gerenciar Traduções</strong>, <strong>Ajuda</strong> (esta página).</li>
-    </ul>
-    <p class="help-note">Só um menu entre Busca, Camadas e Configurações fica aberto de cada vez; clique fora da topbar fecha os painéis.</p>
+    <section class="help-section" id="intro">
+      <h2><span class="help-num">1</span> O que é o TabGis</h2>
+      <p>
+        Solução <strong>TabGis</strong>: gestão e visualização de redes técnicas com reforço de
+        <strong>same-origin</strong> na plataforma (nginx na porta <strong>8088</strong> a servir frontend e proxies para
+        <code>/geoserver</code>, <code>/tiles</code> e <code>/api</code>).
+      </p>
+      <p class="help-note">
+        Esta página é servida também em <a href="https://wesleyspo.github.io/TabGis/" target="_blank" rel="noopener noreferrer">GitHub Pages</a>
+        (cópia estática). O link <strong>«Voltar ao mapa»</strong> abre o <code>index.html</code> da mesma origem; em ambiente local use o URL do teu servidor (<code>:8088</code>).
+      </p>
+    </section>
 
-    <h2>4. Mapa</h2>
-    <ul>
-      <li>Camadas vectoriais via <strong>WMS</strong> (GeoServer, workspace <code>base_sp</code>).</li>
-      <li><strong>Clique no mapa</strong> — GetFeatureInfo onde configurado; ao clicar, os dropdowns da topbar fecham.</li>
-      <li><strong>Limite UF</strong> — pode aparecer automaticamente em zoom muito afastado (lógica de zoom da aplicação).</li>
-      <li><strong>Bairros vs. municípios-alvo</strong> — em zoom mais próximo, com o toggle de bairros activo, o sistema pode trocar o destaque de municípios-alvo por bairros; isto interage com os limiares configuráveis (ver secção 8).</li>
-    </ul>
+    <section class="help-section" id="stack">
+      <h2><span class="help-num">2</span> Stack tecnológica</h2>
+      <p>Componentes open source usados na plataforma (detalhe de portas e SQL em <code>docs/CONTEXT_STATE.md</code>).</p>
+      <div class="help-tags" aria-hidden="true">
+        <span class="help-tag help-tag--data">PostGIS</span>
+        <span class="help-tag help-tag--data">PostgreSQL 15</span>
+        <span class="help-tag help-tag--net">GeoServer WMS/WFS</span>
+        <span class="help-tag help-tag--net">SLD versionados</span>
+        <span class="help-tag help-tag--local">TileServer GL</span>
+        <span class="help-tag help-tag--local">MBTiles / SQLite</span>
+        <span class="help-tag">nginx</span>
+        <span class="help-tag">Docker Compose</span>
+        <span class="help-tag">Node.js / Express</span>
+        <span class="help-tag">Leaflet</span>
+        <span class="help-tag">MongoDB</span>
+        <span class="help-tag">Playwright</span>
+      </div>
+      <div class="help-stack-groups">
+        <div class="help-stack-group">
+          <h3>Dados e mapas</h3>
+          <ul>
+            <li><strong>PostGIS</strong> — schemas <code>landbase</code> (feições IBGE/OSM, municípios-alvo, bairros, vias), <code>config</code>, <code>security</code>, <code>audit</code>, <code>operations</code>, <code>ref</code>, <code>gis</code>, <code>oms</code>, <code>mwm</code>.</li>
+            <li><strong>GeoServer</strong> — workspace <code>base_sp</code>, camadas WMS/WFS, GetFeatureInfo, estilos em <code>infra/geoserver/styles/</code>.</li>
+            <li><strong>TileServer GL</strong> — MBTiles raster (satélite SP, GeoSampa) via <code>/tiles/</code>.</li>
+          </ul>
+        </div>
+        <div class="help-stack-group">
+          <h3>Aplicação e integrações</h3>
+          <ul>
+            <li><strong>Frontend</strong> — HTML/CSS/JS (<code>frontend/index.html</code>, <code>main.js</code>, <code>styles.css</code>), tipografia Inter.</li>
+            <li><strong>API</strong> — traduções, utilizadores, ordens, geocodificação, tipos <code>ref.*</code>, equipas, agregados OMS, auditoria, rotas demo MWM.</li>
+            <li><strong>Serviços externos (online)</strong> — tiles Esri World Imagery, Nominatim, Open-Meteo, RainViewer (radar).</li>
+            <li><strong>MongoDB</strong> — reservado a eventos / <code>event_report</code> (evolução futura).</li>
+            <li><strong>Playwright</strong> — testes E2E em <code>e2e/</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
 
-    <h2>5. Indicador de zoom (%)</h2>
-    <p>
-      Junto aos botões <strong>+ / −</strong> do Leaflet aparece uma percentagem: <strong>0&nbsp;%</strong> corresponde ao zoom da última vista <strong>Início</strong> (baseline);
-      <strong>100&nbsp;%</strong> ao detalhe máximo nativo da imagem de fundo activa (satélite online, MBTiles local ou GeoSampa offline), ou ao máximo do mapa se não houver raster activo.
-    </p>
-    <p>
-      Com percentagem elevada (por defeito, a partir de <strong>50&nbsp;%</strong>), a aplicação pode <strong>activar automaticamente</strong> as camadas de <strong>bairros</strong> e <strong>vias</strong> quando o nível de zoom Leaflet o permitir, para alinhar detalhe visual e vectorização.
-    </p>
+    <section class="help-section" id="online-offline">
+      <h2><span class="help-num">3</span> Funcionalidades online e offline</h2>
+      <p>
+        «Offline» aqui significa <strong>sem depender da Internet para servir dados ao browser</strong>, desde que a stack Docker e os volumes locais
+        (PostGIS, MBTiles, nginx) estejam disponíveis na rede onde acede ao <code>:8088</code>. A <strong>geração</strong> de alguns MBTiles ainda pode exigir WMS GeoSampa online durante o build.
+      </p>
+      <div class="help-table-wrap">
+        <table class="help-table">
+          <thead>
+            <tr>
+              <th>Área</th>
+              <th><span class="help-pill help-pill--on">Online</span></th>
+              <th><span class="help-pill help-pill--off">Local / offline</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Imagem de fundo</strong></td>
+              <td>Satélite Esri (XYZ), requer Internet no cliente.</td>
+              <td>Satélite MBTiles (<code>sp_satellite</code>), GeoSampa MBTiles (<code>geosampa_offline</code>) via TileServer; toggles mutuamente exclusivos com o online.</td>
+            </tr>
+            <tr>
+              <td><strong>Vectorização</strong></td>
+              <td>—</td>
+              <td>UF, municípios, vias, alvos e bairros via WMS/WFS no próprio GeoServer (dados em PostGIS).</td>
+            </tr>
+            <tr>
+              <td><strong>Busca por endereço</strong></td>
+              <td>Nominatim (OSM) com viewbox em SP.</td>
+              <td>Geocodificação local por substring em <code>landbase.vias_alvo_sp</code> com <code>unaccent</code> (sem número de porta).</td>
+            </tr>
+            <tr>
+              <td><strong>Clima (TMP)</strong></td>
+              <td>Open-Meteo (previsão), RainViewer (radar) — requer Internet.</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><strong>i18n / admin</strong></td>
+              <td>Google Fonts (CDN) no carregamento da página.</td>
+              <td>Traduções e CRUD leve via API contra PostGIS; utilizadores <code>security.users</code>.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-    <h2>6. Busca</h2>
-    <h3>Município e bairro</h3>
-    <ul>
-      <li>Listas alimentadas por <strong>WFS</strong> sobre municípios-alvo e bairros-alvo.</li>
-      <li>Ao escolher um <strong>bairro</strong>, o mapa enquadra o polígono e, por defeito, <strong>activa bairros e vias</strong> no painel Camadas, garantindo zoom mínimo adequado às vias.</li>
-    </ul>
-    <h3>Endereço ou lugar</h3>
-    <ul>
-      <li><strong>Online:</strong> Nominatim (OSM), com viewbox na região de São Paulo — requer Internet no servidor/API conforme configuração.</li>
-      <li><strong>Local:</strong> substring nos nomes de vias em PostGIS (<code>landbase.vias_alvo_sp</code>), com normalização <strong>sem acentos</strong> (extensão <code>unaccent</code> na base); não substitui geocodificação completa com número de porta.</li>
-    </ul>
-
-    <h2>7. Painel Operação</h2>
-    <p>Guias na barra lateral: <strong>OMS</strong>, <strong>MWM</strong>, <strong>DMS</strong>, <strong>IND</strong>, <strong>SMT</strong>, <strong>TMP</strong> (clima), <strong>AUD</strong>. A gestão de <strong>utilizadores</strong> não está nesta barra: use <strong>Configurações → Gerenciar utilizadores</strong>.</p>
-    <ul>
-      <li><strong>OMS</strong> — listagem e folha de ordem (tarefas, reclamações) via API REST.</li>
-      <li><strong>TMP</strong> — resumo tabular (Open-Meteo, SP centro) e <strong>sobreposição no mapa</strong> opcional: círculo de referência da previsão e camada de radar (RainViewer). Botão <strong>Atualizar previsão</strong>. Não substitui alertas oficiais (ex.: INMET/CPTEC).</li>
-      <li><strong>Ir para o mapa</strong> — a partir de uma ordem, centra o mapa e activa vista operacional (bairros/vias; regras de zoom aplicam-se).</li>
-      <li>Outras guias podem estar em mock — consulte <code>docs/CONTEXT_STATE.md</code>.</li>
-    </ul>
-
-    <h2>8. Gerenciar visualização</h2>
-    <p>Modal aberto a partir de <strong>Configurações → Gerenciar visualização</strong>. Permite definir:</p>
-    <ul>
-      <li>Níveis de zoom (Leaflet) para <strong>activar</strong> e <strong>desactivar</strong> as camadas <strong>Bairros</strong> e <strong>Vias</strong>.</li>
-      <li><strong>Sobrepor regras atuais</strong> — se ligado, estes valores substituem os limiares por defeito da aplicação; se desligado, mantém-se o comportamento «hard-coded» por defeito (valores usados apenas como referência gravada, conforme implementação).</li>
-      <li>Os valores são guardados no navegador (<span class="help-kbd">localStorage</span>, chave técnica <code>tabgis_layer_zoom_cfg_v1</code>). <strong>Salvar</strong> aplica de imediato; <strong>Resetar</strong> repõe o padrão.</li>
-    </ul>
-
-    <h2>9. Imagens de fundo offline</h2>
-    <ul>
-      <li><strong>Satélite local</strong> — MBTiles servidos pelo TileServer (<code>/tiles/data/sp_sat/…</code>); geração descrita nos runbooks (<code>build_sp_satellite_mbtiles.sh</code>).</li>
-      <li><strong>GeoSampa — Offline</strong> — segundo pacote MBTiles quando disponível (<code>geosampa_offline.mbtiles</code>); activação verifica metadados no TileServer antes de mostrar a camada.</li>
-      <li>Satélite online (Esri) e camadas locais são em geral <strong>mutuamente exclusivos</strong> no toggle de fundo para evitar sobreposição.</li>
-    </ul>
-    <div class="help-doc-links" style="margin: 14px 0 18px; padding: 14px 16px; border: 1px solid var(--border-input); border-radius: var(--radius-sm); background: var(--bg-section);">
-      <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">Documentação GeoSampa offline</div>
-      <p style="margin: 0 0 8px; font-size: 13px;">
-        <strong>Funcional</strong> — gerar, reparar buracos, reiniciar TileServer, validar no mapa:
+    <section class="help-section" id="geosampa">
+      <h2><span class="help-num">4</span> GeoSampa offline (MBTiles)</h2>
+      <p>
+        Ortofoto PMSP em <strong>MBTiles</strong> (<code>geosampa_offline.mbtiles</code>), servida pelo TileServer atrás do nginx em <code>/tiles/</code>.
+        O cliente activa <strong>«GeoSampa - Offline»</strong> depois de verificar saúde do dataset (ver <code>checkLocalRasterHealth</code> em <code>main.js</code>).
+      </p>
+      <div class="help-grid-2">
+        <div class="help-card help-card--func">
+          <div class="help-card__label">Guia operacional</div>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Resumo de <code>GeoSampa_offline_operacao.md</code> — o que correr no servidor e como validar no mapa.</p>
+          <ul>
+            <li>Pré-requisitos: Docker Compose (<code>infra/docker-compose.yml</code>), serviços <strong>db</strong>, <strong>tileserver</strong>, <strong>web</strong>; espaço em disco (pacote completo pode ter <strong>dezenas de GB</strong>).</li>
+            <li><strong>Gerar</strong> (primeira vez ou recriar): na raiz do repo, <code>./infra/scripts/build_geosampa_offline_mbtiles.sh</code> — pode demorar muitas horas; depois <code>docker compose -f infra/docker-compose.yml restart tileserver</code> (e <code>web</code> se o nginx resolver mal o hostname <code>tileserver</code>).</li>
+            <li><strong>Reparar buracos</strong> (tiles em falta): <code>./infra/scripts/repair_geosampa_offline_mbtiles.sh</code>; opcional <code>DELAY_MS</code>, <code>WMS_MAX_ATTEMPTS</code>; em background com <code>nohup</code> conforme o runbook.</li>
+            <li><strong>Validar</strong>: <code>http://&lt;servidor&gt;:8088/</code> → Camadas → GeoSampa - Offline; pan/zoom na área de SP.</li>
+            <li>Respeitar <strong>termos de uso</strong> GeoSampa / PMSP (uso académico / POC).</li>
+          </ul>
+        </div>
+        <div class="help-card help-card--tech">
+          <div class="help-card__label">Referência técnica</div>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Resumo de <code>GeoSampa_offline_tecnico.md</code> — ficheiros, env e semântica de falhas.</p>
+          <ul>
+            <li>Scripts: <code>build_geosampa_mbtiles.py</code>, wrappers shell, <code>repair_geosampa_mbtiles.py</code> (só chaves ausentes na tabela <code>tiles</code>).</li>
+            <li><code>data/tiles/config.json</code> — registo TileServer <code>geosampa_offline</code>.</li>
+            <li>Env típicos: <code>MBTILES_OUT</code>, <code>BBOX</code>, <code>ZMIN</code>/<code>ZMAX</code>, <code>WMS_BASE</code>/<code>WMS_LAYER</code>, <code>DELAY_MS</code>, <code>TIMEOUT_SEC</code>, retentativas, <code>REPAIR_COMMIT_EVERY</code>.</li>
+            <li>MBTiles: tabela <code>tiles</code> (zoom, column, row, PNG); convenção de linha Y invertida (função <code>flip_y_to_mbtiles_row</code> no Python).</li>
+            <li>Fonte HTTP: WMS <code>raster.geosampa.prefeitura.sp.gov.br</code>, <code>GetMap</code> EPSG:3857.</li>
+            <li>Build: contador <code>fail</code> para pedidos sem PNG válido; o processo pode continuar se <code>ok &gt; 0</code>. Reparação: <code>fail</code> após retentativas sem inserção.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="help-md-links">
+        Markdown completo no GitHub (branch <code>main</code>):
         <a href="https://github.com/wesleyspo/TabGis/blob/main/docs/GeoSampa_offline_operacao.md" target="_blank" rel="noopener noreferrer">GeoSampa_offline_operacao.md</a>
-        <span style="color: var(--text-muted);">(no repositório: <code>docs/GeoSampa_offline_operacao.md</code>)</span>
-      </p>
-      <p style="margin: 0; font-size: 13px;">
-        <strong>Técnica</strong> — MBTiles, variáveis de ambiente, WMS, semântica de falhas e scripts:
+        ·
         <a href="https://github.com/wesleyspo/TabGis/blob/main/docs/GeoSampa_offline_tecnico.md" target="_blank" rel="noopener noreferrer">GeoSampa_offline_tecnico.md</a>
-        <span style="color: var(--text-muted);">(no repositório: <code>docs/GeoSampa_offline_tecnico.md</code>)</span>
+      </div>
+    </section>
+
+    <section class="help-section" id="sat-local">
+      <h2><span class="help-num">5</span> Satélite local (MBTiles Esri → raster)</h2>
+      <p>
+        Pacote <code>sp_satellite.mbtiles</code> (capital SP, zoom típico 10–17), gerado por <code>infra/scripts/build_sp_satellite_mbtiles.sh</code>.
+        O frontend consulta <code>/tiles/data/sp_sat.json</code> antes de activar o toggle; após alterações no contentor TileServer, reiniciar <strong>tileserver</strong> e <strong>web</strong>
+        (resolução de DNS interna Docker no nginx — ver <code>CONTEXT_STATE</code>).
       </p>
-      <p class="mock-hint" style="margin: 10px 0 0; font-size: 11px;">
-        Estes URLs usam a branch <code>main</code> no GitHub (última versão publicada). Se abrir <strong>404</strong>, os ficheiros ainda não estão no remoto — execute <code>git push origin main</code> a partir do clone onde fez o commit.
+      <p class="help-note">404 de tiles fora da bbox é esperado (cobertura parcial). <code>minNativeZoom</code> / <code>maxNativeZoom</code> estão alinhados ao pacote instalado.</p>
+    </section>
+
+    <section class="help-section" id="topbar">
+      <h2><span class="help-num">6</span> Topbar, mapa e zoom (%)</h2>
+
+      <h3 id="layouts-wire">Layouts da interface (esquema)</h3>
+      <p>
+        Com o botão <strong>Operação</strong> activo, a app usa a classe <code>has-left-panel</code> no contentor <code>.app</code>.
+        O interruptor ao lado (rótulo i18n <strong>«Foco no centro de controlo (~75&nbsp;%)»</strong>) alterna entre
+        <code>app--oper-layout-split</code> (metade / metade) e <code>app--oper-layout-ccc</code> (grelha 2×2 com mais área para o painel).
+        A topbar decorativa mostra só <strong>Mapa</strong> em tela cheia; com Operação aberta, os títulos <strong>Centro de Controle</strong> e <strong>Mapa</strong>
+        alinham-se às colunas no modo split (ver <code>docs/CONTEXT_STATE.md</code> — topbar 60px).
       </p>
-    </div>
 
-    <h2>10. Gerenciar Traduções</h2>
-    <p>Modal para edição espelhada de chaves <code>config.translation</code> (EN/PT/ES/IT). O idioma da sessão altera-se pelo selector na engrenagem; as traduções são carregadas via <code>GET /api/translations/:lang</code>.</p>
+      <div class="help-wire-list" role="group" aria-label="Esquemas dos três modos de layout">
+        <figure class="help-figure">
+          <figcaption>
+            Tela cheia — mapa ocupa todo o corpo
+            <span class="help-fig-sub">Sem <code>has-left-panel</code>. Topbar com título decorativo único «Mapa»; área principal é só o Leaflet (<code>#map</code>).</span>
+          </figcaption>
+          <div class="help-wf help-wf--full" aria-hidden="true">
+            <div class="help-wf-top">
+              <span class="help-wf-brand">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12z"/></svg>
+                TabGis
+              </span>
+              <div class="help-wf-top-mid help-wf-top-mid--solo"><span>Mapa</span></div>
+              <div class="help-wf-pills">Busca · Camadas · ⚙</div>
+            </div>
+            <div class="help-wf-body">
+              <div class="help-wf-map">Mapa Leaflet</div>
+            </div>
+          </div>
+          <p class="help-wf-legend"><strong>100&nbsp;%</strong> da largura útil para o mapa (abaixo da topbar ~60px na app real).</p>
+        </figure>
 
-    <h2>11. Utilizadores e tipos <code>ref.*</code></h2>
-    <p><strong>Utilizadores:</strong> modal a partir da engrenagem; lista e criação de contas em <code>security.users</code> (<code>GET</code>/<code>POST /api/users</code>). Perfil de acesso em evolução.</p>
-    <p><strong>Tipos de domínio:</strong> modal que lê as tabelas <code>ref.equipment_type</code>, <code>ref.network_type</code>, <code>ref.network_level</code>, <code>ref.connection_state</code>, <code>ref.work_order_type</code>, <code>ref.task_type</code>, <code>ref.call_type</code> via <code>GET /api/ref/types</code>; guardar rótulos com <code>PUT /api/ref/types</code>. Os códigos <code>code</code> não são editáveis nesta vista.</p>
+        <figure class="help-figure">
+          <figcaption>
+            Split 50&nbsp;% / 50&nbsp;% — «mapa e painel com a mesma largura»
+            <span class="help-fig-sub">Classe <code>app--oper-layout-split</code>. Painel esquerdo (<code>#left-panel</code>) e <code>#map</code> em fila, cada um <strong>50&nbsp;%</strong> da largura.</span>
+          </figcaption>
+          <div class="help-wf help-wf--split50" aria-hidden="true">
+            <div class="help-wf-top">
+              <span class="help-wf-brand">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12z"/></svg>
+                TabGis
+              </span>
+              <div class="help-wf-top-mid help-wf-top-mid--split">
+                <span>Centro de Controle</span>
+                <span>Mapa</span>
+              </div>
+              <div class="help-wf-pills">···</div>
+            </div>
+            <div class="help-wf-body">
+              <div class="help-wf-panel">
+                Painel Operação
+                <span class="help-wf-tabs">OMS · MWM · DMS · IND · SMT · TMP · AUD</span>
+              </div>
+              <div class="help-wf-map">Mapa</div>
+            </div>
+          </div>
+          <p class="help-wf-legend">Ideal para comparar grelha de ordens e mapa lado a lado. Detalhe de ordem em linha pode usar altura do painel.</p>
+        </figure>
 
-    <h2>12. Testes E2E (Playwright)</h2>
-    <p>Pasta <code>e2e/</code>: após <code>npm install</code> e <code>npx playwright install chromium</code>, com a stack Docker a servir o frontend em <code>:8088</code>, execute <code>npm test</code> (opcional: <code>PLAYWRIGHT_BASE_URL=…</code>). Cobre fumo de mapa, traduções e entradas do menu Configurações.</p>
+        <figure class="help-figure">
+          <figcaption>
+            Foco no Centro de Controlo (~75&nbsp;% da atenção em operação)
+            <span class="help-fig-sub">Classe <code>app--oper-layout-ccc</code> (interruptor ligado). Grelha CSS: linha superior a largura total = <strong>guias + lista</strong>; linha inferior = <strong>detalhe</strong> (metade) + <strong>mapa</strong> (metade). Área geométrica do mapa ≈ <strong>25&nbsp;%</strong> do rectângulo total — daí o «~75&nbsp;%» para o centro de controlo.</span>
+          </figcaption>
+          <div class="help-wf help-wf--ccc" aria-hidden="true">
+            <div class="help-wf-top">
+              <span class="help-wf-brand">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12z"/></svg>
+                TabGis
+              </span>
+              <div class="help-wf-top-mid help-wf-top-mid--split">
+                <span>Centro de Controle</span>
+                <span>Mapa</span>
+              </div>
+              <div class="help-wf-pills">···</div>
+            </div>
+            <div class="help-wf-body">
+              <div class="help-wf-opctl">
+                Painel Operação (largura total)
+                <span class="help-wf-tabs">Lista OMS / grelha · linha activa</span>
+              </div>
+              <div class="help-wf-panel help-wf-opdet">
+                Folha / detalhe
+                <span class="help-wf-tabs"><code>.oper-detail-pane</code></span>
+              </div>
+              <div class="help-wf-opmap">Mapa</div>
+            </div>
+          </div>
+          <p class="help-wf-legend">
+            Em <code>styles.css</code>, a grelha usa <code>grid-template-areas</code> com a primeira linha só <code>opctl</code> (painel a toda a largura) e a segunda <code>opdet</code> + <code>opmap</code> lado a lado — mais espaço vertical para operar com folha de ordem visível.
+          </p>
+        </figure>
+      </div>
 
-    <h2>13. Documentação técnica no repositório</h2>
-    <ul>
-      <li><code>docs/Escopo_Projeto_GeoUtil.md</code> — objectivos e arquitectura.</li>
-      <li><code>docs/CONTEXT_STATE.md</code> — estado da POC, portas, SQL, frontend.</li>
-      <li><code>docs/DEPLOY_POC.md</code> — deploy e ordem de carregamento.</li>
-      <li><code>docs/GeoSampa_offline_operacao.md</code> / <code>docs/GeoSampa_offline_tecnico.md</code> — GeoSampa MBTiles (ver também secção 9).</li>
-      <li><code>frontend/README.md</code> — notas do cliente web.</li>
-    </ul>
+      <p class="help-note">
+        Estes blocos são <strong>diagramas</strong> (cores e proporções alinhadas à POC), não substitutos de capturas de ecrã reais.
+        Para material gráfico futuro, podem acrescentar-se PNG/WebP em <code>frontend/assets/help/</code> e referenciá-los aqui com <code>&lt;img&gt;</code>.
+      </p>
 
-    <p class="help-note" style="margin-top: 32px;">
-      Esta página é um resumo para operadores e investigadores. Para pormenores de versão de camadas, tamanhos de MBTiles e procedimentos de build, consulte sempre <code>docs/CONTEXT_STATE.md</code> no repositório.
-    </p>
+      <h3>Esquerda</h3>
+      <ul>
+        <li><strong>Início</strong> — repõe a vista inicial (inset diferente em tela cheia vs. painel Operação 50/50).</li>
+        <li><strong>Operação</strong> — abre ou fecha o painel lateral; opção de layout conforme configuração.</li>
+      </ul>
+      <h3>Direita</h3>
+      <ul>
+        <li><strong>Estado</strong> — feedback curto (carregamento, erros, confirmações).</li>
+        <li><strong>Clima</strong> — atalho (ícone sol + nuvem) para a guia TMP.</li>
+        <li><strong>Busca</strong> — municípios e bairros (WFS); endereço (Nominatim ou PostGIS local).</li>
+        <li><strong>Camadas</strong> — fundo raster (online / satélite local / GeoSampa offline), vias, limites, municípios-alvo, bairros; <em>pills</em> OMS/MWM/GIS/LAND.</li>
+        <li><strong>Configurações</strong> — idioma, visualização, utilizadores, tipos <code>ref</code>, traduções, esta ajuda.</li>
+      </ul>
+      <p class="help-note">Só um menu entre Busca, Camadas e Configurações fica aberto; clique fora da topbar fecha os painéis.</p>
+      <h3>Mapa</h3>
+      <ul>
+        <li>Camadas vectoriais <strong>WMS</strong> (GetFeatureInfo ao clique).</li>
+        <li><strong>Limite UF</strong> e lógica municípios-alvo / bairros em função do zoom (limiar ~12; configurável em «Gerenciar visualização»).</li>
+      </ul>
+      <h3>Indicador de zoom (%)</h3>
+      <p>
+        <strong>0&nbsp;%</strong> = baseline da última vista <strong>Início</strong>; <strong>100&nbsp;%</strong> = detalhe máximo do raster activo (ou do mapa sem raster).
+        A partir de ~<strong>50&nbsp;%</strong>, a app pode activar automaticamente <strong>bairros</strong> e <strong>vias</strong> quando o zoom Leaflet o permitir.
+      </p>
+    </section>
+
+    <section class="help-section" id="busca">
+      <h2><span class="help-num">7</span> Busca</h2>
+      <ul>
+        <li><strong>Município / bairro</strong> — listas WFS; ao escolher bairro, enquadramento do polígono e activação de bairros + vias por defeito.</li>
+        <li><strong>Endereço</strong> — Nominatim (online) ou substring local com <code>unaccent</code> em <code>landbase.vias_alvo_sp</code>.</li>
+      </ul>
+    </section>
+
+    <section class="help-section" id="operacao">
+      <h2><span class="help-num">8</span> Painel Operação</h2>
+      <p>
+        Guias: <strong>OMS</strong>, <strong>MWM</strong>, <strong>DMS</strong>, <strong>IND</strong>, <strong>SMT</strong>, <strong>TMP</strong> (clima), <strong>AUD</strong>.
+        Utilizadores: <strong>Configurações → Gerenciar utilizadores</strong> (não na barra de guias).
+      </p>
+      <ul>
+        <li><strong>OMS</strong> — ordens e folha via REST.</li>
+        <li><strong>TMP</strong> — Open-Meteo (SP centro), radar RainViewer opcional; não substitui alertas oficiais (INMET/CPTEC).</li>
+        <li><strong>Ir para o mapa</strong> — centra e activa vista operacional (bairros/vias conforme regras).</li>
+        <li>Outras guias podem estar em mock — ver <code>docs/CONTEXT_STATE.md</code>.</li>
+      </ul>
+    </section>
+
+    <section class="help-section" id="config">
+      <h2><span class="help-num">9</span> Configurações e dados de referência</h2>
+      <h3>Gerenciar visualização</h3>
+      <ul>
+        <li>Limites de zoom Leaflet para activar/desactivar <strong>Bairros</strong> e <strong>Vias</strong>; opção <strong>Sobrepor regras atuais</strong>.</li>
+        <li>Persistência: <span class="help-kbd">localStorage</span> (<code>tabgis_layer_zoom_cfg_v1</code>).</li>
+      </ul>
+      <h3>Traduções</h3>
+      <p>Modal espelhado para chaves <code>config.translation</code> (EN/PT/ES/IT); API <code>GET /api/translations/:lang</code>.</p>
+      <h3>Utilizadores e <code>ref.*</code></h3>
+      <p>
+        <strong>Utilizadores:</strong> <code>GET</code>/<code>POST /api/users</code> sobre <code>security.users</code>.
+        <strong>Tipos de domínio:</strong> <code>GET /api/ref/types</code>, <code>PUT /api/ref/types</code> para rótulos; códigos <code>code</code> fixos na vista actual.
+      </p>
+    </section>
+
+    <section class="help-section" id="qa-docs">
+      <h2><span class="help-num">10</span> Testes e documentação no repositório</h2>
+      <p>
+        <strong>Playwright:</strong> pasta <code>e2e/</code> — <code>npm install</code>, <code>npx playwright install chromium</code>, stack em <code>:8088</code>, depois <code>npm test</code>
+        (opcional <code>PLAYWRIGHT_BASE_URL=…</code>).
+      </p>
+      <ul>
+        <li><a href="https://github.com/wesleyspo/TabGis/blob/main/docs/Escopo_Projeto_TabGis.md" target="_blank" rel="noopener noreferrer">Escopo_Projeto_TabGis.md</a> — objectivos e arquitectura.</li>
+        <li><a href="https://github.com/wesleyspo/TabGis/blob/main/docs/CONTEXT_STATE.md" target="_blank" rel="noopener noreferrer">CONTEXT_STATE.md</a> — estado da POC, portas, SQL, frontend.</li>
+        <li><a href="https://github.com/wesleyspo/TabGis/blob/main/docs/DEPLOY.md" target="_blank" rel="noopener noreferrer">DEPLOY.md</a> — deploy e ordem de carregamento.</li>
+        <li><a href="https://github.com/wesleyspo/TabGis/blob/main/frontend/README.md" target="_blank" rel="noopener noreferrer">frontend/README.md</a> — notas do cliente web.</li>
+      </ul>
+      <p class="help-note" style="margin-top: 20px;">
+        Para versões de camadas, tamanhos de MBTiles e procedimentos de build, use sempre <code>docs/CONTEXT_STATE.md</code> no clone ou no GitHub.
+      </p>
+    </section>
   </div>
 </body>
 </html>

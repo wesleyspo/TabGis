@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Base URL: serviço nginx da POC (ver infra/docker-compose.yml, porta 8088).
+ * Base URL: serviço nginx TabGis (ver infra/docker-compose.yml, porta 8088).
  * Sobrescrever: PLAYWRIGHT_BASE_URL=http://homeserver:8088 npm test
  */
 export default defineConfig({
