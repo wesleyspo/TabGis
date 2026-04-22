@@ -14,7 +14,7 @@ TabGis e uma plataforma web para gestao operacional de redes de utilities com in
 - Frontend web servido por nginx.
 - API Node.js/Express.
 - PostgreSQL/PostGIS para dados geoespaciais e operacionais.
-- MongoDB para trilhas de eventos.
+- Schema PostgreSQL **`events`** para trilhas de eventos (exportáveis a Mongo/externo; ver `docs/EVENTS_ARCHITECTURE.md`).
 - GeoServer para WMS/WFS.
 - TileServer GL para raster MBTiles.
 

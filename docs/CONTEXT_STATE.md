@@ -55,8 +55,8 @@ git push origin v0.1.0           # ou: git push origin --tags
 | `infra-geoserver-1` | `oscarfonts/geoserver:latest` | **8080** | WMS / WFS / SLD |
 | `infra-tileserver-1` | `maptiler/tileserver-gl:latest` | **8081** | MBTiles raster (satélite local) |
 | `infra-web-1` | `nginx:alpine` | **8088** | Frontend + proxy `/geoserver`, `/tiles`, `/api` |
-| `infra-api-1` | build `backend/` (Node) | **3000** | API REST (via `:8088/api/`): `GET /api/translations/:lang`; `GET/POST /api/users`; `GET/PATCH /api/work-orders`; `GET/POST/PATCH` folha e tarefas em `/api/work-orders/:id`…; `GET /api/geocode`, `GET /api/geocode-local`; **`GET`/`PUT /api/ref/types`** (rótulos `ref.*`, dev sem autenticação por rota); `GET /api/teams`; `GET /api/mwm/demo-routes`; `GET /api/oms/work-orders/aggregate`; `GET /api/oms/work-orders`; `GET /api/audit/operations-archive` |
-| `infra-mongodb-1` | `mongo:latest` | **27017** | Logs / event_report (uso futuro) |
+| `infra-api-1` | build `backend/` (Node) | **3000** | API REST (via `:8088/api/`): `GET /api/translations/:lang`; `GET/POST /api/users`; `GET/PATCH /api/work-orders`; `GET/POST/PATCH` folha e tarefas em `/api/work-orders/:id`…; `GET /api/geocode`, `GET /api/geocode-local`; **`GET`/`PUT /api/ref/types`** (rótulos `ref.*`, dev sem autenticação por rota); `GET /api/teams`; `GET /api/mwm/demo-routes`; `GET /api/oms/work-orders/aggregate`; `GET /api/oms/work-orders`; `GET /api/audit/operations-archive`; **`GET /api/events`** (diário `events.event`) |
+| `infra-mongodb-1` | `mongo:latest` | **27017** | Opcional / legado — trilha de eventos canónica em Postgres (`events`); ver `docs/EVENTS_ARCHITECTURE.md` |
 
 ### Portas de acesso (de outro notebook na mesma rede ou via SSH tunnel)
 
@@ -87,6 +87,7 @@ O banco de dados foi estruturado em *schemas* fundamentais para sustentar o comp
 4. **`audit`**: Histórico detalhado gerado por Triggers no PostGIS, gravando alterações em parâmetros (`audit.parameter_history`), sessões de usuário (`audit.login_history`), **arquivo obrigatório antes de `DELETE`** em tabelas operacionais (`audit.operations_row_archive`) e **`audit.domain_event`** (correlação de alterações — ver `infra/sql/04_gis_oms_mwm_domain.sql`).
 5. **`operations`**: Equipas (`operations.team`), ordens (`operations.work_order` com `owner_id` e `locked_by_id` → `security.users`), deslocamentos equipa–ordem (`operations.team_order_displacement`), rotas por janela temporal (`operations.team_route`, ex. últimas 48h). Scripts: `03_operations_schema.sql`, `04_gis_oms_mwm_domain.sql`. Regra: *nada* é removido das tabelas principais de `operations` sem inserção prévia do registo em `audit.operations_row_archive` (triggers `BEFORE DELETE`).
 6. **`ref`**, **`gis`**, **`oms`**, **`mwm`**: Modelo canónico utilities (consumidores, equipamentos, chamadas, ordens, equipas, rotas) conforme `docs/Database_Structure_Context.md`; criado por `04_gis_oms_mwm_domain.sql`.
+7. **`events`**: Diário append-only (`events.event`) + função `events.append_event`; barramento plugável na API Node — ver `docs/EVENTS_ARCHITECTURE.md`.
 
 | Artefacto | Origem | Tabelas PostGIS | Camadas GeoServer |
 |-----------|--------|-----------------|-------------------|
@@ -127,6 +128,7 @@ Script de geração: `infra/scripts/setup_municipios_alvo_sp.sh`
 | `infra/sql/07_work_order_oms_grid_columns.sql` | Grelha OMS: `started_at`, `callback_auto` | `docs/DEPLOY.md` §2 |
 | `infra/sql/08_oms_test_orders_extra.sql` … `infra/sql/13_oms_bulk_clustered_demo.sql` | Dados de teste / vistas OMS-MWM opcionais (ambiente de laboratório) | aplicar manualmente conforme necessidade |
 | `infra/sql/14_gis_equipment_network_demo.sql` | Massa idempotente `gis.equipment` + `gis.consumer` (prefixos `POC_DEMO_` / `POC-DEMO-`) | — |
+| `infra/sql/15_events_schema.sql` | Schema `events` + tabela `events.event` + `events.append_event` (diário multi-domínio) | `docs/EVENTS_ARCHITECTURE.md` |
 | `infra/scripts/apply_poc_test_mass.sh` | Executa o SQL 14 contra o contentor `db` (`psql`) | — |
 | `infra/scripts/repair_geosampa_mbtiles.py` | Reparação incremental do MBTiles GeoSampa (só tiles em falta na tabela `tiles`) | `docs/GeoSampa_offline_tecnico.md` |
 | `infra/scripts/repair_geosampa_offline_mbtiles.sh` | Wrapper venv para a reparação; típico em background: `nohup … >> /tmp/geosampa_repair.log &` | `docs/GeoSampa_offline_operacao.md` |
@@ -193,7 +195,7 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 | `frontend/help.html` | Ajuda ao operador (resumo funcional; liga a `styles.css`) | — |
 | `frontend/styles.css` | Tokens, topbar, painel operação, modais, clima (TMP), tabelas `ref` em modal |
 | `frontend/main.js` | Leaflet, i18n, Operação, modais de configuração, **Open-Meteo** na guia TMP, `GET`/`PUT` `/api/ref/types`, vista inicial e zoom |
-| `backend/server.js` | API Express — traduções, geocodificação, utilizadores, ordens/tarefas, **`/api/ref/types`**, equipas, auditoria, rotas demo MWM |
+| `backend/server.js` | API Express — traduções, geocodificação, utilizadores, ordens/tarefas, **`/api/ref/types`**, equipas, auditoria, rotas demo MWM, barramento **`events`** (`emitWithRequest`, `GET /api/events`) |
 | `backend/lib/*.test.js` | Testes unitários (`node:test`) — lógica pura OMS/geocode | `cd backend && npm test` |
 | `e2e/` | **Playwright** — testes de fumo (`specs/smoke.spec.ts`): mapa, traduções, menu Configurações | `cd e2e && npm install && npx playwright install chromium && PLAYWRIGHT_BASE_URL=http://127.0.0.1:8088 npm test` |
 | `scripts/` | Autonomia (`autonomy/`), stress HTTP (`stress/`) — ver `scripts/README.md` | `docs/AUTONOMY_RUNBOOK.md` |
@@ -321,7 +323,7 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 | 1 | Upgrade satélite MBTiles para ZMAX=17 (1,2 m/px) | **✅ Operacional** |
 | 2 | UI Operação + schema `operations` + arquivo `audit.operations_row_archive` | **✅ Estrutura base + mock UI** |
 | 3 | Modelagem explícita da topologia de rede (schema PostGIS) | Pendente |
-| 4 | APIs/backend para edição, ordens, rotas 48h e logs MongoDB (`event_report`) | **Parcial:** `GET/POST /api/users`, `GET/PATCH /api/work-orders`, `GET /api/oms/work-orders`; MongoDB pendente |
+| 4 | APIs/backend para edição, ordens, rotas 48h e diário `events` (exportável a Mongo/externo) | **Parcial:** mutações OMS/ref/security emitem eventos; `GET /api/events`; replicação externa pendente |
 | 5 | Endurecimento de segurança (credenciais, TLS) | Fora do âmbito desta fase |
 
 ---
@@ -335,6 +337,7 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 | `docs/Escopo_Projeto_GeoUtil.md` | Referência histórica de escopo académico |
 | `docs/DEPLOY.md` | Guia principal de deploy |
 | `docs/DEPLOY_POC.md` | Deploy Docker legado, ordem SQL alargada, diagnóstico |
+| `docs/EVENTS_ARCHITECTURE.md` | Schema `events`, barramento Node, exportação Mongo-compatível |
 | `.github/workflows/ci.yml` | CI: testes unitários do backend (`npm test`) |
 | `docs/RUNBOOK_BASEMAP_SP_ESTADO.md` | Pipeline landbase SP estado |
 | `docs/RUNBOOK_BASEMAP_SP.md` | Pipeline SP Centro (legado) |

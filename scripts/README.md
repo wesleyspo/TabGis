@@ -9,6 +9,8 @@ Organização de automação e laboratório. **Pipelines de dados e landbase** c
 | `autonomy/run_until_0700.sh` | Repete até às **07:00** locais (próxima ocorrência). |
 | `stress/stress_api.sh` | Carga HTTP sobre `/api/*` (variáveis `STRESS_*` — ver `docs/AUTONOMY_RUNBOOK.md`). |
 
+SQL canónico do diário: `../infra/sql/15_events_schema.sql` (schema `events`).
+
 ## Requisitos
 
 - **GNU date** para `run_until_0700.sh`.

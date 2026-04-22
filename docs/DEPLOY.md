@@ -20,6 +20,8 @@ Este documento e a referencia principal de deploy para ambiente TabGis moderno.
 
 Executar scripts versionados em `infra/sql/` na ordem indicada em `docs/CONTEXT_STATE.md` (tabela *Scripts versionados*) ou, para o passo-a-passo alargado, em `docs/DEPLOY_POC.md` (secção 2).
 
+Incluir **`infra/sql/15_events_schema.sql`** antes de depender de `GET /api/events` ou de emissão de eventos na API (pode aplicar-se após `01_init_schemas.sql`; ver `docs/EVENTS_ARCHITECTURE.md`).
+
 ## Diagnostico rapido
 - Preferir acesso via `:8088` para garantir same-origin (`/geoserver`, `/tiles`, `/api`).
 - Em caso de recreacao do TileServer, reiniciar `web` para re-resolver DNS interno Docker.

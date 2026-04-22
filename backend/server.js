@@ -1,10 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const https = require('https');
+const { randomUUID } = require('crypto');
 const { Pool } = require('pg');
 const { omsAggregateCellMetersFromZoom } = require('./lib/omsAggregate');
 const { geocodeQueryTooShort } = require('./lib/geocodeQuery');
 const { formatLocalStreetDisplayName } = require('./lib/localGeocodeFormat');
+const { createDefaultEventBus } = require('./lib/events/createEventBus');
 
 /** Obrigatório pela política de uso do Nominatim (https://operations.osmfoundation.org/policies/nominatim/). */
 const NOMINATIM_USER_AGENT =
@@ -17,6 +19,11 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+app.use((req, _res, next) => {
+  req.correlationId = req.get('x-correlation-id') || randomUUID();
+  next();
+});
+
 const pool = new Pool({
   host: process.env.DB_HOST || 'db',
   port: process.env.DB_PORT || 5432,
@@ -24,6 +31,23 @@ const pool = new Pool({
   user: process.env.DB_USER || 'tabgis_admin',
   password: process.env.DB_PASSWORD || 'password123',
 });
+
+const eventBus = createDefaultEventBus(pool);
+
+/** Emite evento no barramento plugável (sinks nunca rebentam a resposta HTTP). */
+async function emitWithRequest(req, envelope) {
+  const meta = {
+    ...(envelope.metadata || {}),
+    correlation_id: req.correlationId,
+    http_method: req.method,
+    http_path: req.originalUrl || req.url || '',
+  };
+  await eventBus.emit({
+    ...envelope,
+    correlationId: envelope.correlationId || req.correlationId,
+    metadata: meta,
+  });
+}
 
 /**
  * Geocodificação por texto (endereço / lugar) via Nominatim (OpenStreetMap).
@@ -191,7 +215,19 @@ app.post('/api/users', async (req, res) => {
        RETURNING id, username, email, first_name, last_name, access_type, status, created_at`,
       [String(username).trim(), email || null, first_name || null, last_name || null, access_type || null]
     );
-    res.status(201).json(rows[0]);
+    const created = rows[0];
+    await emitWithRequest(req, {
+      domain: 'security',
+      eventType: 'security.user.created',
+      aggregateType: 'security.user',
+      aggregateId: String(created.id),
+      payload: {
+        username: created.username,
+        access_type: created.access_type,
+      },
+      actorType: 'api',
+    });
+    res.status(201).json(created);
   } catch (error) {
     if (error.code === '23505') {
       return res.status(409).json({ error: 'Username already exists' });
@@ -432,7 +468,22 @@ app.patch('/api/work-orders/:id', async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Work order not found' });
     }
-    res.json(rows[0]);
+    const updated = rows[0];
+    const changedKeys = fields
+      .filter((f) => !/^updated_at\s*=/i.test(f))
+      .map((f) => String(f).split('=')[0].trim());
+    await emitWithRequest(req, {
+      domain: 'oms',
+      eventType: 'oms.work_order.updated',
+      aggregateType: 'operations.work_order',
+      aggregateId: String(id),
+      payload: {
+        order_code: updated.order_code,
+        changed: changedKeys,
+      },
+      actorType: 'api',
+    });
+    res.json(updated);
   } catch (error) {
     console.error('PATCH /api/work-orders/:id', error);
     res.status(500).json({ error: 'Failed to update work order' });
@@ -465,7 +516,20 @@ app.post('/api/work-orders/:id/tasks', async (req, res) => {
        RETURNING id, sequence_no, summary, status, notes, created_at, updated_at`,
       [workOrderId, summary, notes, status]
     );
-    res.status(201).json(rows[0]);
+    const task = rows[0];
+    await emitWithRequest(req, {
+      domain: 'oms',
+      eventType: 'oms.work_order_task.created',
+      aggregateType: 'operations.work_order_task',
+      aggregateId: String(task.id),
+      payload: {
+        work_order_id: workOrderId,
+        sequence_no: task.sequence_no,
+        status: task.status,
+      },
+      actorType: 'api',
+    });
+    res.status(201).json(task);
   } catch (error) {
     console.error('POST /api/work-orders/:id/tasks', error);
     res.status(500).json({ error: 'Failed to add task' });
@@ -508,7 +572,20 @@ app.patch('/api/work-orders/:id/tasks/:task_id', async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Task not found or does not belong to work order' });
     }
-    res.json(rows[0]);
+    const taskRow = rows[0];
+    const taskChanged = fields.map((f) => String(f).split('=')[0].trim());
+    await emitWithRequest(req, {
+      domain: 'oms',
+      eventType: 'oms.work_order_task.updated',
+      aggregateType: 'operations.work_order_task',
+      aggregateId: String(taskId),
+      payload: {
+        work_order_id: workOrderId,
+        changed: taskChanged,
+      },
+      actorType: 'api',
+    });
+    res.json(taskRow);
   } catch (error) {
     console.error('PATCH /api/work-orders/:id/tasks/:task_id', error);
     res.status(500).json({ error: 'Failed to update task' });
@@ -612,6 +689,20 @@ app.put('/api/ref/types', async (req, res) => {
       }
     }
     await client.query('COMMIT');
+    const tables = Object.keys(body);
+    await emitWithRequest(req, {
+      domain: 'ref',
+      eventType: 'ref.types_batch.updated',
+      aggregateType: 'ref.multitable',
+      aggregateId: tables.sort().join(','),
+      payload: {
+        tables,
+        row_counts: Object.fromEntries(
+          tables.map((t) => [t, Array.isArray(body[t]) ? body[t].length : 0])
+        ),
+      },
+      actorType: 'api',
+    });
     res.json({ ok: true });
   } catch (error) {
     try {
@@ -641,6 +732,58 @@ app.get('/api/audit/operations-archive', async (req, res) => {
   } catch (error) {
     console.error('GET /api/audit/operations-archive', error);
     res.status(500).json({ error: 'Failed to list archive rows' });
+  }
+});
+
+/** Leitura do diário events (append-only). Filtros opcionais: domain, event_type, aggregate_type, aggregate_id, since (ISO). */
+app.get('/api/events', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 80, 500);
+    const cond = [];
+    const vals = [];
+    let n = 1;
+
+    if (req.query.domain) {
+      cond.push(`domain = $${n++}`);
+      vals.push(String(req.query.domain).trim().toLowerCase());
+    }
+    if (req.query.event_type) {
+      cond.push(`event_type = $${n++}`);
+      vals.push(String(req.query.event_type).trim());
+    }
+    if (req.query.aggregate_type) {
+      cond.push(`aggregate_type = $${n++}`);
+      vals.push(String(req.query.aggregate_type).trim());
+    }
+    if (req.query.aggregate_id) {
+      cond.push(`aggregate_id = $${n++}`);
+      vals.push(String(req.query.aggregate_id).trim());
+    }
+    if (req.query.since) {
+      cond.push(`occurred_at >= $${n++}::timestamptz`);
+      vals.push(String(req.query.since));
+    }
+    if (req.query.correlation_id) {
+      cond.push(`correlation_id = $${n++}::uuid`);
+      vals.push(String(req.query.correlation_id).trim());
+    }
+
+    vals.push(limit);
+    const where = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
+    const sql = `
+      SELECT id, event_uuid, occurred_at, recorded_at, schema_version, domain, event_type,
+             aggregate_type, aggregate_id, correlation_id, causation_id,
+             actor_type, actor_id, source, payload, metadata
+      FROM events.event
+      ${where}
+      ORDER BY occurred_at DESC, id DESC
+      LIMIT $${n}
+    `;
+    const { rows } = await pool.query(sql, vals);
+    res.json(rows);
+  } catch (error) {
+    console.error('GET /api/events', error);
+    res.status(500).json({ error: 'Failed to list events (verifique se infra/sql/15_events_schema.sql foi aplicado)' });
   }
 });
 
