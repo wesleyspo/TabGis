@@ -21,7 +21,7 @@ Um **diário append-only** de tudo o que importa rastrear entre domínios (OMS, 
 
 - Script: `infra/sql/15_events_schema.sql`
 - Tabela: `events.event`
-- Função: `events.append_event(...)` — ponto único de escrita (API Node, triggers PL/pgSQL futuros, jobs).
+- Função: `events.append_event(...)` — invocada **apenas a partir da aplicação** (sink em Node), não por triggers na base.
 
 Aplicar no contentor `db`:
 
@@ -65,11 +65,19 @@ Cabeçalho opcional em **todas** as mutações: `X-Correlation-ID` (UUID). Se om
 | `oms.work_order_task.updated` | `PATCH /api/work-orders/:id/tasks/:task_id` |
 | `ref.types_batch.updated` | `PUT /api/ref/types` |
 
-Outros domínios (DMS, IND, SMT, TMP, AUD, GIS, landbase) podem passar a emitir à medida que existirem rotas ou triggers.
+Outros domínios (DMS, IND, SMT, TMP, AUD, GIS, landbase) devem emitir **a partir de rotas REST** (ou de processos Node dedicados), com o mesmo contrato `emitWithRequest` / barramento.
 
-## Triggers Postgres (futuro)
+## Política: sem triggers PostgreSQL em `events`
 
-Para alterações feitas **só** na base (sem passar pela API), chamar `events.append_event` dentro de triggers `AFTER INSERT/UPDATE` nas tabelas relevantes, reutilizando a mesma assinatura.
+Não se usam triggers `AFTER INSERT/UPDATE` para alimentar `events.event`. Motivos: manutenção mais simples, testes no mesmo processo que a API, evitar lógica duplicada e efeitos surpresa em cargas em massa ou `psql`.
+
+**Alternativas quando a alteração não passa por uma rota HTTP existente:**
+
+1. **Nova rota ou comando administrativo** na API que encapsule a operação e chame `emitWithRequest` no fim.
+2. **Script ou job Node** (cron, worker) que use o mesmo `pool` + `createPgSink` / `eventBus.emit`, reutilizando `events.append_event`.
+3. **Rever o fluxo** para que alterações relevantes passem sempre por camadas que já emitem eventos.
+
+A função SQL `events.append_event` existe para ser chamada **a partir do código da aplicação** (sink), não como destino de triggers.
 
 ## Compatibilidade com Mongo
 

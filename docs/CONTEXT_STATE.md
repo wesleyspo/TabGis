@@ -87,7 +87,7 @@ O banco de dados foi estruturado em *schemas* fundamentais para sustentar o comp
 4. **`audit`**: Histórico detalhado gerado por Triggers no PostGIS, gravando alterações em parâmetros (`audit.parameter_history`), sessões de usuário (`audit.login_history`), **arquivo obrigatório antes de `DELETE`** em tabelas operacionais (`audit.operations_row_archive`) e **`audit.domain_event`** (correlação de alterações — ver `infra/sql/04_gis_oms_mwm_domain.sql`).
 5. **`operations`**: Equipas (`operations.team`), ordens (`operations.work_order` com `owner_id` e `locked_by_id` → `security.users`), deslocamentos equipa–ordem (`operations.team_order_displacement`), rotas por janela temporal (`operations.team_route`, ex. últimas 48h). Scripts: `03_operations_schema.sql`, `04_gis_oms_mwm_domain.sql`. Regra: *nada* é removido das tabelas principais de `operations` sem inserção prévia do registo em `audit.operations_row_archive` (triggers `BEFORE DELETE`).
 6. **`ref`**, **`gis`**, **`oms`**, **`mwm`**: Modelo canónico utilities (consumidores, equipamentos, chamadas, ordens, equipas, rotas) conforme `docs/Database_Structure_Context.md`; criado por `04_gis_oms_mwm_domain.sql`.
-7. **`events`**: Diário append-only (`events.event`) + função `events.append_event`; barramento plugável na API Node — ver `docs/EVENTS_ARCHITECTURE.md`.
+7. **`events`**: Diário append-only (`events.event`) + função `events.append_event` (chamada **só** pelo sink na API Node; **sem triggers** em `events`) — ver `docs/EVENTS_ARCHITECTURE.md`.
 
 | Artefacto | Origem | Tabelas PostGIS | Camadas GeoServer |
 |-----------|--------|-----------------|-------------------|
