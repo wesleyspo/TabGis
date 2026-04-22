@@ -20,6 +20,12 @@ Para janela continua de 10h (ciclos repetidos):
 bash scripts/autonomy/run_window_10h.sh
 ```
 
+Até às **07:00** do relógio local (próxima ocorrência):
+
+```bash
+bash scripts/autonomy/run_until_0700.sh
+```
+
 ## Onde ficam os artefatos
 - Pasta: `autonomy-logs/run_YYYYMMDD_HHMMSS/`
 - Arquivos principais:
@@ -41,6 +47,8 @@ STRESS_BASE_URL=http://127.0.0.1:8088 STRESS_ITERATIONS=200 bash scripts/stress/
 ```
 
 Gera JSON em `autonomy-logs/stress_*.json` (ou defina `STRESS_REPORT_FILE`). O passo **2.4** de `run_10h.sh` executa uma carga leve por defeito (`STRESS_ITERATIONS=50`), usando `PLAYWRIGHT_BASE_URL` quando definida.
+
+`STRESS_CONCURRENCY` (default 1): acima de 1, cada iteração dispara ondas de pedidos paralelos (round-robin nos quatro endpoints).
 
 ## Observacoes operacionais
 - Se `npm` nao estiver instalado, as etapas de E2E sao marcadas como falha e o fluxo segue.

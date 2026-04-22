@@ -98,6 +98,7 @@ main() {
   wait_checkpoint 10 "avaliacao temporaria apos baseline"
 
   wave_header "Onda 2 - validacao automatizada"
+  run_step "2.0" "Testes unitarios backend (node:test)" "command -v node >/dev/null && cd backend && npm test || { echo 'backend test falhou'; exit 2; }"
   run_step "2.1" "Instalar dependencias e2e (se npm existir)" "command -v npm >/dev/null && cd e2e && npm install || { echo 'npm indisponivel'; exit 2; }"
   run_step "2.2" "Instalar Chromium Playwright (se npm existir)" "command -v npx >/dev/null && cd e2e && npx playwright install chromium || { echo 'npx/playwright indisponivel'; exit 2; }"
   run_step "2.3" "Executar testes e2e (se npm existir)" "command -v npm >/dev/null && cd e2e && npm test || { echo 'npm indisponivel'; exit 2; }"

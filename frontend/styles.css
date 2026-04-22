@@ -34,6 +34,8 @@
   --radius-lg:     14px;
 
   --sidebar-w:     290px;
+  /* Topbar fixa — manter alinhada com help.html e layout split/CCC */
+  --topbar-height: 60px;
 
   --font: 'Inter', system-ui, -apple-system, sans-serif;
 }
@@ -67,7 +69,7 @@ html, body {
   overflow: visible; /* Allows details dropdowns to overflow */
   /* Acima do conteúdo principal (painel Operação / mapa) para Camadas e menus permanecerem clicáveis */
   z-index: 1200;
-  height: 60px;
+  height: var(--topbar-height);
 }
 
 .topbar-left {

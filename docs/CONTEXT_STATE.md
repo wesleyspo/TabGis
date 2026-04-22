@@ -194,13 +194,15 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 | `frontend/styles.css` | Tokens, topbar, painel operação, modais, clima (TMP), tabelas `ref` em modal |
 | `frontend/main.js` | Leaflet, i18n, Operação, modais de configuração, **Open-Meteo** na guia TMP, `GET`/`PUT` `/api/ref/types`, vista inicial e zoom |
 | `backend/server.js` | API Express — traduções, geocodificação, utilizadores, ordens/tarefas, **`/api/ref/types`**, equipas, auditoria, rotas demo MWM |
+| `backend/lib/*.test.js` | Testes unitários (`node:test`) — lógica pura OMS/geocode | `cd backend && npm test` |
 | `e2e/` | **Playwright** — testes de fumo (`specs/smoke.spec.ts`): mapa, traduções, menu Configurações | `cd e2e && npm install && npx playwright install chromium && PLAYWRIGHT_BASE_URL=http://127.0.0.1:8088 npm test` |
+| `scripts/` | Autonomia (`autonomy/`), stress HTTP (`stress/`) — ver `scripts/README.md` | `docs/AUTONOMY_RUNBOOK.md` |
 
 - **Tipografia:** Inter (Google Fonts CDN); fallback `system-ui`
 - **Modo recomendado (`:8088`):** GeoServer em `window.location.origin + '/geoserver'` (same-origin)
 - **Modo dev (`:5173`):** GeoServer em `:8080`; WFS/GFI podem falhar por CORS
 
-### Topbar (uma única linha, 60px)
+### Topbar (uma única linha, altura `var(--topbar-height)` = 60px)
 
 | Zona | Conteúdo |
 |------|-----------|
@@ -333,6 +335,7 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 | `docs/Escopo_Projeto_GeoUtil.md` | Referência histórica de escopo académico |
 | `docs/DEPLOY.md` | Guia principal de deploy |
 | `docs/DEPLOY_POC.md` | Deploy Docker legado, ordem SQL alargada, diagnóstico |
+| `.github/workflows/ci.yml` | CI: testes unitários do backend (`npm test`) |
 | `docs/RUNBOOK_BASEMAP_SP_ESTADO.md` | Pipeline landbase SP estado |
 | `docs/RUNBOOK_BASEMAP_SP.md` | Pipeline SP Centro (legado) |
 | `frontend/README.md` | Cliente web, modos :8088 / :5173, camadas |

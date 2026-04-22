@@ -2,11 +2,14 @@ const express = require('express');
 const cors = require('cors');
 const https = require('https');
 const { Pool } = require('pg');
+const { omsAggregateCellMetersFromZoom } = require('./lib/omsAggregate');
+const { geocodeQueryTooShort } = require('./lib/geocodeQuery');
+const { formatLocalStreetDisplayName } = require('./lib/localGeocodeFormat');
 
 /** Obrigatório pela política de uso do Nominatim (https://operations.osmfoundation.org/policies/nominatim/). */
 const NOMINATIM_USER_AGENT =
   process.env.NOMINATIM_USER_AGENT ||
-  'TabGis-POC/1.0 (academic utility mapping; https://github.com/wesleyspo/TabGis)';
+  'TabGis/1.0 (utility mapping; https://github.com/wesleyspo/TabGis)';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -29,7 +32,7 @@ const pool = new Pool({
  */
 app.get('/api/geocode', async (req, res) => {
   const q = String(req.query.q || '').trim();
-  if (q.length < 3) {
+  if (geocodeQueryTooShort(q)) {
     return res.status(400).json({ error: 'Query too short', results: [] });
   }
 
@@ -96,7 +99,7 @@ app.get('/api/geocode', async (req, res) => {
  */
 app.get('/api/geocode-local', async (req, res) => {
   const q = String(req.query.q || '').trim();
-  if (q.length < 3) {
+  if (geocodeQueryTooShort(q)) {
     return res.status(400).json({ error: 'Query too short', results: [] });
   }
 
@@ -119,21 +122,15 @@ app.get('/api/geocode-local', async (req, res) => {
       [q]
     );
 
-    const results = rows.map((r) => {
-      const mun = r.municipio_nome || '';
-      const hw = r.highway || '';
-      const display = mun
-        ? `${r.name} — ${mun}${hw ? ` (${hw})` : ''}`
-        : `${r.name}${hw ? ` (${hw})` : ''}`;
-      return {
+    const results = rows.map((r) =>
+      formatLocalStreetDisplayName({
+        name: r.name,
+        municipio_nome: r.municipio_nome,
+        highway: r.highway,
         lat: r.lat,
         lon: r.lon,
-        display_name: display,
-        type: 'way',
-        class: 'highway',
-        source: 'local',
-      };
-    });
+      })
+    );
 
     res.json({ results });
   } catch (error) {
@@ -234,18 +231,6 @@ app.get('/api/work-orders', async (_req, res) => {
     res.status(500).json({ error: 'Failed to list work orders' });
   }
 });
-
-/** Lado da célula da grelha métrica (UTM 23S), em metros — semelhante a Supercluster / MarkerClusterer. */
-function omsAggregateCellMetersFromZoom(zoom) {
-  const z = Number(zoom);
-  if (!Number.isFinite(z)) return 5500;
-  if (z <= 8) return 12000;
-  if (z <= 9) return 8000;
-  if (z <= 10) return 5500;
-  if (z <= 11) return 3500;
-  if (z <= 12) return 1800;
-  return 900;
-}
 
 /**
  * Agregação de ordens OMS para o mapa.
