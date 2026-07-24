@@ -147,6 +147,15 @@ test.describe("TabGis — fumo ponta-a-ponta", () => {
     expect(Array.isArray(await disp.json())).toBeTruthy();
   });
 
+  test("aba MWM mostra resumo de rotas 48h", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: /Operação|Operation/i }).click();
+    await page.getByRole("tab", { name: /MWM|Equipes|Equipas/i }).click();
+    await expect(page.locator("#mwm-routes-48h-summary")).toContainText(/48|rota|route|traza|percors/i, {
+      timeout: 10000,
+    });
+  });
+
   test("guia ESQ carrega unifilar (API e escada)", async ({ page, request }) => {
     const v = await request.get("/api/schematic/views");
     expect(v.ok(), "GET /api/schematic/views").toBeTruthy();
