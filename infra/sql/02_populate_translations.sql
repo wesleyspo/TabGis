@@ -191,6 +191,46 @@ BEGIN
     ('UI_LAYER_NETWORK_SPANS_HINT', es_id, 'Topología nativa PostGIS (gis.network_span) — nodos topológicos compartidos.'),
     ('UI_LAYER_NETWORK_SPANS_HINT', it_id, 'Topologia nativa PostGIS (gis.network_span) — nodi topologici condivisi.'),
 
+    ('UI_NETWORK_SPAN_DRAW_BTN', en_id, 'Draw segment'),
+    ('UI_NETWORK_SPAN_DRAW_BTN', pt_id, 'Desenhar segmento'),
+    ('UI_NETWORK_SPAN_DRAW_BTN', es_id, 'Dibujar tramo'),
+    ('UI_NETWORK_SPAN_DRAW_BTN', it_id, 'Disegna segmento'),
+
+    ('UI_NETWORK_SPAN_DRAW_TITLE', en_id, 'Click the map to add vertices; double-click or Enter finishes; Esc cancels.'),
+    ('UI_NETWORK_SPAN_DRAW_TITLE', pt_id, 'Clique no mapa para adicionar vértices; duplo clique ou Enter conclui; Esc cancela.'),
+    ('UI_NETWORK_SPAN_DRAW_TITLE', es_id, 'Haga clic en el mapa para añadir vértices; doble clic o Enter termina; Esc cancela.'),
+    ('UI_NETWORK_SPAN_DRAW_TITLE', it_id, 'Clicca sulla mappa per aggiungere vertici; doppio clic o Invio conclude; Esc annulla.'),
+
+    ('UI_NETWORK_SPAN_DRAW_HINT', en_id, 'Segment drawing: click adds a vertex; double-click or Enter finishes; Esc cancels.'),
+    ('UI_NETWORK_SPAN_DRAW_HINT', pt_id, 'Desenho de segmento: clique adiciona vértice; duplo clique ou Enter conclui; Esc cancela.'),
+    ('UI_NETWORK_SPAN_DRAW_HINT', es_id, 'Dibujo de tramo: clic añade vértice; doble clic o Enter termina; Esc cancela.'),
+    ('UI_NETWORK_SPAN_DRAW_HINT', it_id, 'Disegno segmento: clic aggiunge un vertice; doppio clic o Invio conclude; Esc annulla.'),
+
+    ('UI_NETWORK_SPAN_DRAW_CANCEL', en_id, 'Cancel drawing (Esc)'),
+    ('UI_NETWORK_SPAN_DRAW_CANCEL', pt_id, 'Cancelar desenho (Esc)'),
+    ('UI_NETWORK_SPAN_DRAW_CANCEL', es_id, 'Cancelar dibujo (Esc)'),
+    ('UI_NETWORK_SPAN_DRAW_CANCEL', it_id, 'Annulla disegno (Esc)'),
+
+    ('UI_NETWORK_SPAN_DRAW_CANCELLED', en_id, 'Segment drawing cancelled.'),
+    ('UI_NETWORK_SPAN_DRAW_CANCELLED', pt_id, 'Desenho de segmento cancelado.'),
+    ('UI_NETWORK_SPAN_DRAW_CANCELLED', es_id, 'Dibujo de tramo cancelado.'),
+    ('UI_NETWORK_SPAN_DRAW_CANCELLED', it_id, 'Disegno segmento annullato.'),
+
+    ('UI_NETWORK_SPAN_DRAW_SAVED', en_id, 'Segment saved:'),
+    ('UI_NETWORK_SPAN_DRAW_SAVED', pt_id, 'Segmento gravado:'),
+    ('UI_NETWORK_SPAN_DRAW_SAVED', es_id, 'Tramo guardado:'),
+    ('UI_NETWORK_SPAN_DRAW_SAVED', it_id, 'Segmento salvato:'),
+
+    ('UI_NETWORK_SPAN_DRAW_NEED2', en_id, 'At least 2 vertices are required to save the segment.'),
+    ('UI_NETWORK_SPAN_DRAW_NEED2', pt_id, 'São precisos pelo menos 2 vértices para gravar o segmento.'),
+    ('UI_NETWORK_SPAN_DRAW_NEED2', es_id, 'Se necesitan al menos 2 vértices para guardar el tramo.'),
+    ('UI_NETWORK_SPAN_DRAW_NEED2', it_id, 'Servono almeno 2 vertici per salvare il segmento.'),
+
+    ('UI_NETWORK_SPAN_DRAW_DESC', en_id, 'Segment created by drawing on the map.'),
+    ('UI_NETWORK_SPAN_DRAW_DESC', pt_id, 'Segmento criado por desenho no mapa.'),
+    ('UI_NETWORK_SPAN_DRAW_DESC', es_id, 'Tramo creado dibujando en el mapa.'),
+    ('UI_NETWORK_SPAN_DRAW_DESC', it_id, 'Segmento creato disegnando sulla mappa.'),
+
     ('UI_STATUS_LANG_PREFIX', en_id, 'Session language changed to:'),
     ('UI_STATUS_LANG_PREFIX', pt_id, 'Idioma da sessão alterado para:'),
     ('UI_STATUS_LANG_PREFIX', es_id, 'Idioma de la sesión cambiado a:'),

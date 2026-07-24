@@ -1609,6 +1609,13 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   color: var(--text-secondary);
 }
 
+.mock-btn--active-draw {
+  border-color: #d97706;
+  background: rgba(217, 119, 6, 0.14);
+  color: #92400e;
+  font-weight: 600;
+}
+
 .mock-btn-ir,
 .mock-btn-open-order {
   padding: 6px 12px;

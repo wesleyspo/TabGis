@@ -20,7 +20,7 @@ Representar **segmentos lineares da rede** (conductores, tubagens, cabos, etc.) 
 
 ### O que ainda não é (marcos futuros)
 
-- **Edição de geometria no mapa** (desenho interactivo no Leaflet); hoje a edição é via API REST.
+- **Edição de vértices existentes no mapa** (mover/inserir vértices de um segmento já gravado); hoje o desenho cria novos segmentos; alterações de geometria usam `PATCH /api/topology/spans/:id`.
 - **CRS projetado** para tolerância em metros constantes em toda a área — ver secção 5.
 
 ---
@@ -66,12 +66,13 @@ Parâmetros TabGis:
 |----------|----------|
 | **`infra/sql/21_postgis_topology_utilities.sql`** | Extensão, topologia, tabela, camada TopoGeometry, três segmentos demo que partilham vértices (validação de fusão de nós). |
 | **`infra/sql/22_topology_span_write_support.sql`** | Coluna `updated_at`; trigger **BEFORE DELETE** de arquivo em `audit.operations_row_archive` (mesma função genérica do schema `operations`); vista `gis.v_network_span_wms`. |
+| **`infra/sql/23_topology_prune_orphan_primitives.sql`** | Função `gis.prune_orphan_topology_primitives(dry_run)` — remove arestas órfãs e nós isolados; exposta em `POST /api/topology/maintenance/prune`. |
 
 ### Camada de mapa (GeoServer + Leaflet)
 
 - **Publicação**: `infra/scripts/publish_network_span_layer.sh` cria o datastore **`base_sp:tabgis_postgis_gis`** (schema `gis`), publica **`base_sp:v_network_span_wms`** e aplica o estilo **`gis_network_span`** (`infra/geoserver/styles/gis_network_span.sld` — linha âmbar com halo claro e rótulo `code` ao longo da linha).
-- **Frontend**: toggle **Camadas → Rede técnica → «Segmentos lineares da rede»** (`#network_span_layer` em `frontend/index.html`; camada `networkSpanLayer` em `main.js`). Chaves i18n: `UI_LAYER_GROUP_NETWORK`, `UI_LAYER_NETWORK_SPANS`, `UI_LAYER_NETWORK_SPANS_HINT`.
-- **E2E**: teste de fumo em `e2e/specs/smoke.spec.ts` activa o toggle e confirma o pedido WMS.
+- **Frontend**: toggle **Camadas → Rede técnica → «Segmentos lineares da rede»** (`#network_span_layer`); botão **«Desenhar segmento»** (`#network_span_draw_btn`) — clique adiciona vértices, Enter/duplo clique grava via `POST /api/topology/spans` (código auto `SEG_YYYYMMDD_HHMMSSmmm` se omitido), Esc cancela; GetFeatureInfo inclui a camada. Chaves i18n: `UI_LAYER_GROUP_NETWORK`, `UI_LAYER_NETWORK_SPANS`, `UI_LAYER_NETWORK_SPANS_HINT`, `UI_NETWORK_SPAN_DRAW_*`.
+- **E2E**: fumo activa o toggle WMS; segundo teste desenha dois vértices, confirma `POST` 201 e limpa com `DELETE` + `prune`.
 
 ---
 
@@ -84,22 +85,29 @@ Requer o mesmo perfil que operações sobre ordens quando **`SECURITY_ENFORCE=1`
 | `GET` | `/api/topology/meta` | Estado da topologia `tabgis_utilities_topo`, camadas em `topology.layer`, contagens de `edges` / `nodes` / `faces`. Se a topologia não existir, `{ ok, installed: false, hint }`. |
 | `GET` | `/api/topology/spans?limit=` | Lista segmentos lineares com `span_geojson`, `has_topo_geom`, `length_m_approx` (máx. 500). |
 | `GET` | `/api/topology/spans/:id` | Detalhe de um segmento (inclui `metadata` e `updated_at`). |
-| `POST` | `/api/topology/spans` | Cria segmento: `code` (obrigatório, imutável), `coordinates` (`[[lng,lat],…]`, ≥2 vértices), opcionais `description`, `utility_domain`, `equipment_from_id`, `equipment_to_id`, `metadata`. Insere `span_geom` e materializa `topo_geom` com `toTopoGeom` na mesma transacção. `409` em código duplicado. Emite **`gis.topology.network_span.created`**. |
+| `POST` | `/api/topology/spans` | Cria segmento: `coordinates` obrigatório (`[[lng,lat],…]`, ≥2 vértices); `code` **opcional** — se omitido, a API gera `SEG_YYYYMMDD_HHMMSSmmm` (`generateSpanCode`); opcionais `description`, `utility_domain`, `equipment_from_id`, `equipment_to_id`, `metadata`. Insere `span_geom` e materializa `topo_geom` com `toTopoGeom` na mesma transacção. `409` em código duplicado. Emite **`gis.topology.network_span.created`**. |
 | `PATCH` | `/api/topology/spans/:id` | Atualização parcial; `coordinates` retraça a geometria (limpa a TopoGeometry anterior com `clearTopoGeom` e re-materializa). `code` é imutável. Emite **`gis.topology.network_span.updated`**. |
 | `DELETE` | `/api/topology/spans/:id` | Limpa a TopoGeometry, apaga a linha — o trigger BEFORE DELETE arquiva o snapshot em `audit.operations_row_archive` antes da remoção. Emite **`gis.topology.network_span.deleted`**. |
 | `POST` | `/api/topology/maintenance/prune` | Remove primitivas órfãs (arestas sem referência em `relation`, depois nós isolados) com `ST_RemEdgeModFace` / `ST_RemIsoNode`. Corpo opcional `{"dry_run": true}` só conta. Emite **`gis.topology.maintenance.pruned`** quando remove. Função: `gis.prune_orphan_topology_primitives` (`infra/sql/23`). |
 
-Validação dos corpos em **`backend/lib/topology/validateSpanWrite.js`** (lógica pura, testada com `node:test` — `npm test`).
+Validação dos corpos em **`backend/lib/topology/validateSpanWrite.js`**; geração de código em **`backend/lib/topology/generateSpanCode.js`** (ambos com `node:test` — `npm test`).
 
 Sem enforcement de segurança (ambiente dev típico), as rotas respondem sem cabeçalho.
 
-### Exemplo de criação
+### Exemplo de criação (código explícito ou auto)
 
 ```bash
+# Código explícito
 curl -X POST http://homeserver:8088/api/topology/spans \
   -H 'Content-Type: application/json' \
   -d '{"code":"SEG_FEEDER_A1","utility_domain":"electric",
        "coordinates":[[-46.6408,-23.5528],[-46.6430,-23.5540]]}'
+
+# Código gerado pela API (desenho no mapa usa este modo)
+curl -X POST http://homeserver:8088/api/topology/spans \
+  -H 'Content-Type: application/json' \
+  -d '{"coordinates":[[-46.6408,-23.5528],[-46.6430,-23.5540]],
+       "metadata":{"source":"map_draw"}}'
 ```
 
 ---
@@ -164,5 +172,7 @@ Textos de interface e glossário técnico **sem ambiguidade coloquial** estão c
 | `UI_GLOSSARY_POSTGIS_TOPOLOGY` | Definição da extensão `postgis_topology`. |
 | `UI_HELP_STACK_POSTGIS_TOPOLOGY` | Linha de ajuda: stack PostGIS + `gis.network_span`. |
 | `UI_HELP_API_TOPOLOGY` | Linha de ajuda: endpoints `/api/topology/*`. |
+| `UI_LAYER_GROUP_NETWORK` / `UI_LAYER_NETWORK_SPANS` / `UI_LAYER_NETWORK_SPANS_HINT` | Menu Camadas — grupo e toggle da rede. |
+| `UI_NETWORK_SPAN_DRAW_*` | Botão, dicas, cancelamento e confirmação do desenho interactivo. |
 
 Após alterar o ficheiro SQL, executar `psql` contra a base e **reiniciar** o contentor **`api`** para o cliente voltar a carregar o mapa de traduções.

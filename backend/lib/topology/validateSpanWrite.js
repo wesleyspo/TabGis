@@ -87,33 +87,38 @@ function validateOptionalEquipmentId(body, field, updates) {
 
 /**
  * Valida corpo de criação (POST /api/topology/spans).
- * Obrigatórios: code, coordinates. Opcionais: description, utility_domain,
- * equipment_from_id, equipment_to_id, metadata (objeto).
+ * Obrigatório: coordinates. `code` é opcional — se omitido/vazio, a API gera
+ * `SEG_YYYYMMDD_HHMMSSmmm` via `generateSpanCode` (ver generateSpanCode.js).
+ * Opcionais: description, utility_domain, equipment_from_id, equipment_to_id, metadata.
  * @returns {{ ok: true, span: Record<string, unknown> } | { ok: false, error: string, status: number }}
  */
 function validateSpanCreate(body) {
   if (!isPlainObject(body)) {
     return { ok: false, error: 'Expected JSON object', status: 400 };
   }
-  const code = body.code == null ? '' : String(body.code).trim();
+  const codeRaw = body.code == null ? '' : String(body.code).trim();
+  let code = codeRaw;
+  let codeAuto = false;
   if (!code) {
-    return { ok: false, error: 'code is required', status: 400 };
-  }
-  if (code.length > CODE_MAX) {
-    return { ok: false, error: `code must be at most ${CODE_MAX} characters`, status: 400 };
-  }
-  if (!CODE_PATTERN.test(code)) {
-    return {
-      ok: false,
-      error: 'code must start with a letter or digit and use only letters, digits, ".", "_" or "-"',
-      status: 400,
-    };
+    codeAuto = true;
+    code = null;
+  } else {
+    if (code.length > CODE_MAX) {
+      return { ok: false, error: `code must be at most ${CODE_MAX} characters`, status: 400 };
+    }
+    if (!CODE_PATTERN.test(code)) {
+      return {
+        ok: false,
+        error: 'code must start with a letter or digit and use only letters, digits, ".", "_" or "-"',
+        status: 400,
+      };
+    }
   }
   const coords = validateCoordinates(body.coordinates);
   if (!coords.ok) {
     return { ok: false, error: coords.error, status: 400 };
   }
-  const span = { code, coordinates: coords.coordinates };
+  const span = { code, codeAuto, coordinates: coords.coordinates };
   for (const [field, max] of [
     ['description', DESCRIPTION_MAX],
     ['utility_domain', UTILITY_DOMAIN_MAX],

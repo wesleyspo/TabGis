@@ -248,7 +248,7 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 
 ### Camadas alvo — zoom e toggles
 
-- **Rede técnica:** toggle **«Segmentos lineares da rede»** (`#network_span_layer`) liga a camada WMS `base_sp:v_network_span_wms` (estilo `gis_network_span`, traçados de `gis.network_span`); publicada por `infra/scripts/publish_network_span_layer.sh`; chaves i18n `UI_LAYER_GROUP_NETWORK`, `UI_LAYER_NETWORK_SPANS`, `UI_LAYER_NETWORK_SPANS_HINT`; incluída no **GetFeatureInfo** ao clique (prioridade máxima em `visibleQueryLayers()`); coberto por teste E2E de fumo.
+- **Rede técnica:** toggle **«Segmentos lineares da rede»** (`#network_span_layer`) liga a camada WMS `base_sp:v_network_span_wms` (estilo `gis_network_span`); botão **«Desenhar segmento»** (`#network_span_draw_btn`) cria vértices no mapa e grava com `POST /api/topology/spans` (código auto se omitido); GetFeatureInfo inclui a camada; i18n `UI_LAYER_*NETWORK*` / `UI_NETWORK_SPAN_DRAW_*`; E2E cobre toggle WMS e desenho.
 - **Threshold:** zoom Leaflet **≥ 12** trata-se de «vista de detalhe».
 - **Comportamento:** se a checkbox **Bairros** (`#bairros_alvo_sp`) está **marcada** em zoom ≥ 12, mostra-se `bairrosAlvoLayer` e remove-se `municipiosAlvoLayer` da vista (checkbox municípios-alvo desmarcada). Se **desmarcada**, mantêm-se municípios-alvo visíveis e bairros fora — útil para ver **rótulos de município** sem poluição dos bairros.
 - **Zoom &lt; 12:** bairros removidos, municípios-alvo repostos por defeito.
@@ -325,7 +325,7 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 
 - O esquemático será **estático/sequencial** com metadado **"Ir para o Mapa"** por objecto.
 - O versionamento utilizará lógica de instâncias **reais vs. históricas** (bi-temporal).
-- Foco actual: landbase offline operacional; topologia de **segmentos lineares da rede** com **`postgis_topology`** (`gis.network_span`); evolução — edição REST, camadas mapa e CRS projetado onde necessário.
+- Foco actual: landbase offline operacional; topologia de **segmentos lineares da rede** com **`postgis_topology`** (`gis.network_span`) — leitura, escrita REST, desenho no mapa e prune; evolução — edição de vértices existentes e CRS projetado onde necessário.
 
 ---
 
@@ -335,7 +335,7 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 |------------|--------|--------|
 | 1 | Upgrade satélite MBTiles para ZMAX=17 (1,2 m/px) | **✅ Operacional** |
 | 2 | UI Operação + schema `operations` + arquivo `audit.operations_row_archive` | **✅ Estrutura base + mock UI** |
-| 3 | Modelagem explícita da topologia de rede (PostGIS Topology nativo) | **✅ Edição + mapa:** `tabgis_utilities_topo` + `gis.network_span`; API leitura **e escrita** (`POST`/`PATCH`/`DELETE` com eventos, arquivo pré-delete e testes); camada WMS/WFS `base_sp:v_network_span_wms` + toggle no frontend; manutenção de primitivas órfãs via `POST /api/topology/maintenance/prune`; pendente edição interactiva no mapa e topologia projectada opcional |
+| 3 | Modelagem explícita da topologia de rede (PostGIS Topology nativo) | **✅ Edição + mapa + desenho:** API REST completa; WMS/WFS; desenho interactivo Leaflet; prune de órfãos; pendente edição de vértices de segmentos existentes e CRS projectado |
 | 4 | APIs/backend para edição, ordens, rotas 48h e diário `events` (exportável a Mongo/externo) | **Parcial:** mutações emitem eventos; `GET /api/events`; **`GET /api/events/export`** com cursor + formato Mongo; sink/webhook dedicado fora da API continua opcional |
 | 5 | Vista esquemática (schema `schematic`, REST, guia **ESQ**, «Ir para o mapa») | **✅ POC** (SVG escada + PATCH nó; endurecer com auth real além de `SECURITY_ENFORCE`) |
 | 6 | Endurecimento de segurança (credenciais, TLS, sessão) | Fora do âmbito desta fase |
@@ -357,6 +357,7 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 | `docs/mds/DEPLOY_POC.md` | Deploy Docker legado, ordem SQL alargada, diagnóstico |
 | `docs/mds/EVENTS_ARCHITECTURE.md` | Schema `events`, barramento Node, exportação Mongo-compatível |
 | `docs/mds/TOPOLOGY_NATIVE_POSTGIS.md` | Topologia nativa `postgis_topology`, segmentos lineares `gis.network_span`, API `/api/topology/*`; glossário i18n em `02_populate_translations.sql` |
+| `docs/mds/MILESTONES.md` | Marcos de desenvolvimento (M1–M6) com entregas, testes e docs associados |
 | `.github/workflows/ci.yml` | CI: testes unitários do backend (`npm test`) |
 | `.github/workflows/pages.yml` | GitHub Pages: `docs/mds/*.md` → `docs/html/*.html` + PDFs + artefacto `_site/` (hub + páginas + `help/`) |
 | `docs/mds/RUNBOOK_BASEMAP_SP_ESTADO.md` | Pipeline landbase SP estado |

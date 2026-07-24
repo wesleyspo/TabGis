@@ -14,6 +14,7 @@ const {
   validateSpanPatch,
   lineStringGeoJson,
 } = require('./lib/topology/validateSpanWrite');
+const { generateSpanCode } = require('./lib/topology/generateSpanCode');
 
 /** Obrigatório pela política de uso do Nominatim (https://operations.osmfoundation.org/policies/nominatim/). */
 const NOMINATIM_USER_AGENT =
@@ -1377,6 +1378,7 @@ app.post('/api/topology/spans', async (req, res) => {
     return res.status(parsed.status).json({ error: parsed.error });
   }
   const s = parsed.span;
+  const spanCode = s.codeAuto || !s.code ? generateSpanCode() : s.code;
   const client = await pool.connect();
   try {
     const layer = await getNetworkSpanTopoLayer(client);
@@ -1395,7 +1397,7 @@ app.post('/api/topology/spans', async (req, res) => {
                COALESCE($7::jsonb, '{}'::jsonb))
        RETURNING ${SPAN_RETURNING}`,
       [
-        s.code,
+        spanCode,
         s.description ?? null,
         s.utility_domain ?? null,
         s.equipment_from_id ?? null,
@@ -1425,7 +1427,7 @@ app.post('/api/topology/spans', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     if (error && error.code === '23505') {
-      return res.status(409).json({ error: `Span code already exists: ${s.code}` });
+      return res.status(409).json({ error: `Span code already exists: ${spanCode}` });
     }
     if (error && error.code === '23503') {
       return res.status(400).json({ error: 'equipment_from_id / equipment_to_id must reference gis.equipment' });

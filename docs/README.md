@@ -31,6 +31,7 @@
 | [ARCHITECTURE_BPMN.md](./mds/ARCHITECTURE_BPMN.md) | Diagrama de colaboração (estilo BPMN) — módulos, GitHub, PostGIS, GeoServer, GeoSampa, Mongo (pendente), deploy |
 | [EVENTS_ARCHITECTURE.md](./mds/EVENTS_ARCHITECTURE.md) | Schema `events`, API, exportação |
 | [TOPOLOGY_NATIVE_POSTGIS.md](./mds/TOPOLOGY_NATIVE_POSTGIS.md) | Topologia PostGIS nativa, `gis.network_span`, API |
+| [MILESTONES.md](./mds/MILESTONES.md) | Marcos M1–M6 (entregas, testes, docs) |
 | [Database_Structure_Context.md](./mds/Database_Structure_Context.md) | Modelo de dados utilities (tabelas e FK) |
 
 ---

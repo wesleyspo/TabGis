@@ -823,7 +823,7 @@
         <li><strong>Clima</strong> — atalho (ícone sol + nuvem) para a guia TMP.</li>
         <li><strong>Busca</strong> — municípios e bairros (WFS); endereço (Nominatim ou PostGIS local).</li>
         <li><strong>Camadas</strong> — fundo raster (online / satélite local / GeoSampa offline), vias, limites, municípios-alvo, bairros; <em>pills</em> OMS/MWM/GIS/LAND.</li>
-        <li><strong>Rede técnica</strong> — «Segmentos lineares da rede» (camada WMS <code>base_sp:v_network_span_wms</code>): traçados de <code>gis.network_span</code> com topologia nativa PostGIS; edição via <code>POST/PATCH/DELETE /api/topology/spans</code> (arquivo pré-delete em auditoria e eventos <code>gis.topology.network_span.*</code>).</li>
+        <li><strong>Rede técnica</strong> — «Segmentos lineares da rede» (WMS <code>base_sp:v_network_span_wms</code>) e botão <strong>Desenhar segmento</strong>: clique no mapa adiciona vértices; Enter ou duplo clique grava (<code>POST /api/topology/spans</code>, código auto); Esc cancela. Edição REST também via <code>PATCH/DELETE</code>; arquivo pré-delete e eventos <code>gis.topology.network_span.*</code>; limpeza de órfãos em <code>POST /api/topology/maintenance/prune</code>.</li>
         <li><strong>Configurações</strong> — idioma, visualização, utilizadores, tipos <code>ref</code>, traduções, esta ajuda.</li>
       </ul>
       <p class="help-note">Só um menu entre Busca, Camadas e Configurações fica aberto; clique fora da topbar fecha os painéis.</p>

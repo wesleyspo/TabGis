@@ -24,7 +24,7 @@ Incluir **`infra/sql/15_events_schema.sql`** antes de depender de `GET /api/even
 
 Para **RBAC** (grupos/privilégios na UI e enforcement opcional na API), aplicar **`infra/sql/18_security_groups_privileges.sql`** após `01`. Para **esquemático** REST/UI (**ESQ**): **`16_schematic_schema.sql`** e, se existir massa POC em `gis.equipment`, **`17_schematic_link_poc_equipment.sql`**. Opcional pós-pipeline de bairros: **`19_fix_bairros_alvo_mapping.sql`**, **`20_sanity_bairros_alvo_sp.sql`** (este último falha se ainda houver ruído «bairro = município»).
 
-Para **topologia nativa de rede** (`postgis_topology`, segmentos lineares `gis.network_span`, API `GET /api/topology/*`): **`infra/sql/21_postgis_topology_utilities.sql`** — ver **`docs/mds/TOPOLOGY_NATIVE_POSTGIS.md`**. Rótulos regionalizados: reaplicar também **`infra/sql/02_populate_translations.sql`** quando o glossário i18n mudar.
+Para **topologia nativa de rede** (`postgis_topology`, segmentos lineares `gis.network_span`, API `/api/topology/*`): aplicar em ordem **`infra/sql/21_postgis_topology_utilities.sql`**, **`infra/sql/22_topology_span_write_support.sql`**, **`infra/sql/23_topology_prune_orphan_primitives.sql`** — ver **`docs/mds/TOPOLOGY_NATIVE_POSTGIS.md`** e marcos em **`docs/mds/MILESTONES.md`**. Publicar a camada WMS: `bash infra/scripts/publish_network_span_layer.sh`. Rótulos regionalizados: reaplicar também **`infra/sql/02_populate_translations.sql`** quando o glossário i18n mudar.
 
 ## Diagnostico rapido
 - Preferir acesso via `:8088` para garantir same-origin (`/geoserver`, `/tiles`, `/api`).

@@ -39,8 +39,11 @@ test('validateSpanCreate normaliza opcionais e aceita metadata objeto', () => {
   assert.deepEqual(r.span.metadata, { phase: 'ABC' });
 });
 
-test('validateSpanCreate rejeita code ausente, longo ou com caracteres inválidos', () => {
-  assert.equal(validateSpanCreate({ coordinates: VALID_COORDS }).ok, false);
+test('validateSpanCreate permite omitir code (codeAuto) e rejeita code inválido', () => {
+  const auto = validateSpanCreate({ coordinates: VALID_COORDS });
+  assert.equal(auto.ok, true);
+  assert.equal(auto.span.code, null);
+  assert.equal(auto.span.codeAuto, true);
   assert.equal(
     validateSpanCreate({ code: 'x'.repeat(97), coordinates: VALID_COORDS }).ok,
     false

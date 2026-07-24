@@ -52,7 +52,7 @@ Abrir `http://<host>:5173`. O script aponta WMS frequentemente para `:8080/geose
 - **Satélite online:** tiles Esri (requer Internet); opacidade ajustada para ver limites.
 - **Satélite local:** MBTiles via `/tiles/...`; toggle verifica `sp_sat.json` antes de activar.
 - **Esquemático (guia ESQ):** lista de vistas, renderização em escada (SVG), P/Q nas arestas; **Ir para o mapa** com foco do nó ou geometria de equipamento POC (`17_schematic_link_poc_equipment.sql`). Com `SECURITY_ENFORCE=1` na API, necessário privilégio `module.esq`.
-- **Topologia nativa (REST):** `GET /api/topology/meta` e `GET /api/topology/spans` — segmentos lineares `gis.network_span` / schema `tabgis_utilities_topo` (`docs/mds/TOPOLOGY_NATIVE_POSTGIS.md`); com enforcement, privilégio `module.oms`. Chaves de glossário: `UI_GLOSSARY_*`, `UI_HELP_*` em `infra/sql/02_populate_translations.sql`.
+- **Topologia nativa (REST + mapa):** `GET /api/topology/meta`, `GET/POST /api/topology/spans`, `GET/PATCH/DELETE /api/topology/spans/:id`, `POST /api/topology/maintenance/prune` — segmentos `gis.network_span` / `tabgis_utilities_topo` (`docs/mds/TOPOLOGY_NATIVE_POSTGIS.md`). No UI: Camadas → Rede técnica (toggle WMS + **Desenhar segmento**). Com enforcement, privilégio `module.oms`. Chaves: `UI_GLOSSARY_*`, `UI_LAYER_*NETWORK*`, `UI_NETWORK_SPAN_DRAW_*`.
 - **Vias:** SLD `base_sp_vias_zoom_scales` + `landbase.via_zoom_config` (ver script `apply_via_zoom_config_and_style.sh`).
 
 ## Camadas usadas

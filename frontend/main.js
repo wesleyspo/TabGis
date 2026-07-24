@@ -4461,6 +4461,163 @@ document.getElementById("network_span_layer").addEventListener("change", (event)
   else map.removeLayer(networkSpanLayer);
 });
 
+// ── Desenho interactivo de segmentos da rede (POST /api/topology/spans) ────
+
+const networkSpanDraw = {
+  active: false,
+  vertices: [],
+  previewLine: null,
+  vertexMarkers: [],
+  saving: false,
+};
+
+function networkSpanDrawButton() {
+  return document.getElementById("network_span_draw_btn");
+}
+
+function networkSpanDrawClearPreview() {
+  if (networkSpanDraw.previewLine) {
+    map.removeLayer(networkSpanDraw.previewLine);
+    networkSpanDraw.previewLine = null;
+  }
+  networkSpanDraw.vertexMarkers.forEach((m) => map.removeLayer(m));
+  networkSpanDraw.vertexMarkers = [];
+}
+
+function networkSpanDrawStop() {
+  networkSpanDraw.active = false;
+  networkSpanDraw.vertices = [];
+  networkSpanDraw.saving = false;
+  networkSpanDrawClearPreview();
+  map.off("click", networkSpanDrawOnMapClick);
+  map.off("dblclick", networkSpanDrawOnMapDblClick);
+  document.removeEventListener("keydown", networkSpanDrawOnKeyDown);
+  map.doubleClickZoom.enable();
+  map.getContainer().style.cursor = "";
+  const btn = networkSpanDrawButton();
+  if (btn) {
+    btn.textContent = uiText("UI_NETWORK_SPAN_DRAW_BTN", "Desenhar segmento");
+    btn.classList.remove("mock-btn--active-draw");
+  }
+}
+
+function networkSpanDrawOnMapClick(e) {
+  if (!networkSpanDraw.active) return;
+  const v = [e.latlng.lng, e.latlng.lat];
+  const last = networkSpanDraw.vertices[networkSpanDraw.vertices.length - 1];
+  // O duplo clique dispara também dois "click" no mesmo ponto — ignora duplicados.
+  if (last && last[0] === v[0] && last[1] === v[1]) return;
+  networkSpanDraw.vertices.push(v);
+  const marker = L.circleMarker(e.latlng, {
+    radius: 4,
+    color: "#b45309",
+    fillColor: "#f59e0b",
+    fillOpacity: 0.9,
+    weight: 1.5,
+  }).addTo(map);
+  networkSpanDraw.vertexMarkers.push(marker);
+  const latlngs = networkSpanDraw.vertices.map(([lng, lat]) => [lat, lng]);
+  if (!networkSpanDraw.previewLine) {
+    networkSpanDraw.previewLine = L.polyline(latlngs, {
+      color: "#d97706",
+      weight: 3,
+      dashArray: "6 6",
+      opacity: 0.9,
+    }).addTo(map);
+  } else {
+    networkSpanDraw.previewLine.setLatLngs(latlngs);
+  }
+  setStatus(
+    `${uiText("UI_NETWORK_SPAN_DRAW_HINT", "Desenho de segmento: clique adiciona vértice; duplo clique ou Enter conclui; Esc cancela.")} (${networkSpanDraw.vertices.length})`
+  );
+}
+
+function networkSpanDrawOnMapDblClick(e) {
+  if (!networkSpanDraw.active) return;
+  if (e.originalEvent) L.DomEvent.stop(e.originalEvent);
+  networkSpanDrawFinish();
+}
+
+function networkSpanDrawOnKeyDown(e) {
+  if (!networkSpanDraw.active) return;
+  if (e.key === "Escape") {
+    networkSpanDrawStop();
+    setStatus(uiText("UI_NETWORK_SPAN_DRAW_CANCELLED", "Desenho de segmento cancelado."));
+  } else if (e.key === "Enter") {
+    networkSpanDrawFinish();
+  }
+}
+
+/** Recarrega os tiles WMS da camada de rede (parâmetro fictício de cache-bust). */
+function refreshNetworkSpanLayer() {
+  const cb = document.getElementById("network_span_layer");
+  if (cb && !cb.checked) cb.checked = true;
+  if (!map.hasLayer(networkSpanLayer)) networkSpanLayer.addTo(map);
+  networkSpanLayer.setParams({ _ts: String(Date.now()) });
+}
+
+async function networkSpanDrawFinish() {
+  if (!networkSpanDraw.active || networkSpanDraw.saving) return;
+  if (networkSpanDraw.vertices.length < 2) {
+    setStatus(uiText("UI_NETWORK_SPAN_DRAW_NEED2", "São precisos pelo menos 2 vértices para gravar o segmento."));
+    return;
+  }
+  networkSpanDraw.saving = true;
+  try {
+    const res = await fetch("/api/topology/spans", {
+      method: "POST",
+      headers: buildSessionHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        description: uiText("UI_NETWORK_SPAN_DRAW_DESC", "Segmento criado por desenho no mapa."),
+        coordinates: networkSpanDraw.vertices,
+        metadata: { source: "map_draw" },
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    networkSpanDrawStop();
+    refreshNetworkSpanLayer();
+    setStatus(
+      `${uiText("UI_NETWORK_SPAN_DRAW_SAVED", "Segmento gravado:")} ${data.span && data.span.code ? data.span.code : ""}`
+    );
+  } catch (err) {
+    networkSpanDraw.saving = false;
+    setStatus(
+      `Falha ao gravar segmento da rede. ${err && err.message ? err.message : ""} Verifique a API em /api/topology/spans (ver docs/mds/TOPOLOGY_NATIVE_POSTGIS.md).`
+    );
+  }
+}
+
+function networkSpanDrawStart() {
+  if (networkSpanDraw.active) {
+    // Segundo clique no botão cancela o desenho em curso.
+    networkSpanDrawStop();
+    setStatus(uiText("UI_NETWORK_SPAN_DRAW_CANCELLED", "Desenho de segmento cancelado."));
+    return;
+  }
+  networkSpanDraw.active = true;
+  networkSpanDraw.vertices = [];
+  map.doubleClickZoom.disable();
+  map.getContainer().style.cursor = "crosshair";
+  map.on("click", networkSpanDrawOnMapClick);
+  map.on("dblclick", networkSpanDrawOnMapDblClick);
+  document.addEventListener("keydown", networkSpanDrawOnKeyDown);
+  const btn = networkSpanDrawButton();
+  if (btn) {
+    btn.textContent = uiText("UI_NETWORK_SPAN_DRAW_CANCEL", "Cancelar desenho (Esc)");
+    btn.classList.add("mock-btn--active-draw");
+  }
+  setStatus(uiText("UI_NETWORK_SPAN_DRAW_HINT", "Desenho de segmento: clique adiciona vértice; duplo clique ou Enter conclui; Esc cancela."));
+}
+
+const networkSpanDrawBtnEl = networkSpanDrawButton();
+if (networkSpanDrawBtnEl) {
+  networkSpanDrawBtnEl.addEventListener("click", networkSpanDrawStart);
+}
+
 document.getElementById("municipios_alvo_sp").addEventListener("change", (event) => {
   if (event.target.checked) municipiosAlvoLayer.addTo(map);
   else map.removeLayer(municipiosAlvoLayer);
