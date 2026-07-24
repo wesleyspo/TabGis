@@ -98,10 +98,9 @@ main() {
   wait_checkpoint 10 "avaliacao temporaria apos baseline"
 
   wave_header "Onda 2 - validacao automatizada"
-  run_step "2.0" "Testes unitarios backend (node:test)" "command -v node >/dev/null && cd backend && npm test || { echo 'backend test falhou'; exit 2; }"
-  run_step "2.1" "Instalar dependencias e2e (se npm existir)" "command -v npm >/dev/null && cd e2e && npm install || { echo 'npm indisponivel'; exit 2; }"
-  run_step "2.2" "Instalar Chromium Playwright (se npm existir)" "command -v npx >/dev/null && cd e2e && npx playwright install chromium || { echo 'npx/playwright indisponivel'; exit 2; }"
-  run_step "2.3" "Executar testes e2e (se npm existir)" "command -v npm >/dev/null && cd e2e && npm test || { echo 'npm indisponivel'; exit 2; }"
+  # Sem npm no host, as etapas usam Docker (node:18 e imagem oficial Playwright).
+  run_step "2.0" "Testes unitarios backend (npm local ou docker node:18)" "if command -v npm >/dev/null; then cd backend && npm test; else docker run --rm -v '${ROOT_DIR}/backend:/work' -w /work node:18 npm test; fi"
+  run_step "2.1" "Executar testes e2e (npm local ou docker playwright)" "if command -v npm >/dev/null; then cd e2e && npm install && npx playwright install chromium && npm test; else docker run --rm --network host -v '${ROOT_DIR}/e2e:/e2e' -w /e2e -e PLAYWRIGHT_BASE_URL=\"\${PLAYWRIGHT_BASE_URL:-http://127.0.0.1:8088}\" mcr.microsoft.com/playwright:v1.59.1-jammy sh -c 'npm ci >/dev/null 2>&1; npx playwright test'; fi"
   run_step "2.4" "Stress API leve (curl)" "command -v curl >/dev/null && STRESS_ITERATIONS=50 STRESS_BASE_URL=\"\${PLAYWRIGHT_BASE_URL:-http://127.0.0.1:8088}\" bash \"${ROOT_DIR}/scripts/stress/stress_api.sh\" || { echo 'curl ou stress indisponivel'; exit 2; }"
   wait_checkpoint 20 "avaliacao temporaria apos validacao automatizada"
 

@@ -51,5 +51,7 @@ Gera JSON em `autonomy-logs/stress_*.json` (ou defina `STRESS_REPORT_FILE`). O p
 `STRESS_CONCURRENCY` (default 1): acima de 1, cada iteração dispara ondas de pedidos paralelos (round-robin nos quatro endpoints).
 
 ## Observacoes operacionais
-- Se `npm` nao estiver instalado, as etapas de E2E sao marcadas como falha e o fluxo segue.
+- Se `npm` nao estiver instalado no host, as etapas de testes usam **Docker**:
+  - unitarios backend em `node:18` (volume `backend/`);
+  - E2E na imagem oficial `mcr.microsoft.com/playwright:v1.59.1-jammy` com `--network host`.
 - O report final centraliza a trilha completa para auditoria de execucao.
