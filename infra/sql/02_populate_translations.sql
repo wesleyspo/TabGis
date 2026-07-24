@@ -231,6 +231,26 @@ BEGIN
     ('UI_NETWORK_SPAN_DRAW_DESC', es_id, 'Tramo creado dibujando en el mapa.'),
     ('UI_NETWORK_SPAN_DRAW_DESC', it_id, 'Segmento creato disegnando sulla mappa.'),
 
+    ('UI_OP_MWM_ROUTES_48H_LOADING', en_id, 'Loading operational routes (48 h)…'),
+    ('UI_OP_MWM_ROUTES_48H_LOADING', pt_id, 'A carregar rotas operacionais (48 h)…'),
+    ('UI_OP_MWM_ROUTES_48H_LOADING', es_id, 'Cargando rutas operativas (48 h)…'),
+    ('UI_OP_MWM_ROUTES_48H_LOADING', it_id, 'Caricamento percorsi operativi (48 h)…'),
+
+    ('UI_OP_MWM_ROUTES_48H_SUMMARY', en_id, 'Operational routes (last {hours} h): {count} track(s), ~{km} km.'),
+    ('UI_OP_MWM_ROUTES_48H_SUMMARY', pt_id, 'Rotas operacionais (últimas {hours} h): {count} traçado(s), ~{km} km.'),
+    ('UI_OP_MWM_ROUTES_48H_SUMMARY', es_id, 'Rutas operativas (últimas {hours} h): {count} trazado(s), ~{km} km.'),
+    ('UI_OP_MWM_ROUTES_48H_SUMMARY', it_id, 'Percorsi operativi (ultime {hours} h): {count} tracciato/i, ~{km} km.'),
+
+    ('UI_OP_MWM_ROUTES_48H_FAIL', en_id, 'Failed to load 48 h routes. Check the API and docs/mds/OPERATIONS_MWM.md.'),
+    ('UI_OP_MWM_ROUTES_48H_FAIL', pt_id, 'Falha ao carregar rotas 48 h. Verifique a API e docs/mds/OPERATIONS_MWM.md.'),
+    ('UI_OP_MWM_ROUTES_48H_FAIL', es_id, 'Error al cargar rutas 48 h. Verifique la API y docs/mds/OPERATIONS_MWM.md.'),
+    ('UI_OP_MWM_ROUTES_48H_FAIL', it_id, 'Errore nel caricamento percorsi 48 h. Verificare API e docs/mds/OPERATIONS_MWM.md.'),
+
+    ('UI_OP_MWM_ROUTES_48H_FORBIDDEN', en_id, 'Missing privilege to query operational routes (module.mwm).'),
+    ('UI_OP_MWM_ROUTES_48H_FORBIDDEN', pt_id, 'Sem privilégio para consultar rotas operacionais (module.mwm).'),
+    ('UI_OP_MWM_ROUTES_48H_FORBIDDEN', es_id, 'Sin privilegio para consultar rutas operativas (module.mwm).'),
+    ('UI_OP_MWM_ROUTES_48H_FORBIDDEN', it_id, 'Privilegio mancante per consultare percorsi operativi (module.mwm).'),
+
     ('UI_STATUS_LANG_PREFIX', en_id, 'Session language changed to:'),
     ('UI_STATUS_LANG_PREFIX', pt_id, 'Idioma da sessão alterado para:'),
     ('UI_STATUS_LANG_PREFIX', es_id, 'Idioma de la sesión cambiado a:'),

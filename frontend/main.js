@@ -3327,10 +3327,45 @@ async function loadSchematicViewDetail(id) {
   }
 }
 
+async function loadMwmTeamRoutesSummary() {
+  const el = document.getElementById("mwm-routes-48h-summary");
+  if (!el) return;
+  try {
+    const res = await fetch("/api/mwm/team-routes?hours=48", {
+      headers: buildSessionHeaders(),
+    });
+    if (isForbiddenResponse(res)) {
+      el.textContent =
+        i18nCache.UI_OP_MWM_ROUTES_48H_FORBIDDEN ||
+        "Sem privilégio para consultar rotas operacionais (module.mwm).";
+      return;
+    }
+    if (!res.ok) throw new Error("bad response");
+    const data = await res.json();
+    const n = data.count || 0;
+    const metres = Array.isArray(data.routes)
+      ? data.routes.reduce((acc, r) => acc + (parseFloat(r.length_m_approx) || 0), 0)
+      : 0;
+    const tpl =
+      i18nCache.UI_OP_MWM_ROUTES_48H_SUMMARY ||
+      "Rotas operacionais (últimas {hours} h): {count} traçado(s), ~{km} km.";
+    el.textContent = tpl
+      .replace("{hours}", String(data.hours || 48))
+      .replace("{count}", String(n))
+      .replace("{km}", (metres / 1000).toFixed(1));
+  } catch (e) {
+    console.error(e);
+    el.textContent =
+      i18nCache.UI_OP_MWM_ROUTES_48H_FAIL ||
+      "Falha ao carregar rotas 48 h. Verifique a API e docs/mds/OPERATIONS_MWM.md.";
+  }
+}
+
 async function loadTeamsFromApi() {
   const tbody = document.getElementById("teams-tbody");
   if (!tbody) return;
   setTeamsStatusMessage(i18nCache.UI_OP_STATUS_LOADING_TEAMS || "Carregando equipes…", false);
+  void loadMwmTeamRoutesSummary();
   try {
     const res = await fetch("/api/teams", {
       headers: buildSessionHeaders(),

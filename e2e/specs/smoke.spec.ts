@@ -127,6 +127,26 @@ test.describe("TabGis — fumo ponta-a-ponta", () => {
     expect(prune.ok(), "prune pós-teste").toBeTruthy();
   });
 
+  test("API MWM team-routes 48h e displacements respondem", async ({ request }) => {
+    const routes = await request.get("/api/mwm/team-routes?hours=48");
+    expect(routes.ok(), "GET /api/mwm/team-routes").toBeTruthy();
+    const body = await routes.json();
+    expect(body.hours).toBe(48);
+    expect(typeof body.count).toBe("number");
+    expect(Array.isArray(body.routes)).toBeTruthy();
+    if (body.count > 0) {
+      expect(body.routes[0].route_geojson).toBeTruthy();
+      expect(body.routes[0].team_code).toBeTruthy();
+    }
+
+    const bad = await request.get("/api/mwm/team-routes?hours=999");
+    expect(bad.status()).toBe(400);
+
+    const disp = await request.get("/api/mwm/displacements?limit=10");
+    expect(disp.ok(), "GET /api/mwm/displacements").toBeTruthy();
+    expect(Array.isArray(await disp.json())).toBeTruthy();
+  });
+
   test("guia ESQ carrega unifilar (API e escada)", async ({ page, request }) => {
     const v = await request.get("/api/schematic/views");
     expect(v.ok(), "GET /api/schematic/views").toBeTruthy();

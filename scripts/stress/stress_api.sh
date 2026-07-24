@@ -20,6 +20,8 @@ PATHS=(
   "/api/work-orders"
   "/api/teams"
   "/api/oms/work-orders/aggregate"
+  "/api/mwm/team-routes?hours=48"
+  "/api/topology/meta"
 )
 
 mkdir -p "${REPORT_DIR}"
@@ -72,10 +74,9 @@ i=0
 while (( i < ITERATIONS )); do
   i=$((i + 1))
   if (( CONCURRENCY <= 1 )); then
-    req "${PATHS[0]}"
-    req "${PATHS[1]}"
-    req "${PATHS[2]}"
-    req "${PATHS[3]}"
+    for path in "${PATHS[@]}"; do
+      req "${path}"
+    done
   else
     parallel_wave
   fi

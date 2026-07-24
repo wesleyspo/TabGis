@@ -32,6 +32,7 @@
 | [EVENTS_ARCHITECTURE.md](./mds/EVENTS_ARCHITECTURE.md) | Schema `events`, API, exportação |
 | [TOPOLOGY_NATIVE_POSTGIS.md](./mds/TOPOLOGY_NATIVE_POSTGIS.md) | Topologia PostGIS nativa, `gis.network_span`, API |
 | [MILESTONES.md](./mds/MILESTONES.md) | Marcos M1–M6 (entregas, testes, docs) |
+| [OPERATIONS_MWM.md](./mds/OPERATIONS_MWM.md) | MWM: equipas, rotas 48h, deslocamentos, API |
 | [Database_Structure_Context.md](./mds/Database_Structure_Context.md) | Modelo de dados utilities (tabelas e FK) |
 
 ---

@@ -15,6 +15,10 @@ const {
   lineStringGeoJson,
 } = require('./lib/topology/validateSpanWrite');
 const { generateSpanCode } = require('./lib/topology/generateSpanCode');
+const {
+  parseTeamRoutesQuery,
+  parseDisplacementsQuery,
+} = require('./lib/mwm/parseTeamRoutesQuery');
 
 /** Obrigatório pela política de uso do Nominatim (https://operations.osmfoundation.org/policies/nominatim/). */
 const NOMINATIM_USER_AGENT =
@@ -743,6 +747,89 @@ app.get('/api/mwm/demo-routes', async (req, res) => {
   } catch (error) {
     console.error('GET /api/mwm/demo-routes', error);
     res.status(500).json({ error: 'Failed to load demo field routes' });
+  }
+});
+
+/**
+ * Rotas operacionais por janela temporal (`operations.team_route`).
+ * Query: hours (1–168, default 48), team_id (opcional).
+ * Devolve GeoJSON da rota + metadados da equipa. Ver docs/mds/OPERATIONS_MWM.md.
+ */
+app.get('/api/mwm/team-routes', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.mwm'))) return;
+  const parsed = parseTeamRoutesQuery(req.query);
+  if (!parsed.ok) {
+    return res.status(parsed.status).json({ error: parsed.error });
+  }
+  try {
+    const vals = [parsed.hours];
+    let teamClause = '';
+    if (parsed.teamId != null) {
+      vals.push(parsed.teamId);
+      teamClause = ` AND tr.team_id = $${vals.length}`;
+    }
+    const { rows } = await pool.query(
+      `SELECT tr.id AS route_id, tr.team_id, t.team_code, t.name AS team_name, t.status AS team_status,
+              tr.window_start, tr.window_end, tr.source, tr.recorded_at,
+              ST_AsGeoJSON(tr.route_geom)::json AS route_geojson,
+              round((ST_Length(tr.route_geom::geography))::numeric, 2) AS length_m_approx
+       FROM operations.team_route tr
+       JOIN operations.team t ON t.id = tr.team_id
+       WHERE tr.window_end >= (now() - ($1::int * INTERVAL '1 hour'))
+         AND tr.window_start <= now()
+         ${teamClause}
+       ORDER BY t.team_code, tr.window_end DESC, tr.id DESC`,
+      vals
+    );
+    res.json({ hours: parsed.hours, count: rows.length, routes: rows });
+  } catch (error) {
+    console.error('GET /api/mwm/team-routes', error);
+    res.status(500).json({
+      error: 'Failed to list team routes (verifique operations.team_route e infra/sql/24_mwm_team_routes_48h_demo.sql)',
+    });
+  }
+});
+
+/**
+ * Deslocamentos equipa ↔ ordem (`operations.team_order_displacement`).
+ * Query: team_id, work_order_id, limit (default 100, max 500).
+ */
+app.get('/api/mwm/displacements', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.mwm'))) return;
+  const parsed = parseDisplacementsQuery(req.query);
+  if (!parsed.ok) {
+    return res.status(parsed.status).json({ error: parsed.error });
+  }
+  try {
+    const cond = [];
+    const vals = [];
+    if (parsed.teamId != null) {
+      vals.push(parsed.teamId);
+      cond.push(`d.team_id = $${vals.length}`);
+    }
+    if (parsed.workOrderId != null) {
+      vals.push(parsed.workOrderId);
+      cond.push(`d.work_order_id = $${vals.length}`);
+    }
+    vals.push(parsed.limit);
+    const where = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
+    const { rows } = await pool.query(
+      `SELECT d.id, d.team_id, t.team_code, d.work_order_id, wo.order_code, wo.summary AS order_summary,
+              wo.status AS order_status,
+              d.planned_departure_at, d.planned_arrival_at,
+              d.actual_departure_at, d.actual_arrival_at, d.notes, d.created_at
+       FROM operations.team_order_displacement d
+       JOIN operations.team t ON t.id = d.team_id
+       JOIN operations.work_order wo ON wo.id = d.work_order_id
+       ${where}
+       ORDER BY d.planned_departure_at DESC NULLS LAST, d.id DESC
+       LIMIT $${vals.length}`,
+      vals
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('GET /api/mwm/displacements', error);
+    res.status(500).json({ error: 'Failed to list displacements' });
   }
 });
 

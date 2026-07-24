@@ -53,12 +53,13 @@ Cada marco deve deixar:
 | **Docs** | Este ficheiro; `TOPOLOGY_NATIVE_POSTGIS.md`; `CONTEXT_STATE.md`; `help.html` |
 | **Estado** | ✅ (2026-07-24) |
 
-## M5 — Consolidação APIs de operação / rotas 48h *(em curso / seguinte)*
+## M5 — Consolidação APIs de operação / rotas 48h
 
 | Campo | Valor |
 |-------|--------|
-| **Objectivo** | Endurecer superfície MWM (equipas, deslocamentos, rotas por janela temporal) com testes e documentação de contrato |
-| **Estado** | 🔄 Próximo |
+| **Entrega** | `GET /api/mwm/team-routes?hours=` e `GET /api/mwm/displacements`; seed `24_mwm_team_routes_48h_demo.sql`; resumo 48h na aba MWM; docs `OPERATIONS_MWM.md` |
+| **Testes** | `lib/mwm/parseTeamRoutesQuery.test.js`; E2E «API MWM team-routes 48h» |
+| **Estado** | ✅ (2026-07-24) |
 
 ## M6 — Endurecimento de segurança (produção)
 
