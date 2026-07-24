@@ -251,6 +251,11 @@ BEGIN
     ('UI_OP_MWM_ROUTES_48H_FORBIDDEN', es_id, 'Sin privilegio para consultar rutas operativas (module.mwm).'),
     ('UI_OP_MWM_ROUTES_48H_FORBIDDEN', it_id, 'Privilegio mancante per consultare percorsi operativi (module.mwm).'),
 
+    ('UI_OP_MWM_ROUTE_OP_POPUP', en_id, 'Operational route (48 h)'),
+    ('UI_OP_MWM_ROUTE_OP_POPUP', pt_id, 'Rota operacional (48 h)'),
+    ('UI_OP_MWM_ROUTE_OP_POPUP', es_id, 'Ruta operativa (48 h)'),
+    ('UI_OP_MWM_ROUTE_OP_POPUP', it_id, 'Percorso operativo (48 h)'),
+
     ('UI_STATUS_LANG_PREFIX', en_id, 'Session language changed to:'),
     ('UI_STATUS_LANG_PREFIX', pt_id, 'Idioma da sessão alterado para:'),
     ('UI_STATUS_LANG_PREFIX', es_id, 'Idioma de la sesión cambiado a:'),

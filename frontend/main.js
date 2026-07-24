@@ -249,6 +249,9 @@ const networkSpanLayer = L.tileLayer.wms(geoserverWms, {
 /** Rotas MWM demo (abaixo dos marcadores OMS) */
 const mwmDemoCrewRoutesGroup = L.layerGroup();
 
+/** Rotas operacionais 48h (`operations.team_route`) */
+const mwmOperationalRoutesGroup = L.layerGroup();
+
 /** Agregados por município / bairro (zoom afastado) */
 const omsAggregateMarkersGroup = L.layerGroup().addTo(map);
 
@@ -1763,15 +1766,18 @@ document.getElementById("btn-top-weather")?.addEventListener("click", () => {
   if (!btn) return;
   const labelSpan = btn.querySelector("span");
   btn.addEventListener("click", () => {
-    const visible = map.hasLayer(mwmDemoCrewRoutesGroup);
+    const visible =
+      map.hasLayer(mwmDemoCrewRoutesGroup) || map.hasLayer(mwmOperationalRoutesGroup);
     if (visible) {
       map.removeLayer(mwmDemoCrewRoutesGroup);
+      map.removeLayer(mwmOperationalRoutesGroup);
       btn.classList.add("mock-btn-ir--secondary");
       btn.setAttribute("aria-pressed", "false");
       if (labelSpan) labelSpan.textContent = "Exibir equipes em rota";
     } else {
-      loadMwmDemoFieldRoutes().then(() => {
+      Promise.all([loadMwmDemoFieldRoutes(), loadMwmOperationalTeamRoutes()]).then(() => {
         mwmDemoCrewRoutesGroup.addTo(map);
+        mwmOperationalRoutesGroup.addTo(map);
       });
       btn.classList.remove("mock-btn-ir--secondary");
       btn.setAttribute("aria-pressed", "true");
@@ -2062,8 +2068,9 @@ document.getElementById("weather-map-opacity")?.addEventListener("input", () => 
     if (id === "oms") loadWorkOrdersFromApi();
     if (id === "mwm") {
       loadTeamsFromApi();
-      loadMwmDemoFieldRoutes().then(() => {
+      Promise.all([loadMwmDemoFieldRoutes(), loadMwmOperationalTeamRoutes()]).then(() => {
         if (!map.hasLayer(mwmDemoCrewRoutesGroup)) mwmDemoCrewRoutesGroup.addTo(map);
+        if (!map.hasLayer(mwmOperationalRoutesGroup)) mwmOperationalRoutesGroup.addTo(map);
       });
     }
     if (id === "esq") {
@@ -2477,6 +2484,49 @@ async function loadMwmDemoFieldRoutes() {
     });
   } catch (e) {
     console.error("loadMwmDemoFieldRoutes", e);
+  }
+}
+
+/**
+ * Desenha `operations.team_route` (janela 48h) como MultiLineString no mapa.
+ * Estilo distinto das rotas demo (traço ciano tracejado).
+ */
+async function loadMwmOperationalTeamRoutes() {
+  try {
+    const res = await fetch("/api/mwm/team-routes?hours=48", {
+      headers: buildSessionHeaders(),
+    });
+    if (isForbiddenResponse(res)) {
+      mwmOperationalRoutesGroup.clearLayers();
+      return;
+    }
+    if (!res.ok) throw new Error("team-routes bad response");
+    const data = await res.json();
+    mwmOperationalRoutesGroup.clearLayers();
+    const routes = Array.isArray(data.routes) ? data.routes : [];
+    routes.forEach((r) => {
+      const gj = r.route_geojson;
+      if (!gj) return;
+      const layer = L.geoJSON(gj, {
+        style: {
+          color: "#0e7490",
+          weight: 3.5,
+          opacity: 0.85,
+          dashArray: "8 5",
+        },
+      });
+      const km =
+        r.length_m_approx != null ? `${(parseFloat(r.length_m_approx) / 1000).toFixed(2)} km` : "—";
+      layer.bindPopup(
+        `<strong>${escapeHtml(r.team_code || "")}</strong> ${escapeHtml(r.team_name || "")}<br/>` +
+          `<span class="mock-hint">${escapeHtml(
+            uiText("UI_OP_MWM_ROUTE_OP_POPUP", "Rota operacional (48 h)")
+          )} · ${escapeHtml(km)}</span>`
+      );
+      layer.addTo(mwmOperationalRoutesGroup);
+    });
+  } catch (e) {
+    console.error("loadMwmOperationalTeamRoutes", e);
   }
 }
 

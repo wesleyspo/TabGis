@@ -58,8 +58,8 @@ curl -s 'http://homeserver:8088/api/teams' | jq '.[].team_code'
 ## 3. Frontend (aba MWM)
 
 - Tabela de equipas: `GET /api/teams`.
-- Overlay no mapa: `GET /api/mwm/demo-routes` (triângulos + polilinhas).
-- Resumo operacional 48h: `GET /api/mwm/team-routes` (contagem e comprimento) no painel MWM.
+- Overlay no mapa: `GET /api/mwm/demo-routes` (triângulos + polilinhas) e `GET /api/mwm/team-routes` (MultiLineString ciano tracejado, janela 48h).
+- Resumo operacional 48h: contagem e comprimento no painel MWM.
 
 ---
 
