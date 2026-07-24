@@ -247,7 +247,7 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 
 ### Camadas alvo — zoom e toggles
 
-- **Rede técnica:** toggle **«Segmentos lineares da rede»** (`#network_span_layer`) liga a camada WMS `base_sp:v_network_span_wms` (estilo `gis_network_span`, traçados de `gis.network_span`); publicada por `infra/scripts/publish_network_span_layer.sh`; chaves i18n `UI_LAYER_GROUP_NETWORK`, `UI_LAYER_NETWORK_SPANS`, `UI_LAYER_NETWORK_SPANS_HINT`; coberto por teste E2E de fumo.
+- **Rede técnica:** toggle **«Segmentos lineares da rede»** (`#network_span_layer`) liga a camada WMS `base_sp:v_network_span_wms` (estilo `gis_network_span`, traçados de `gis.network_span`); publicada por `infra/scripts/publish_network_span_layer.sh`; chaves i18n `UI_LAYER_GROUP_NETWORK`, `UI_LAYER_NETWORK_SPANS`, `UI_LAYER_NETWORK_SPANS_HINT`; incluída no **GetFeatureInfo** ao clique (prioridade máxima em `visibleQueryLayers()`); coberto por teste E2E de fumo.
 - **Threshold:** zoom Leaflet **≥ 12** trata-se de «vista de detalhe».
 - **Comportamento:** se a checkbox **Bairros** (`#bairros_alvo_sp`) está **marcada** em zoom ≥ 12, mostra-se `bairrosAlvoLayer` e remove-se `municipiosAlvoLayer` da vista (checkbox municípios-alvo desmarcada). Se **desmarcada**, mantêm-se municípios-alvo visíveis e bairros fora — útil para ver **rótulos de município** sem poluição dos bairros.
 - **Zoom &lt; 12:** bairros removidos, municípios-alvo repostos por defeito.

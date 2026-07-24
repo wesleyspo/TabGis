@@ -1247,7 +1247,12 @@ function initAddressSearch() {
  */
 function visibleQueryLayers() {
   const layers = [];
-  
+
+  // Segmentos lineares da rede: prioridade máxima (feição mais específica no clique)
+  if (map.hasLayer(networkSpanLayer)) {
+    layers.push("base_sp:v_network_span_wms");
+  }
+
   const selBairrosLand = document.getElementById("sel_bairros_land");
   if (map.hasLayer(bairrosAlvoLayer) && (!selBairrosLand || selBairrosLand.checked)) {
     layers.push("base_sp:bairros_alvo_sp");
