@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>AUTONOMOUS_EXECUTION_PLAN_10H</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">AUTONOMOUS_EXECUTION_PLAN_10H</h1>
+</header>
+<h1 id="tabgis---plano-de-execucao-autonoma-10h">TabGis - Plano de
+Execucao Autonoma (10h)</h1>
+<h2 id="objetivo">Objetivo</h2>
+<p>Executar uma iteracao completa sem intervencao humana, elevando
+TabGis para uma base mais profissional, com cobertura funcional das abas
+operacionais e ganho de confiabilidade tecnica.</p>
+<h2 id="escopo-fechado-desta-janela">Escopo fechado desta janela</h2>
+<ul>
+<li>Reestruturacao orientada a manutencao humana (documentacao e trilhas
+de operacao).</li>
+<li>Reforco de testes automatizados (E2E para navegacao principal e abas
+operacionais).</li>
+<li>Atualizacao de documentacao para linguagem de produto TabGis (sem
+dependencia de terminologia de POC).</li>
+<li>Consolidacao do backlog das frentes OMS, MWM, DMS, IND, SMT, TMP
+(Clima), AUD, Esquematico e Configuracoes.</li>
+</ul>
+<h2 id="ondas-de-execucao">Ondas de execucao</h2>
+<h3 id="onda-1---baseline-e-qualidade">Onda 1 - Baseline e
+qualidade</h3>
+<ul>
+<li>Validar stack e testes existentes.</li>
+<li>Ampliar suite E2E para cobertura de:
+<ul>
+<li>abertura de Operacao;</li>
+<li>todas as abas (OMS, MWM, DMS, IND, SMT, ESQ, TMP, AUD);</li>
+<li>Configuracoes (visualizacao, utilizadores, tipos de dominio,
+traducoes, ajuda);</li>
+<li>atalho de Clima (TMP).</li>
+</ul></li>
+<li>Aceite: testes de fumo executam sem regressao critica.</li>
+</ul>
+<h3 id="onda-2---documentacao-profissional">Onda 2 - Documentacao
+profissional</h3>
+<ul>
+<li>Publicar nomenclatura principal TabGis em guias de operador.</li>
+<li>Acrescentar runbook executivo de “proximos 10h” com
+prioridades.</li>
+<li>Aceite: documentacao orienta onboarding tecnico sem ambiguidade de
+termos.</li>
+</ul>
+<h3 id="onda-3---frentes-funcionais-por-modulo">Onda 3 - Frentes
+funcionais por modulo</h3>
+<ul>
+<li>OMS: consolidar fluxo grade -&gt; folha -&gt; tarefas.</li>
+<li>MWM: manter foco em equipes e rotas demo com capacidade de
+expansao.</li>
+<li>TMP: fluxo de previsao e radar com feedback operacional.</li>
+<li>AUD: manter trilha de arquivo pre-delete e superficie de
+consulta.</li>
+<li>Configuracoes: manter governanca por modal (idioma, visualizacao,
+users, ref, traducoes).</li>
+<li>Esquematico: manter requisito de ligacao obrigatoria “Ir para o
+Mapa” no backlog tecnico.</li>
+<li>Aceite: backlog operacional priorizado, com fronteiras claras por
+modulo.</li>
+</ul>
+<h2 id="criterios-de-aceite-da-janela">Criterios de aceite da
+janela</h2>
+<ul>
+<li>UI com comportamento de tela preservado (full, split 50/50 e foco no
+centro de controle).</li>
+<li>Nenhuma quebra em navegacao de abas e atalhos principais.</li>
+<li>Documentacao principal alinhada com linguagem de produto
+TabGis.</li>
+<li>Evidencia de validacao automatizada (E2E).</li>
+</ul>
+<h2 id="riscos-e-mitigacoes">Riscos e mitigacoes</h2>
+<ul>
+<li>Dependencia de servicos externos (clima/radar): manter mensagens de
+fallback e estado.</li>
+<li>Mudancas em textos i18n: validar elementos por seletor estavel nos
+testes.</li>
+<li>Diferencas de ambiente: executar sempre via nginx <code>:8088</code>
+para same-origin.</li>
+</ul>
+<h2 id="entregaveis-esperados-ao-fim-da-janela">Entregaveis esperados ao
+fim da janela</h2>
+<ul>
+<li>Testes E2E atualizados.</li>
+<li>Ajuda do operador atualizada.</li>
+<li>Documentos de escopo/deploy com nomes profissionais.</li>
+<li>Estado de contexto atualizado com o que foi efetivamente
+executado.</li>
+</ul>
+</body>
+</html>

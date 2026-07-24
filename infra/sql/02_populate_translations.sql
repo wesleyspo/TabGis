@@ -96,6 +96,61 @@ BEGIN
     ('UI_LAYER_GROUP_ADMIN', es_id, 'Límites administrativos'),
     ('UI_LAYER_GROUP_ADMIN', it_id, 'Confini amministrativi'),
 
+    ('UI_LAYER_GROUP_OMS_HEAT', en_id, 'OMS — heat map (aggregated orders)'),
+    ('UI_LAYER_GROUP_OMS_HEAT', pt_id, 'OMS — mapa de calor (ordens agregadas)'),
+    ('UI_LAYER_GROUP_OMS_HEAT', es_id, 'OMS — mapa de calor (pedidos agregados)'),
+    ('UI_LAYER_GROUP_OMS_HEAT', it_id, 'OMS — mappa di calore (ordini aggregati)'),
+
+    ('UI_LAYER_OMS_HEAT_NONE', en_id, 'Off (markers only)'),
+    ('UI_LAYER_OMS_HEAT_NONE', pt_id, 'Desligado (só marcadores)'),
+    ('UI_LAYER_OMS_HEAT_NONE', es_id, 'Desactivado (solo marcadores)'),
+    ('UI_LAYER_OMS_HEAT_NONE', it_id, 'Spento (solo marcatori)'),
+
+    ('UI_LAYER_OMS_HEAT_ORDERS', en_id, 'By order count'),
+    ('UI_LAYER_OMS_HEAT_ORDERS', pt_id, 'Por quantidade de ordens'),
+    ('UI_LAYER_OMS_HEAT_ORDERS', es_id, 'Por número de órdenes'),
+    ('UI_LAYER_OMS_HEAT_ORDERS', it_id, 'Per numero ordini'),
+
+    ('UI_LAYER_OMS_HEAT_CLIENTS', en_id, 'By affected customers'),
+    ('UI_LAYER_OMS_HEAT_CLIENTS', pt_id, 'Por clientes afectados'),
+    ('UI_LAYER_OMS_HEAT_CLIENTS', es_id, 'Por clientes afectados'),
+    ('UI_LAYER_OMS_HEAT_CLIENTS', it_id, 'Per clienti coinvolti'),
+
+    ('UI_LAYER_OMS_HEAT_DURATION', en_id, 'By open duration (hours)'),
+    ('UI_LAYER_OMS_HEAT_DURATION', pt_id, 'Por duração aberta (horas)'),
+    ('UI_LAYER_OMS_HEAT_DURATION', es_id, 'Por duración abierta (horas)'),
+    ('UI_LAYER_OMS_HEAT_DURATION', it_id, 'Per ore aperte'),
+
+    ('UI_LAYER_OMS_HEAT_PRIORITY', en_id, 'By priority score (sum)'),
+    ('UI_LAYER_OMS_HEAT_PRIORITY', pt_id, 'Por prioridade (soma dos scores)'),
+    ('UI_LAYER_OMS_HEAT_PRIORITY', es_id, 'Por prioridad (suma de scores)'),
+    ('UI_LAYER_OMS_HEAT_PRIORITY', it_id, 'Per priorità (somma score)'),
+
+    ('UI_LAYER_OMS_HEAT_HINT', en_id, 'Visible when zoomed out (aggregated grid). Requires OMS privilege.'),
+    ('UI_LAYER_OMS_HEAT_HINT', pt_id, 'Visível com zoom afastado (grelha agregada). Requer privilégio OMS.'),
+    ('UI_LAYER_OMS_HEAT_HINT', es_id, 'Visible con zoom alejado. Requiere privilegio OMS.'),
+    ('UI_LAYER_OMS_HEAT_HINT', it_id, 'Visibile con zoom lontano. Richiede privilegio OMS.'),
+
+    ('UI_LAYER_OMS_HEAT_METRIC', en_id, 'Metric'),
+    ('UI_LAYER_OMS_HEAT_METRIC', pt_id, 'Métrica'),
+    ('UI_LAYER_OMS_HEAT_METRIC', es_id, 'Métrica'),
+    ('UI_LAYER_OMS_HEAT_METRIC', it_id, 'Metrica'),
+
+    ('UI_OP_AGG_POPUP_CLIENTS', en_id, 'Affected customers'),
+    ('UI_OP_AGG_POPUP_CLIENTS', pt_id, 'Clientes afectados'),
+    ('UI_OP_AGG_POPUP_CLIENTS', es_id, 'Clientes afectados'),
+    ('UI_OP_AGG_POPUP_CLIENTS', it_id, 'Clienti coinvolti'),
+
+    ('UI_OP_AGG_POPUP_HOURS', en_id, 'Open hours (sum)'),
+    ('UI_OP_AGG_POPUP_HOURS', pt_id, 'Horas abertas (soma)'),
+    ('UI_OP_AGG_POPUP_HOURS', es_id, 'Horas abiertas (suma)'),
+    ('UI_OP_AGG_POPUP_HOURS', it_id, 'Ore aperte (somma)'),
+
+    ('UI_OP_AGG_POPUP_PRIORITY', en_id, 'Priority score (sum)'),
+    ('UI_OP_AGG_POPUP_PRIORITY', pt_id, 'Score prioridade (soma)'),
+    ('UI_OP_AGG_POPUP_PRIORITY', es_id, 'Score prioridad (suma)'),
+    ('UI_OP_AGG_POPUP_PRIORITY', it_id, 'Score priorità (somma)'),
+
     ('UI_LAYER_ADMIN_LIMITS', en_id, 'Municipal Boundaries'),
     ('UI_LAYER_ADMIN_LIMITS', pt_id, 'Limites Municipais'),
     ('UI_LAYER_ADMIN_LIMITS', es_id, 'Límites Municipales'),
@@ -120,6 +175,21 @@ BEGIN
     ('UI_LAYER_OSM_ROADS', pt_id, 'Vias'),
     ('UI_LAYER_OSM_ROADS', es_id, 'Vías'),
     ('UI_LAYER_OSM_ROADS', it_id, 'Strade'),
+
+    ('UI_LAYER_GROUP_NETWORK', en_id, 'Utility network'),
+    ('UI_LAYER_GROUP_NETWORK', pt_id, 'Rede técnica'),
+    ('UI_LAYER_GROUP_NETWORK', es_id, 'Red técnica'),
+    ('UI_LAYER_GROUP_NETWORK', it_id, 'Rete tecnica'),
+
+    ('UI_LAYER_NETWORK_SPANS', en_id, 'Linear network segments'),
+    ('UI_LAYER_NETWORK_SPANS', pt_id, 'Segmentos lineares da rede'),
+    ('UI_LAYER_NETWORK_SPANS', es_id, 'Tramos lineales de red'),
+    ('UI_LAYER_NETWORK_SPANS', it_id, 'Segmenti lineari di rete'),
+
+    ('UI_LAYER_NETWORK_SPANS_HINT', en_id, 'Native PostGIS topology (gis.network_span) — shared topological nodes.'),
+    ('UI_LAYER_NETWORK_SPANS_HINT', pt_id, 'Topologia nativa PostGIS (gis.network_span) — nós topológicos partilhados.'),
+    ('UI_LAYER_NETWORK_SPANS_HINT', es_id, 'Topología nativa PostGIS (gis.network_span) — nodos topológicos compartidos.'),
+    ('UI_LAYER_NETWORK_SPANS_HINT', it_id, 'Topologia nativa PostGIS (gis.network_span) — nodi topologici condivisi.'),
 
     ('UI_STATUS_LANG_PREFIX', en_id, 'Session language changed to:'),
     ('UI_STATUS_LANG_PREFIX', pt_id, 'Idioma da sessão alterado para:'),
@@ -321,6 +391,76 @@ BEGIN
     ('UI_OP_TAB_SMT', es_id, 'Instalaciones y telemetría'),
     ('UI_OP_TAB_SMT', it_id, 'Impianti e telemetria'),
 
+    ('UI_OP_TAB_ESQ', en_id, 'Schematic, one-line & power flow'),
+    ('UI_OP_TAB_ESQ', pt_id, 'Esquemático, unifilar e fluxo'),
+    ('UI_OP_TAB_ESQ', es_id, 'Esquemático, unifilar y flujo'),
+    ('UI_OP_TAB_ESQ', it_id, 'Schema, unifilare e flusso'),
+
+    ('UI_OP_ESQ_TITLE', en_id, 'Network schematic'),
+    ('UI_OP_ESQ_TITLE', pt_id, 'Esquemático de rede'),
+    ('UI_OP_ESQ_TITLE', es_id, 'Esquemático de red'),
+    ('UI_OP_ESQ_TITLE', it_id, 'Schematico di rete'),
+
+    ('UI_OP_ESQ_HINT', en_id, 'Static, sequential one-line and qualitative power-flow labels. Each object has a geographic focus for «Go to map».'),
+    ('UI_OP_ESQ_HINT', pt_id, 'Unifilar estático e sequencial com indicação qualitativa de potência. Cada elemento dispõe de coordenadas de foco para «Ir para o mapa».'),
+    ('UI_OP_ESQ_HINT', es_id, 'Unifilar estático y secuencial. Cada elemento tiene enfoque geográfico para «Ir al mapa».'),
+    ('UI_OP_ESQ_HINT', it_id, 'Unifilare statico; ogni elemento ha un punto per «Vai alla mappa».'),
+
+    ('UI_OP_ESQ_SELECT_VIEW', en_id, 'Schematic view'),
+    ('UI_OP_ESQ_SELECT_VIEW', pt_id, 'Vista esquemática'),
+    ('UI_OP_ESQ_SELECT_VIEW', es_id, 'Vista esquemática'),
+    ('UI_OP_ESQ_SELECT_VIEW', it_id, 'Vista schematica'),
+
+    ('UI_OP_ESQ_P_KW', en_id, 'P (kW)'),
+    ('UI_OP_ESQ_P_KW', pt_id, 'P (kW)'),
+    ('UI_OP_ESQ_P_KW', es_id, 'P (kW)'),
+    ('UI_OP_ESQ_P_KW', it_id, 'P (kW)'),
+
+    ('UI_OP_ESQ_Q_KVAR', en_id, 'Q (kVAr)'),
+    ('UI_OP_ESQ_Q_KVAR', pt_id, 'Q (kVAr)'),
+    ('UI_OP_ESQ_Q_KVAR', es_id, 'Q (kVAr)'),
+    ('UI_OP_ESQ_Q_KVAR', it_id, 'Q (kVAr)'),
+
+    ('UI_OP_ESQ_NO_VIEWS', en_id, 'No schematic views (apply SQL migration 16 and seed).'),
+    ('UI_OP_ESQ_NO_VIEWS', pt_id, 'Sem vistas esquemáticas (aplique infra/sql/16_schematic_schema.sql e os dados de demonstração).'),
+    ('UI_OP_ESQ_NO_VIEWS', es_id, 'Sin vistas (aplique la migración SQL 16).'),
+    ('UI_OP_ESQ_NO_VIEWS', it_id, 'Nessuna vista (migrazione SQL 16).'),
+
+    ('UI_OP_ESQ_LOAD_FAIL', en_id, 'Failed to load schematic from API'),
+    ('UI_OP_ESQ_LOAD_FAIL', pt_id, 'Falha ao carregar o esquemático'),
+    ('UI_OP_ESQ_LOAD_FAIL', es_id, 'Error al cargar el esquemático'),
+    ('UI_OP_ESQ_LOAD_FAIL', it_id, 'Caricamento schematico fallito'),
+
+    ('UI_OP_STATUS_LOADING_SCHEMATIC', en_id, 'Loading schematic…'),
+    ('UI_OP_STATUS_LOADING_SCHEMATIC', pt_id, 'A carregar o esquemático…'),
+    ('UI_OP_STATUS_LOADING_SCHEMATIC', es_id, 'Cargando esquemático…'),
+    ('UI_OP_STATUS_LOADING_SCHEMATIC', it_id, 'Caricamento schematico…'),
+
+    ('UI_OP_STATUS_SCHEMATIC_NO_COORD', en_id, 'This object has no map focus coordinates.'),
+    ('UI_OP_STATUS_SCHEMATIC_NO_COORD', pt_id, 'Este elemento não tem coordenadas de foco para o mapa.'),
+    ('UI_OP_STATUS_SCHEMATIC_NO_COORD', es_id, 'Sin coordenadas de mapa para este elemento.'),
+    ('UI_OP_STATUS_SCHEMATIC_NO_COORD', it_id, 'Nessun punto di mappa per questo elemento.'),
+
+    ('UI_OP_STATUS_SCHEMATIC_MAP', en_id, 'Operational view: focus from the schematic (neighbourhoods and streets on).'),
+    ('UI_OP_STATUS_SCHEMATIC_MAP', pt_id, 'Vista operacional: foco a partir do esquemático (bairros e vias activos).'),
+    ('UI_OP_STATUS_SCHEMATIC_MAP', es_id, 'Vista operativa: enfoque desde el esquemático (barrios y vías).'),
+    ('UI_OP_STATUS_SCHEMATIC_MAP', it_id, 'Vista operativa: foco dallo sch. unif. (quartieri e strade).'),
+
+    ('UI_OP_STATUS_SCHEMATIC_MAP_GIS', en_id, 'Operational view: focus from gis.equipment geometry (neighbourhoods and streets on).'),
+    ('UI_OP_STATUS_SCHEMATIC_MAP_GIS', pt_id, 'Vista operacional: foco a partir da geometria em gis.equipment (bairros e vias activos).'),
+    ('UI_OP_STATUS_SCHEMATIC_MAP_GIS', es_id, 'Vista operativa: enfoque desde la geometría en gis.equipment (barrios y vías).'),
+    ('UI_OP_STATUS_SCHEMATIC_MAP_GIS', it_id, 'Vista operativa: fuoco dalla geometria gis.equipment (quartieri e strade).'),
+
+    ('UI_OP_ESQ_MAP_TOOLTIP', en_id, 'Focus: schematic node coordinates.'),
+    ('UI_OP_ESQ_MAP_TOOLTIP', pt_id, 'Foco: coordenadas do nó do esquemático.'),
+    ('UI_OP_ESQ_MAP_TOOLTIP', es_id, 'Enfoque: coordenadas del nodo del esquema.'),
+    ('UI_OP_ESQ_MAP_TOOLTIP', it_id, 'Focus: coordinate del nodo schematico.'),
+
+    ('UI_OP_ESQ_MAP_TOOLTIP_GIS', en_id, 'Focus: gis.equipment inventory geometry.'),
+    ('UI_OP_ESQ_MAP_TOOLTIP_GIS', pt_id, 'Foco: geometria do equipamento em gis.equipment (inventário).'),
+    ('UI_OP_ESQ_MAP_TOOLTIP_GIS', es_id, 'Enfoque: geometría del equipo en gis.equipment.'),
+    ('UI_OP_ESQ_MAP_TOOLTIP_GIS', it_id, 'Focus: geometria equipaggio in gis.equipment.'),
+
     ('UI_OP_TAB_TMP', en_id, 'Weather & field operations'),
     ('UI_OP_TAB_TMP', pt_id, 'Clima e operações de campo'),
     ('UI_OP_TAB_TMP', es_id, 'Clima y operaciones de campo'),
@@ -451,11 +591,6 @@ BEGIN
     ('UI_OP_COL_CAT', es_id, 'Cat.'),
     ('UI_OP_COL_CAT', it_id, 'Cat.'),
 
-    ('UI_OP_COL_FEEDER', en_id, 'Feed.'),
-    ('UI_OP_COL_FEEDER', pt_id, 'Alim.'),
-    ('UI_OP_COL_FEEDER', es_id, 'Alim.'),
-    ('UI_OP_COL_FEEDER', it_id, 'Alim.'),
-
     ('UI_OP_COL_ACT', en_id, 'Updated'),
     ('UI_OP_COL_ACT', pt_id, 'Act.'),
     ('UI_OP_COL_ACT', es_id, 'Act.'),
@@ -477,9 +612,9 @@ BEGIN
     ('UI_TT_CATEGORY_GRID', it_id, 'Categoria operativa (reclamo, riparazione, …)'),
 
     ('UI_TT_FEEDER_GRID', en_id, 'Feeder / upstream segment'),
-    ('UI_TT_FEEDER_GRID', pt_id, 'Alimentador / troço a montante'),
+    ('UI_TT_FEEDER_GRID', pt_id, 'Alimentador / segmento a montante'),
     ('UI_TT_FEEDER_GRID', es_id, 'Alimentador / tramo aguas arriba'),
-    ('UI_TT_FEEDER_GRID', it_id, 'Alimentatore / tratto a monte'),
+    ('UI_TT_FEEDER_GRID', it_id, 'Alimentatore / segmento a monte'),
 
     ('UI_TT_GRID_UPDATED', en_id, 'Last record update'),
     ('UI_TT_GRID_UPDATED', pt_id, 'Última actualização do registo'),
@@ -1084,7 +1219,28 @@ BEGIN
     ('UI_OP_AUD_TIMELINE_HINT', en_id, 'Full timeline from audit.parameter_history, audit.login_history and operations archive will be integrated via API.'),
     ('UI_OP_AUD_TIMELINE_HINT', pt_id, 'Linha temporal completa de audit.parameter_history, audit.login_history e arquivo operacional será integrada na API.'),
     ('UI_OP_AUD_TIMELINE_HINT', es_id, 'La línea temporal completa se integrará vía API.'),
-    ('UI_OP_AUD_TIMELINE_HINT', it_id, 'La timeline completa sarà integrata via API.')
+    ('UI_OP_AUD_TIMELINE_HINT', it_id, 'La timeline completa sarà integrata via API.'),
+
+    -- Glossary / topology — termos técnicos sem ambiguidade regional (EN, PT-BR, ES, IT)
+    ('UI_GLOSSARY_LINEAR_NETWORK_SEGMENT', en_id, 'Linear network segment (GIS): contiguous length of a utility asset between two endpoints, stored as a LineString and optionally as a TopoGeometry for shared-node topology.'),
+    ('UI_GLOSSARY_LINEAR_NETWORK_SEGMENT', pt_id, 'Segmento linear da rede (SIG): extensão contínua de um activo de utilities entre dois extremos, representada como LineString e, opcionalmente, como TopoGeometry para partilha de nós topológicos.'),
+    ('UI_GLOSSARY_LINEAR_NETWORK_SEGMENT', es_id, 'Tramo lineal de red (SIG): tramo continuo de un activo de utilities entre dos extremos, almacenado como LineString y, opcionalmente, como TopoGeometry para topología de nodos compartidos.'),
+    ('UI_GLOSSARY_LINEAR_NETWORK_SEGMENT', it_id, 'Segmento lineare di rete (GIS): tratto continuo di un asset di utilities tra due estremi, memorizzato come LineString e, opzionalmente, come TopoGeometry per nodi topologici condivisi.'),
+
+    ('UI_GLOSSARY_POSTGIS_TOPOLOGY', en_id, 'PostGIS Topology (extension postgis_topology): native topological model with shared primitives (nodes, edges, faces) managed by the database engine.'),
+    ('UI_GLOSSARY_POSTGIS_TOPOLOGY', pt_id, 'Topologia PostGIS (extensão postgis_topology): modelo topológico nativo com primitivas partilhadas (nós, arestas, faces) geridas pelo motor da base de dados.'),
+    ('UI_GLOSSARY_POSTGIS_TOPOLOGY', es_id, 'Topología PostGIS (extensión postgis_topology): modelo topológico nativo con primitivas compartidas (nodos, aristas, caras) gestionadas por el motor.'),
+    ('UI_GLOSSARY_POSTGIS_TOPOLOGY', it_id, 'Topologia PostGIS (estensione postgis_topology): modello topologico nativo con primitive condivise (nodi, archi, facce) gestite dal motore.'),
+
+    ('UI_HELP_STACK_POSTGIS_TOPOLOGY', en_id, 'Native PostGIS Topology (tabgis_utilities_topo) and linear segments in gis.network_span — see TOPOLOGY_NATIVE_POSTGIS.md.'),
+    ('UI_HELP_STACK_POSTGIS_TOPOLOGY', pt_id, 'Topologia nativa PostGIS (tabgis_utilities_topo) e segmentos lineares da rede em gis.network_span — ver TOPOLOGY_NATIVE_POSTGIS.md.'),
+    ('UI_HELP_STACK_POSTGIS_TOPOLOGY', es_id, 'Topología nativa PostGIS (tabgis_utilities_topo) y tramos lineales en gis.network_span — ver TOPOLOGY_NATIVE_POSTGIS.md.'),
+    ('UI_HELP_STACK_POSTGIS_TOPOLOGY', it_id, 'Topologia nativa PostGIS (tabgis_utilities_topo) e segmenti lineari in gis.network_span — vedi TOPOLOGY_NATIVE_POSTGIS.md.'),
+
+    ('UI_HELP_API_TOPOLOGY', en_id, 'Topology API (/api/topology/*): metadata and linear network segments (JSON + approximate length in metres).'),
+    ('UI_HELP_API_TOPOLOGY', pt_id, 'API de topologia (/api/topology/*): metadados e segmentos lineares da rede (JSON + comprimento aproximado em metros).'),
+    ('UI_HELP_API_TOPOLOGY', es_id, 'API de topología (/api/topology/*): metadatos y tramos lineales (JSON + longitud aproximada en metros).'),
+    ('UI_HELP_API_TOPOLOGY', it_id, 'API topologia (/api/topology/*): metadati e segmenti lineari (JSON + lunghezza approssimativa in metri).')
 
     ON CONFLICT (object_id, language_id) DO UPDATE SET translated_text = EXCLUDED.translated_text;
 END $$;

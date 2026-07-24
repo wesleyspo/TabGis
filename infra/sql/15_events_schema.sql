@@ -33,7 +33,7 @@ CREATE INDEX IF NOT EXISTS idx_events_aggregate ON events.event (aggregate_type,
 CREATE INDEX IF NOT EXISTS idx_events_correlation ON events.event (correlation_id) WHERE correlation_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_events_payload_gin ON events.event USING GIN (payload);
 
--- Escrita via aplicação Node (sink), não via triggers — ver docs/EVENTS_ARCHITECTURE.md.
+-- Escrita via aplicação Node (sink), não via triggers — ver docs/mds/EVENTS_ARCHITECTURE.md.
 CREATE OR REPLACE FUNCTION events.append_event(
   p_domain TEXT,
   p_event_type TEXT,

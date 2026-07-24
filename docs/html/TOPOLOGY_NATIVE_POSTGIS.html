@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>TOPOLOGY_NATIVE_POSTGIS</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">TOPOLOGY_NATIVE_POSTGIS</h1>
+</header>
+<h1 id="topologia-nativa-de-rede-postgis-topology">Topologia nativa de
+rede (PostGIS Topology)</h1>
+<p>Este documento descreve <strong>o que</strong> o modelo entrega ao
+produto TabGis e <strong>como</strong> está construído tecnicamente
+sobre a extensão oficial
+<strong><code>postgis_topology</code></strong>.</p>
+<hr />
+<h2 id="perspectiva-funcional">1. Perspectiva funcional</h2>
+<h3 id="objetivo">Objetivo</h3>
+<p>Representar <strong>segmentos lineares da rede</strong> (conductores,
+tubagens, cabos, etc.) como linhas que <strong>partilham vértices de
+forma consistente</strong>: quando dois segmentos coincidem num ponto
+dentro da <strong>tolerância</strong> definida para a topologia, o
+PostGIS garante o <strong>mesmo nó topológico</strong>. Isso evita
+“pontos duplicados” que não se ligam entre si em análises de
+continuidade.</p>
+<h3 id="o-que-o-operador-ou-integrador-ganha">O que o operador ou
+integrador ganha</h3>
+<ul>
+<li><strong>Continuidade explícita</strong>: primitivas
+<code>node</code> / <code>edge_data</code> no schema da topologia
+(<code>tabgis_utilities_topo</code>) reflectem a malha administrada pelo
+motor topológico.</li>
+<li><strong>Dupla representação legível</strong>:
+<ul>
+<li><strong><code>span_geom</code></strong>
+(<code>geometry(LineString,4326)</code>): interoperável (GeoJSON na API,
+WFS no futuro).</li>
+<li><strong><code>topo_geom</code></strong>
+(<code>topology.TopoGeometry</code>): referência à topologia nativa,
+adequada a operações que respeitam nós partilhados.</li>
+</ul></li>
+<li><strong>Pontos de ligação ao cadastro</strong>:
+<code>equipment_from_id</code> / <code>equipment_to_id</code> opcionais
+para associar segmentos a <code>gis.equipment</code> quando fizer
+sentido de negócio.</li>
+</ul>
+<h3 id="o-que-ainda-não-é-marcos-futuros">O que ainda não é (marcos
+futuros)</h3>
+<ul>
+<li><strong>Edição transacional via API REST</strong> destes segmentos
+(esta entrega é modelo + leitura).</li>
+<li><strong>Camada de mapa dedicada</strong> no Leaflet (pode ser
+acrescentada reutilizando <code>GET /api/topology/spans</code>).</li>
+<li><strong>CRS projetado</strong> para tolerância em metros constantes
+em toda a área — ver secção 5.</li>
+</ul>
+<hr />
+<h2 id="perspectiva-técnica">2. Perspectiva técnica</h2>
+<h3 id="extensão-e-topologia-nomeada">Extensão e topologia nomeada</h3>
+<ol type="1">
+<li><strong><code>CREATE EXTENSION postgis_topology</code></strong> —
+carrega funções e catálogos globais (<code>topology.topology</code>,
+<code>topology.layer</code>, …).</li>
+<li><strong><code>topology.CreateTopology(name, srid, precision)</code></strong>
+— cria um <strong>schema</strong> com o nome da topologia (ex.:
+<code>tabgis_utilities_topo</code>) contendo as tabelas internas:
+<ul>
+<li><strong><code>edge_data</code></strong> — arestas dirigidas;</li>
+<li><strong><code>node</code></strong> — vértices;</li>
+<li><strong><code>face</code></strong> — faces (úteis se mais tarde
+existirem polígonos de zona ou subdivisão planar);</li>
+<li><strong><code>relation</code></strong> — associação entre feições e
+primitivas.</li>
+</ul></li>
+</ol>
+<p>Parâmetros TabGis:</p>
+<table>
+<colgroup>
+<col style="width: 34%" />
+<col style="width: 43%" />
+<col style="width: 21%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Parâmetro</th>
+<th>Valor actual</th>
+<th>Notas</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Nome</td>
+<td><code>tabgis_utilities_topo</code></td>
+<td>Constante acordada no código (<code>backend/server.js</code>) e na
+migração SQL.</td>
+</tr>
+<tr class="even">
+<td>SRID</td>
+<td><strong>4326</strong></td>
+<td>Alinhado a <code>gis.equipment.geom</code> / restantes camadas
+utilities em graus.</td>
+</tr>
+<tr class="odd">
+<td><code>precision</code></td>
+<td><strong>1e-6</strong> graus</td>
+<td>Ordem de grandeza ~cm–dm conforme latitude; afinar se
+necessário.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="camada-de-topogeometry">Camada de TopoGeometry</h3>
+<p><strong><code>topology.AddTopoGeometryColumn(topology, schema, table, column, type)</code></strong>
+regista uma camada e adiciona a coluna. Para segmentos lineares usamos
+tipo <strong><code>LINE</code></strong> (equivalente a LineString na
+camada).</p>
+<h3 id="população-totopogeom">População: <code>toTopoGeom</code></h3>
+<p><strong><code>topology.toTopoGeom(geom, topology_name, layer_id, tolerance)</code></strong>
+converte a geometria simples em <code>TopoGeometry</code> e
+<strong>materializa</strong> primitivas na topologia. A tolerância
+efectiva utilizada na migração é a
+<strong><code>precision</code></strong> registada em
+<code>topology.topology</code> para esta topologia (compatível com a
+versão PostGIS em uso — valores negativos como “usar padrão” não são
+aceites em todas as builds).</p>
+<h3 id="artefactos-de-negócio-em-gis">Artefactos de negócio em
+<code>gis</code></h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Objeto</th>
+<th>Função</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong><code>gis.network_span</code></strong></td>
+<td>Um segmento linear com <code>span_geom</code> obrigatório e
+<code>topo_geom</code> preenchido após conversão.</td>
+</tr>
+<tr class="even">
+<td><strong><code>gis.v_network_span_readable</code></strong></td>
+<td>Vista com comprimento geodésico aproximado
+(<code>length_m_approx</code>) para leitura humana.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="migração-versionada">Migração versionada</h3>
+<p>Ficheiro:
+<strong><code>infra/sql/21_postgis_topology_utilities.sql</code></strong></p>
+<ul>
+<li>Idempotente na medida do possível
+(<code>CREATE IF NOT EXISTS</code>, <code>ON CONFLICT DO NOTHING</code>
+nos demos).</li>
+<li>Inclui <strong>três segmentos de demonstração</strong> que partilham
+vértices — útil para validar fusão de nós.</li>
+</ul>
+<hr />
+<h2 id="api-http-leitura">3. API HTTP (leitura)</h2>
+<p>Requer o mesmo perfil que operações sobre ordens quando
+<strong><code>SECURITY_ENFORCE=1</code></strong>: privilégio
+<strong><code>module.oms</code></strong> e cabeçalho
+<strong><code>X-TabGis-User-Id</code></strong> válido.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 25%" />
+<col style="width: 41%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Método</th>
+<th>Rota</th>
+<th>Resposta</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>GET</code></td>
+<td><code>/api/topology/meta</code></td>
+<td>Estado da topologia <code>tabgis_utilities_topo</code>, camadas em
+<code>topology.layer</code>, contagens de <code>edges</code> /
+<code>nodes</code> / <code>faces</code>. Se a topologia não existir,
+<code>{ ok, installed: false, hint }</code>.</td>
+</tr>
+<tr class="even">
+<td><code>GET</code></td>
+<td><code>/api/topology/spans?limit=</code></td>
+<td>Lista segmentos lineares com <code>span_geojson</code>,
+<code>has_topo_geom</code>, <code>length_m_approx</code> (máx.
+500).</td>
+</tr>
+</tbody>
+</table>
+<p>Sem enforcement de segurança (ambiente dev típico), as rotas
+respondem sem cabeçalho.</p>
+<hr />
+<h2 id="operação-e-validação">4. Operação e validação</h2>
+<h3 id="aplicar-ou-repetir-a-migração">Aplicar ou repetir a
+migração</h3>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> exec <span class="at">-i</span> infra-db-1 psql <span class="at">-U</span> tabgis_admin <span class="at">-d</span> tabgis_db <span class="at">-v</span> ON_ERROR_STOP=1 <span class="dt">\</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="op">&lt;</span> infra/sql/21_postgis_topology_utilities.sql</span></code></pre></div>
+<h3 id="verificações-rápidas-em-sql">Verificações rápidas em SQL</h3>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode sql"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> name, srid, <span class="dt">precision</span> <span class="kw">FROM</span> topology.topology <span class="kw">WHERE</span> name <span class="op">=</span> <span class="st">&#39;tabgis_utilities_topo&#39;</span>;</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">AS</span> edges <span class="kw">FROM</span> tabgis_utilities_topo.edge_data;</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">AS</span> nodes <span class="kw">FROM</span> tabgis_utilities_topo.node;</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="kw">id</span>, code, topo_geom <span class="kw">IS</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">AS</span> has_topo <span class="kw">FROM</span> gis.network_span <span class="kw">ORDER</span> <span class="kw">BY</span> <span class="kw">id</span>;</span></code></pre></div>
+<h3 id="validar-integridade-topológica-opcional">Validar integridade
+topológica (opcional)</h3>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode sql"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span> <span class="kw">FROM</span> topology.ValidateTopology(<span class="st">&#39;tabgis_utilities_topo&#39;</span>);</span></code></pre></div>
+<p>Corrigir erros reportados antes de confiar em análises de
+continuidade em produção.</p>
+<hr />
+<h2 id="limitações-e-boas-práticas">5. Limitações e boas práticas</h2>
+<ol type="1">
+<li><strong>Geografia vs geometria</strong>: comprimentos na vista/API
+usam cast para <strong>geografia</strong> sobre 4326 — adequado para
+ordens de grandeza operacional; estudos de perfil eléctrico finos podem
+exigir modelo projetado.</li>
+<li><strong>Tolerância em graus</strong>: redes muito extensas podem
+preferir uma topologia separada em <strong>EPSG projectivo
+local</strong> com <code>precision</code> em metros.</li>
+<li><strong>Redes não planares</strong>: múltiplos circuitos sobrepostos
+podem exigir modelação avançada (várias camadas ou grafos além deste
+MVP).</li>
+<li><strong>Rollback</strong>: remover a topologia destrói primitivas —
+usar <code>DROP SCHEMA tabgis_utilities_topo CASCADE</code> apenas em
+consciência (impacto total nos <code>TopoGeometry</code>
+dependentes).</li>
+</ol>
+<hr />
+<h2 id="referências-cruzadas">6. Referências cruzadas</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 66%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Documento</th>
+<th>Conteúdo relacionado</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>docs/mds/CONTEXT_STATE.md</code></td>
+<td>Estado da stack, lista de scripts SQL, rotas da API.</td>
+</tr>
+<tr class="even">
+<td><code>docs/mds/Database_Structure_Context.md</code></td>
+<td>Modelo conceptual <code>gis</code> / utilities.</td>
+</tr>
+<tr class="odd">
+<td><code>docs/mds/DEPLOY.md</code></td>
+<td>Ordem de aplicação de migrações.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="regionalização-traduções-en-pt-es-it">7. Regionalização
+(traduções EN / PT / ES / IT)</h2>
+<p>Textos de interface e glossário técnico <strong>sem ambiguidade
+coloquial</strong> estão cadastrados em
+<strong><code>infra/sql/02_populate_translations.sql</code></strong>
+(tabela <code>config.translation</code>), com
+<code>ON CONFLICT DO UPDATE</code> para reaplicação segura:</p>
+<table>
+<colgroup>
+<col style="width: 58%" />
+<col style="width: 41%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Chave</th>
+<th>Uso</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>UI_GLOSSARY_LINEAR_NETWORK_SEGMENT</code></td>
+<td>Definição de <em>segmento linear da rede</em> (SIG /
+utilities).</td>
+</tr>
+<tr class="even">
+<td><code>UI_GLOSSARY_POSTGIS_TOPOLOGY</code></td>
+<td>Definição da extensão <code>postgis_topology</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>UI_HELP_STACK_POSTGIS_TOPOLOGY</code></td>
+<td>Linha de ajuda: stack PostGIS + <code>gis.network_span</code>.</td>
+</tr>
+<tr class="even">
+<td><code>UI_HELP_API_TOPOLOGY</code></td>
+<td>Linha de ajuda: endpoints <code>/api/topology/*</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Após alterar o ficheiro SQL, executar <code>psql</code> contra a base
+e <strong>reiniciar</strong> o contentor
+<strong><code>api</code></strong> para o cliente voltar a carregar o
+mapa de traduções.</p>
+</body>
+</html>

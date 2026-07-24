@@ -14,7 +14,7 @@ Executar uma iteracao completa sem intervencao humana, elevando TabGis para uma 
 - Validar stack e testes existentes.
 - Ampliar suite E2E para cobertura de:
   - abertura de Operacao;
-  - todas as abas (OMS, MWM, DMS, IND, SMT, TMP, AUD);
+  - todas as abas (OMS, MWM, DMS, IND, SMT, ESQ, TMP, AUD);
   - Configuracoes (visualizacao, utilizadores, tipos de dominio, traducoes, ajuda);
   - atalho de Clima (TMP).
 - Aceite: testes de fumo executam sem regressao critica.

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TabGis — Documentação (índice HTML)</title>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+  <h1>TabGis — Documentação <span class="badge">espelho HTML</span></h1>
+  <p class="intro">
+    Este índice espelha a estrutura do ficheiro
+    <a href="https://github.com/wesleyspo/TabGis/blob/main/docs/README.md"><code>docs/README.md</code></a>.
+    Cada <code>.md</code> em <code>docs/mds/</code> gera um <code>.html</code> homólogo nesta pasta (<code>docs/html/</code>).
+    PDFs homólogos: <code>docs/pdfs/</code>. Build: <code>scripts/docs/build-pages-site.sh</code>.
+  </p>
+
+  <h2>Arranque rápido</h2>
+  <ul>
+    <li><a href="./CONTEXT_STATE.html">CONTEXT_STATE</a> — estado da stack, API, SQL</li>
+    <li><a href="./DEPLOY.html">DEPLOY</a> — Docker Compose, migrações</li>
+    <li><a href="./Escopo_Projeto_TabGis.html">Escopo TabGis</a> — produto e roadmap</li>
+  </ul>
+
+  <h2>Arquitectura e dados</h2>
+  <ul>
+    <li><a href="./ARCHITECTURE_BPMN.html">ARCHITECTURE_BPMN</a> — diagrama módulos (Mermaid no MD fonte)</li>
+    <li><a href="./EVENTS_ARCHITECTURE.html">EVENTS_ARCHITECTURE</a></li>
+    <li><a href="./TOPOLOGY_NATIVE_POSTGIS.html">TOPOLOGY_NATIVE_POSTGIS</a></li>
+    <li><a href="./Database_Structure_Context.html">Database_Structure_Context</a> (Pandoc)</li>
+    <li><a href="./Database_Structure_Context.diagram-legacy.html">Database_Structure_Context (diagrama legado)</a></li>
+  </ul>
+
+  <h2>Regionalização e mapas</h2>
+  <ul>
+    <li><a href="./REGIONALIZATION.html">REGIONALIZATION</a></li>
+    <li><a href="./MAPS_AND_SOURCES.html">MAPS_AND_SOURCES</a></li>
+  </ul>
+
+  <h2>Runbooks</h2>
+  <ul>
+    <li><a href="./RUNBOOK_BASEMAP_SP_ESTADO.html">RUNBOOK_BASEMAP_SP_ESTADO</a></li>
+    <li><a href="./RUNBOOK_BASEMAP_SP.html">RUNBOOK_BASEMAP_SP</a></li>
+    <li><a href="./GeoSampa_offline_operacao.html">GeoSampa_offline_operacao</a></li>
+    <li><a href="./GeoSampa_offline_tecnico.html">GeoSampa_offline_tecnico</a></li>
+  </ul>
+
+  <h2>Operação, CI, legado</h2>
+  <ul>
+    <li><a href="./AUTONOMY_RUNBOOK.html">AUTONOMY_RUNBOOK</a></li>
+    <li><a href="./AUTONOMOUS_EXECUTION_PLAN_10H.html">AUTONOMOUS_EXECUTION_PLAN_10H</a></li>
+    <li><a href="./DEPLOY_POC.html">DEPLOY_POC</a></li>
+    <li><a href="./Escopo_Projeto_GeoUtil.html">Escopo_Projeto_GeoUtil</a></li>
+  </ul>
+
+  <h2>Ajuda operador</h2>
+  <ul>
+    <li>Ajuda UI: ficheiro <code>frontend/help.html</code>; cópia publicada em <code>_site/help/index.html</code> pelo script de build (GitHub Pages).</li>
+  </ul>
+
+  <p class="intro" style="margin-top:2rem;">
+    Fonte Markdown: <code>docs/mds/</code>. PDF: <code>docs/pdfs/</code> (motor LaTeX via imagem Docker <code>pandoc/extra</code>).
+  </p>
+</body>
+</html>

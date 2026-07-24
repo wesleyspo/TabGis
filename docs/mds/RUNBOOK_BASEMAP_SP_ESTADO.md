@@ -3,8 +3,8 @@
 Guia oficial para carga e publicação do landbase **SP completo** (escala estadual).
 Pipeline versionado e repetível — referência principal para o produto.
 
-> **Deploy completo da stack:** ver `docs/DEPLOY_POC.md`
-> **Estado operacional actual:** ver `docs/CONTEXT_STATE.md`
+> **Deploy completo da stack:** ver `docs/mds/DEPLOY_POC.md`
+> **Estado operacional actual:** ver `docs/mds/CONTEXT_STATE.md`
 
 ---
 
@@ -90,7 +90,7 @@ O landbase estadual (secção 5) cobre **todo o estado**. Para a POC TabGis usa-
 | Passo | Comando / referência |
 |-------|----------------------|
 | Gerar tabelas e publicar camadas | `./infra/scripts/setup_municipios_alvo_sp.sh` |
-| Detalhe da lista de municípios e comportamento no mapa | `docs/CONTEXT_STATE.md` → *Recorte prioritário* e *Frontend* |
+| Detalhe da lista de municípios e comportamento no mapa | `docs/mds/CONTEXT_STATE.md` → *Recorte prioritário* e *Frontend* |
 
 ### PostGIS (além das tabelas da secção 5)
 
@@ -108,7 +108,20 @@ O landbase estadual (secção 5) cobre **todo o estado**. Para a POC TabGis usa-
 | `base_sp:bairros_alvo_sp` | `infra/geoserver/styles/base_sp_bairros_alvo.sld` | Preenchimento/contorno discretos; rótulos `municipio_nome` + `bairro_nome` |
 | `base_sp:vias_alvo_sp` | (estilo atribuído pelo script; alinhado a vias por zoom onde aplicável) | — |
 
-> **Manutenção:** alterações a estes `.sld` no Git **não** entram automaticamente no GeoServer após `git pull`. Republicar o XML na consola (**Styles** / camada) ou repetir o procedimento de publicação do teu ambiente. Sincronismo com toggles e zoom do cliente: `docs/CONTEXT_STATE.md` (*Camadas alvo — zoom e toggles*, *Estilos GeoServer — recorte alvo*).
+> **Manutenção:** alterações a estes `.sld` no Git **não** entram automaticamente no GeoServer após `git pull`. Republicar o XML na consola (**Styles** / camada) ou repetir o procedimento de publicação do teu ambiente. Sincronismo com toggles e zoom do cliente: `docs/mds/CONTEXT_STATE.md` (*Camadas alvo — zoom e toggles*, *Estilos GeoServer — recorte alvo*).
+
+### 5.2 Sanidade `bairros_alvo_sp` (pós-regeneração)
+
+Após `./infra/scripts/setup_municipios_alvo_sp.sh`, as geometrias OSM podem fazer com que o nome de **outro município** (ex.: Osasco) apareça como falso “bairro” num recorte (ex.: Cotia), poluindo o dropdown no cliente. A verificação versionada alinha o critério de correção em `infra/sql/19_fix_bairros_alvo_mapping.sql` e deve devolver **0** linhas.
+
+```bash
+# Na raiz do repositório (ajusta PGPASSWORD / host se necessário)
+PGPASSWORD="${DB_PASS:-password123}" psql -h "${DB_HOST:-localhost}" -p "${DB_PORT:-5433}" \
+  -U "${DB_USER:-tabgis_admin}" -d "${DB_NAME:-tabgis_db}" -v ON_ERROR_STOP=1 \
+  -f infra/sql/20_sanity_bairros_alvo_sp.sql
+```
+
+- Se o comando **falhar** (código de saída ≠ 0), listar as violações no output, aplicar `infra/sql/19_fix_bairros_alvo_mapping.sql` se for aceitável e voltar a correr a sanidade, ou ajustar a carga OSM. O frontend continua a filtrar nomes de município na lista, mas a fonte em PostGIS deve estar limpa para WFS/rotulagem.
 
 ---
 
@@ -120,7 +133,7 @@ curl -s "http://localhost:8080/geoserver/wms?service=WMS&request=GetCapabilities
   | grep -o 'base_sp:[^<]*' | head
 
 # Contagem PostGIS
-PGPASSWORD=password123 psql -h localhost -p 5432 -U tabgis_admin -d tabgis_db -c \
+PGPASSWORD=password123 psql -h localhost -p 5433 -U tabgis_admin -d tabgis_db -c \
   "SELECT 'uf_sp' AS tabela, COUNT(*) FROM landbase.uf_sp
    UNION ALL SELECT 'municipios_sp', COUNT(*) FROM landbase.municipios_sp
    UNION ALL SELECT 'vias_sp', COUNT(*) FROM landbase.vias_sp;"

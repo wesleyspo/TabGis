@@ -14,7 +14,10 @@ function omsAggregateCellMetersFromZoom(zoom) {
   if (z <= 10) return 5500;
   if (z <= 11) return 3500;
   if (z <= 12) return 1800;
-  return 900;
+  if (z <= 13) return 1100;
+  if (z <= 14) return 700;
+  if (z <= 15) return 450;
+  return 350;
 }
 
 module.exports = { omsAggregateCellMetersFromZoom };

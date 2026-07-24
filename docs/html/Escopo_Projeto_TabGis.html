@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Escopo_Projeto_TabGis</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Escopo_Projeto_TabGis</h1>
+</header>
+<h1 id="escopo-do-projeto-tabgis">Escopo do Projeto: TabGis</h1>
+<h2 id="visao">Visao</h2>
+<p>TabGis e uma plataforma web para gestao operacional de redes de
+utilities com integracao entre mapa geografico, operacao de campo,
+auditoria e configuracoes de dominio.</p>
+<h2 id="objetivos-centrais">Objetivos centrais</h2>
+<ul>
+<li>Operar rede tecnica com contexto geografico e operacional
+unificado.</li>
+<li>Garantir rastreabilidade (auditoria) de alteracoes criticas.</li>
+<li>Manter arquitetura aberta, modular e preparada para
+escalabilidade.</li>
+<li>Suportar evolucao de modulos OMS, MWM, DMS, IND, SMT, ESQ
+(esquemático), TMP e AUD.</li>
+<li>Entregar vista esquematica com metadado obrigatorio “Ir para o
+Mapa”.</li>
+</ul>
+<h2 id="arquitetura-de-referencia">Arquitetura de referencia</h2>
+<ul>
+<li>Frontend web servido por nginx.</li>
+<li>API Node.js/Express.</li>
+<li>PostgreSQL/PostGIS para dados geoespaciais e operacionais.</li>
+<li>Schema PostgreSQL <strong><code>events</code></strong> para trilhas
+de eventos (exportáveis a Mongo/externo; ver
+<code>docs/mds/EVENTS_ARCHITECTURE.md</code>).</li>
+<li>GeoServer para WMS/WFS.</li>
+<li>TileServer GL para raster MBTiles.</li>
+</ul>
+<h2 id="requisitos-de-produto">Requisitos de produto</h2>
+<ul>
+<li>Layout responsivo com modos de tela definidos (full, split e foco no
+centro de controle).</li>
+<li>Operacao modular por abas: OMS, MWM, DMS, IND, SMT, ESQ, TMP e
+AUD.</li>
+<li>Gestao de configuracoes por dominio: idioma, visualizacao,
+utilizadores, tipos <code>ref.*</code>, traducoes e ajuda.</li>
+<li>Trilhas de auditoria com politica de arquivo pre-delete no dominio
+operacional.</li>
+</ul>
+<h2 id="prioridades-de-evolucao">Prioridades de evolucao</h2>
+<ol type="1">
+<li>Topologia de rede em PostGIS (nativa + navegação mapa) e esquemático
+(<strong>actual:</strong> <code>postgis_topology</code> /
+<code>gis.network_span</code> —
+<code>docs/mds/TOPOLOGY_NATIVE_POSTGIS.md</code>; esquemático
+<strong>ESQ</strong> — <code>docs/mds/CONTEXT_STATE.md</code>).</li>
+<li>Consolidacao de APIs de operacao e roteamento.</li>
+<li>Simuladores de carga para validacao de stress.</li>
+<li>Endurecimento de seguranca e readiness de producao.</li>
+</ol>
+<h2 id="fonte-de-estado">Fonte de estado</h2>
+<p>Estado operacional detalhado:
+<code>docs/mds/CONTEXT_STATE.md</code>.</p>
+</body>
+</html>

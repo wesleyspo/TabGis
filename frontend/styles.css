@@ -522,6 +522,39 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   margin-bottom: 2px;
 }
 
+.layer-heat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 2px;
+  flex-wrap: wrap;
+}
+
+.layer-heat-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.layer-heat-select {
+  flex: 1;
+  min-width: 140px;
+  max-width: 100%;
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: var(--radius-md, 6px);
+  border: 1px solid var(--border-input);
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.layer-heat-hint {
+  margin-top: 2px;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
 /* ── Toggle rows ─────────────────────────────────────────── */
 .toggle-row {
   display: flex;
@@ -529,6 +562,11 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   justify-content: space-between;
   gap: 8px;
   padding: 4px 0;
+}
+
+.operacao-tab--blocked {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .toggle-label {
@@ -696,6 +734,42 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 .badge-local  { background: rgba(139,92,246,0.15); color: var(--badge-local); }
 .badge-alvo   { background: rgba(16,185,129,0.15); color: var(--badge-alvo); }
 
+.map-municipio-focus-label {
+  pointer-events: none;
+}
+
+.map-municipio-focus-label span {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #7c2d12;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(217, 119, 6, 0.5);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+.map-bairro-focus-label {
+  pointer-events: none;
+}
+
+.map-bairro-focus-label span {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #1e3a8a;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(37, 99, 235, 0.45);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+}
+
 /* ── Navigation buttons ──────────────────────────────────── */
 .nav-buttons {
   display: flex;
@@ -787,6 +861,87 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   min-height: 0;
   position: relative;
   overflow: hidden;
+  /* Grelha CCC (3 colunas × 3 linhas): percentagens persistidas em localStorage via main.js */
+  --ccc-top-pct: 42%;
+  --ccc-det-pct: 46%;
+}
+
+/* Moldura comum: visão 50/50 (split) e visão CCC (mapa ≈25% do rectângulo) */
+.app.has-left-panel.app--oper-layout-split .split-main-row,
+.app.has-left-panel.app--oper-layout-ccc .split-main-row {
+  box-sizing: border-box;
+  padding: clamp(7px, 1.2vw, 12px);
+}
+
+.app.has-left-panel.app--oper-layout-split .split-main-row {
+  gap: clamp(8px, 1.1vw, 12px);
+}
+
+.app.has-left-panel.app--oper-layout-split .left-panel,
+.app.has-left-panel.app--oper-layout-split .map-panel,
+.app.has-left-panel.app--oper-layout-ccc .left-panel,
+.app.has-left-panel.app--oper-layout-ccc .oper-detail-pane,
+.app.has-left-panel.app--oper-layout-ccc .map-panel {
+  box-sizing: border-box;
+  border-radius: 14px;
+  overflow: hidden;
+  isolation: isolate;
+  padding: clamp(6px, 1.2vw, 12px);
+  border: none;
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.28),
+    0 0 0 2px rgba(15, 23, 42, 0.96),
+    0 10px 32px rgba(0, 0, 0, 0.48),
+    0 2px 10px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  background: linear-gradient(155deg, rgba(51, 65, 85, 0.45), rgba(15, 23, 42, 0.72));
+}
+
+.oper-splitter {
+  display: none;
+  flex-shrink: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 6;
+}
+
+.app.has-left-panel.app--oper-layout-ccc .oper-splitter {
+  display: block;
+}
+
+.app.has-left-panel.app--oper-layout-ccc .oper-splitter--row {
+  grid-area: splitH;
+  height: 7px;
+  cursor: row-resize;
+  background: linear-gradient(
+    180deg,
+    rgba(148, 163, 184, 0.08) 0%,
+    rgba(56, 189, 248, 0.12) 50%,
+    rgba(148, 163, 184, 0.08) 100%
+  );
+}
+
+.app.has-left-panel.app--oper-layout-ccc .oper-splitter--col {
+  grid-area: splitV;
+  width: 7px;
+  cursor: col-resize;
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.08) 0%,
+    rgba(56, 189, 248, 0.12) 50%,
+    rgba(148, 163, 184, 0.08) 100%
+  );
+}
+
+.app.has-left-panel.app--oper-layout-ccc .oper-splitter:hover,
+.app.has-left-panel.app--oper-layout-ccc .oper-splitter.is-dragging {
+  background: rgba(56, 189, 248, 0.22);
+}
+
+.app.has-left-panel.app--oper-layout-split .oper-splitter {
+  display: none !important;
 }
 
 .app.has-left-panel.app--oper-layout-split .split-main-row {
@@ -799,24 +954,36 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 }
 
 .app.has-left-panel.app--oper-layout-split .left-panel {
-  flex: 0 0 50%;
-  width: 50%;
-  max-width: 50%;
+  flex: 1 1 50%;
+  min-width: 0;
+  width: auto;
+  max-width: none;
+  border-right: none;
 }
 
-.app.has-left-panel.app--oper-layout-split #map {
-  flex: 1;
+.app.has-left-panel.app--oper-layout-split .map-panel {
+  flex: 1 1 50%;
   min-width: 0;
+  min-height: 0;
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .app.has-left-panel.app--oper-layout-ccc .split-main-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns:
+    minmax(min(180px, 26vw), var(--ccc-det-pct))
+    7px
+    minmax(min(220px, 30vw), 1fr);
+  grid-template-rows:
+    minmax(min(110px, 16vh), var(--ccc-top-pct))
+    7px
+    minmax(min(130px, 20vh), 1fr);
   grid-template-areas:
-    "opctl opctl"
-    "opdet opmap";
+    "opctl opctl opctl"
+    "splitH splitH splitH"
+    "opdet splitV opmap";
 }
 
 .app.has-left-panel.app--oper-layout-ccc .left-panel {
@@ -825,7 +992,7 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   max-width: none;
   flex: unset;
   border-right: none;
-  border-bottom: 1px solid var(--border);
+  border-bottom: none;
 }
 
 .app.has-left-panel.app--oper-layout-ccc .oper-detail-pane {
@@ -835,21 +1002,46 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   min-height: 0;
   min-width: 0;
   overflow: hidden;
-  background: var(--bg-section);
-  border-right: 1px solid var(--border);
 }
 
-.app.has-left-panel.app--oper-layout-ccc #map {
+.app.has-left-panel.app--oper-layout-ccc .map-panel {
   grid-area: opmap;
-  flex: unset;
-  width: 100%;
-  height: 100%;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
+  width: 100%;
+  height: 100%;
 }
 
-/* Controlo +/− no canto do mapa: acima do painel Operação (z-index 3) para não ficar tapado na junção. */
-.app.has-left-panel .split-main-row #map {
+@media (max-width: 900px) {
+  .app.has-left-panel.app--oper-layout-ccc .split-main-row {
+    grid-template-columns:
+      minmax(min(140px, 34vw), var(--ccc-det-pct))
+      6px
+      minmax(min(160px, 38vw), 1fr);
+    grid-template-rows:
+      minmax(min(96px, 14vh), var(--ccc-top-pct))
+      6px
+      minmax(min(120px, 18vh), 1fr);
+  }
+
+  .app.has-left-panel.app--oper-layout-ccc .oper-splitter--row {
+    height: 6px;
+  }
+
+  .app.has-left-panel.app--oper-layout-ccc .oper-splitter--col {
+    width: 6px;
+  }
+}
+
+/* Leaflet e empilhamento relativamente aos painéis */
+.app.has-left-panel .split-main-row .left-panel,
+.app.has-left-panel .split-main-row .oper-detail-pane,
+.app.has-left-panel .split-main-row .map-panel,
+.app.has-left-panel .split-main-row #map,
+.app:not(.has-left-panel) .split-main-row .map-panel,
+.app:not(.has-left-panel) .split-main-row #map {
   position: relative;
   z-index: 4;
 }
@@ -877,6 +1069,10 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   padding: 8px 10px;
   font-size: 11px;
   line-height: 1.45;
+}
+
+.app.has-left-panel.app--oper-layout-ccc .oper-detail-pane__body {
+  background: var(--bg-section);
 }
 
 .oper-detail-heading {
@@ -960,11 +1156,55 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   outline-offset: -2px;
 }
 
+.map-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  width: 100%;
+}
+
 #map {
   flex: 1;
   height: 100%;
   min-width: 0;
+  min-height: 0;
   transition: width 0.3s ease;
+}
+
+.app.has-left-panel.app--oper-layout-ccc .map-panel > #map,
+.app.has-left-panel.app--oper-layout-split .map-panel > #map {
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+/* Vista inicial (sem Operação): mesma moldura que o mapa em modo CCC */
+.app:not(.has-left-panel) .split-main-row {
+  box-sizing: border-box;
+  padding: clamp(8px, 1.5vw, 14px);
+}
+
+.app:not(.has-left-panel) .map-panel {
+  box-sizing: border-box;
+  padding: clamp(6px, 1.2vw, 12px);
+  border-radius: 14px;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.28),
+    0 0 0 2px rgba(15, 23, 42, 0.96),
+    0 10px 32px rgba(0, 0, 0, 0.48),
+    0 2px 10px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  background: linear-gradient(155deg, rgba(51, 65, 85, 0.45), rgba(15, 23, 42, 0.72));
+}
+
+.app:not(.has-left-panel) .map-panel > #map {
+  border-radius: 9px;
+  overflow: hidden;
 }
 
 /* ── Painel Esquerdo (Operação) ────────────────────────────── */
@@ -1636,20 +1876,54 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   margin: 0 1px;
 }
 
-/* Marcador de viatura MWM demo (Leaflet divIcon) */
-.mwm-crew-vehicle-marker {
-  background: rgba(15, 23, 42, 0.88);
-  border: 1px solid rgba(148, 163, 184, 0.5);
-  border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Leaflet divIcon: sem caixa branca por omissão */
+.map-tri-marker-wrap.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
 }
 
-.mwm-crew-vehicle-marker__ic {
-  font-size: 15px;
-  line-height: 1;
+/* Marcadores triangulares OMS / MWM (Leaflet divIcon) — tip no ponto geográfico */
+.map-tri-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 36px;
+  pointer-events: auto;
+}
+
+.map-tri-marker__tri {
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 15px solid var(--map-tri-fill, #3b82f6);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.35));
+}
+
+.map-tri-marker--crew .map-tri-marker__tri {
+  border-top-width: 13px;
+  border-left-width: 9px;
+  border-right-width: 9px;
+}
+
+.map-tri-marker__lbl {
+  margin-top: 1px;
+  max-width: 56px;
+  padding: 0 2px;
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: #f1f5f9;
+  text-align: center;
+  text-shadow:
+    0 0 3px #020617,
+    0 1px 2px #020617,
+    0 0 8px rgba(2, 6, 23, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .modal-content--order-sheet {
@@ -2249,5 +2523,276 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 
 .weather-card--wide {
   grid-column: 1 / -1;
+}
+
+/* Esquemático / unifilar (MVP — escada estática) */
+.esq-schematic-root {
+  min-height: 120px;
+  padding: 8px 0 12px;
+}
+
+.esq-schematic-prompt {
+  margin: 0;
+  font-size: 12px;
+}
+
+.esq-schematic-empty {
+  margin: 0;
+}
+
+.esq-label {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  font-weight: 500;
+}
+
+.esq-select {
+  min-width: 200px;
+  max-width: 100%;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-input, #334155);
+  background: var(--bg-elevated, #1e293b);
+  color: var(--text-primary, #e2e8f0);
+}
+
+.esq-schematic-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.esq-schematic-name {
+  font-weight: 600;
+  color: var(--text-primary, #e2e8f0);
+  font-size: 13px;
+}
+
+.esq-schematic-badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent, #0ea5e9) 18%, transparent);
+  color: var(--text-primary, #e2e8f0);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border-input));
+}
+
+.esq-schematic-vkv {
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+.esq-ladder {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0 0;
+  padding: 8px 4px 12px;
+  border: 1px solid var(--border-input, #334155);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-section, #0f172a);
+  overflow-x: auto;
+}
+
+.esq-node-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 92px;
+  max-width: 120px;
+  padding: 8px 6px 6px;
+  text-align: center;
+}
+
+.esq-node-sym {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  border: 2px solid var(--text-muted, #94a3b8);
+  margin-bottom: 6px;
+  background: var(--bg-elevated, #1e293b);
+  position: relative;
+}
+
+.esq-sym--substation::after {
+  content: "⚡";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.esq-sym--breaker::after {
+  content: "⏻";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+
+.esq-sym--trafo::after {
+  content: "⎍";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent, #38bdf8);
+}
+
+.esq-sym--load::after {
+  content: "⌂";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+
+.esq-sym--node::after {
+  content: "○";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.esq-node-label {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--text-primary, #e2e8f0);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.esq-node-meta {
+  font-size: 9px;
+  color: var(--text-muted, #94a3b8);
+  margin: 2px 0 4px;
+}
+
+.esq-node-gis {
+  font-size: 9px;
+  line-height: 1.25;
+  color: var(--text-secondary, #94a3b8);
+  margin: 2px 0 4px;
+  max-width: 100%;
+  text-align: center;
+}
+
+.esq-node-gis-type {
+  font-weight: 600;
+  color: var(--accent, #38bdf8);
+}
+
+.esq-node-gis-loc {
+  word-break: break-word;
+  color: var(--text-muted, #94a3b8);
+}
+
+.esq-node-actions {
+  margin-top: 6px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.esq-node-actions .mock-btn-ir {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.esq-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: center;
+  min-width: 68px;
+  max-width: 100px;
+  margin-bottom: 18px;
+  padding: 0 2px;
+}
+
+.esq-connector-line {
+  width: 100%;
+  min-width: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, #64748b, #38bdf8);
+  border-radius: 2px;
+  margin-bottom: 4px;
+}
+
+.esq-connector-line--dashed {
+  background: none;
+  border-top: 2px dashed var(--text-muted, #64748b);
+  height: 0;
+  min-height: 0;
+}
+
+.esq-connector-pq {
+  font-size: 9px;
+  line-height: 1.25;
+  color: var(--text-secondary, #94a3b8);
+  text-align: center;
+  max-width: 100px;
+}
+
+.esq-connector-pq strong {
+  color: var(--text-primary, #e2e8f0);
+  font-weight: 600;
+}
+
+.esq-connector-elab {
+  min-height: 12px;
+  font-size: 10px;
+  color: var(--text-muted, #94a3b8);
+  margin-top: 2px;
+}
+
+@media (max-width: 700px) {
+  .esq-ladder {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .esq-connector {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    margin-bottom: 0;
+  }
+  .esq-connector-line {
+    width: 3px;
+    min-width: 0;
+    height: 24px;
+    min-height: 24px;
+    margin-bottom: 6px;
+    background: linear-gradient(180deg, #64748b, #38bdf8);
+  }
+  .esq-connector-line--dashed {
+    width: 0;
+    min-width: 0;
+    border-top: none;
+    border-left: 2px dashed var(--text-muted, #64748b);
+    height: 20px;
+  }
 }
 

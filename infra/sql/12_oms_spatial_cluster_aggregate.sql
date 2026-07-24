@@ -2,6 +2,7 @@
 -- Agregação por grelha métrica em EPSG:31983 (UTM 23S). Evita encadeamento do DBSCAN
 -- que fundia toda a região metropolitana num único grupo.
 -- A API envia o tamanho da célula (metros) derivado do zoom Leaflet.
+-- Inclui somas por célula: clientes afectados, horas abertas (duração), priority_score.
 -- Idempotente. Aplicar após 06+ e dados operacionais.
 
 DROP FUNCTION IF EXISTS operations.fn_oms_orders_spatial_clusters(double precision, integer);
@@ -17,7 +18,10 @@ RETURNS TABLE (
   center_lng double precision,
   first_started_at timestamptz,
   last_updated_at timestamptz,
-  area_hint text
+  area_hint text,
+  customers_sum integer,
+  duration_hours_sum double precision,
+  priority_score_sum bigint
 )
 LANGUAGE sql
 STABLE
@@ -27,9 +31,16 @@ AS $fn$
     SELECT
       wo.id,
       wo.started_at,
+      wo.created_at,
       wo.updated_at,
       wo.municipality_name,
       wo.neighborhood_name,
+      COALESCE(wo.affected_customers_count, 0)::integer AS clients_n,
+      GREATEST(
+        0::double precision,
+        EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(wo.started_at, wo.created_at))) / 3600.0
+      ) AS hours_open,
+      COALESCE(wo.priority_score, 0)::bigint AS prio_n,
       ST_Transform(
         ST_SetSRID(ST_MakePoint(wo.focus_lng, wo.focus_lat), 4326),
         31983
@@ -47,7 +58,10 @@ AS $fn$
       b.started_at,
       b.updated_at,
       b.municipality_name,
-      b.neighborhood_name
+      b.neighborhood_name,
+      b.clients_n,
+      b.hours_open,
+      b.prio_n
     FROM base b
   ),
   agg AS (
@@ -60,7 +74,10 @@ AS $fn$
       LEFT(
         STRING_AGG(DISTINCT NULLIF(TRIM(COALESCE(g.municipality_name, '')), ''), ' · '),
         160
-      ) AS area_hint
+      ) AS area_hint,
+      SUM(g.clients_n)::integer AS customers_sum,
+      SUM(g.hours_open)::double precision AS duration_hours_sum,
+      SUM(g.prio_n)::bigint AS priority_score_sum
     FROM gridded g
     GROUP BY g.cell_g
     HAVING COUNT(*) >= p_min_points
@@ -72,9 +89,12 @@ AS $fn$
     ST_X(ST_Transform(a.center_m, 4326)) AS center_lng,
     a.first_started_at,
     a.last_updated_at,
-    a.area_hint
+    a.area_hint,
+    a.customers_sum,
+    a.duration_hours_sum,
+    a.priority_score_sum
   FROM agg a;
 $fn$;
 
 COMMENT ON FUNCTION operations.fn_oms_orders_spatial_clusters(double precision, integer) IS
-  'Agrupa ordens OMS por célula métrica (UTM 23S). p_cell_m = lado da célula em metros.';
+  'Agrupa ordens OMS por célula métrica (UTM 23S). p_cell_m = lado da célula em metros; métricas extra para mapas de calor.';

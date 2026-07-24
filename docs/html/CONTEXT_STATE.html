@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>CONTEXT_STATE</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">CONTEXT_STATE</h1>
+</header>
+<h1 id="project-context-state-tabgis-para-uso-com-ia">PROJECT CONTEXT
+STATE — TabGis (Para uso com IA)</h1>
+<blockquote>
+<p><strong>Leitura obrigatória antes de qualquer sessão de
+desenvolvimento.</strong> Este ficheiro é a fonte de verdade do estado
+operacional do TabGis. Actualize-o sempre que um componente mudar de
+estado.</p>
+</blockquote>
+<hr />
+<h2 id="ambiente-de-execução">Ambiente de execução</h2>
+<table>
+<colgroup>
+<col style="width: 57%" />
+<col style="width: 42%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Componente</th>
+<th>Detalhe</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Servidor de execução</strong></td>
+<td><code>homeserver</code> — Linux (Ubuntu), acesso via SSH</td>
+</tr>
+<tr class="even">
+<td><strong>Desenvolvimento</strong></td>
+<td>Cursor IDE com extensão <strong>Remote SSH</strong> (qualquer
+notebook → <code>ssh homeserver</code>)</td>
+</tr>
+<tr class="odd">
+<td><strong>Repositório</strong></td>
+<td><code>/home/wesley/projects/TabGis</code> no homeserver</td>
+</tr>
+<tr class="even">
+<td><strong>Orquestração</strong></td>
+<td>Docker Compose em <code>infra/docker-compose.yml</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Atenção:</strong> Existe também um
+<code>docker-compose.yml</code> na raiz do repositório (composição
+experimental com pgRouting/kartoza). <strong>Não</strong> é o alvo dos
+runbooks actuais — usar sempre
+<code>infra/docker-compose.yml</code>.</p>
+</blockquote>
+<hr />
+<h2 id="versionamento-e-código-fonte">Versionamento e código-fonte</h2>
+<table>
+<colgroup>
+<col style="width: 45%" />
+<col style="width: 54%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Artefacto</th>
+<th>Local / URL</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Repositório Git (remoto)</strong></td>
+<td><code>https://github.com/wesleyspo/TabGis.git</code></td>
+</tr>
+<tr class="even">
+<td><strong>Cópia de trabalho (homeserver)</strong></td>
+<td><code>/home/wesley/projects/TabGis</code></td>
+</tr>
+<tr class="odd">
+<td><strong>Release V0 (marco base)</strong></td>
+<td><strong>v0.1.0</strong> — <em>tag</em> anotada Git</td>
+</tr>
+<tr class="even">
+<td><strong>Ficheiro de versão</strong></td>
+<td><code>VERSION</code> na raiz (ex.: <code>0.1.0</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>O código da aplicação (frontend, <code>infra/</code>,
+<code>backend/</code>, SQL, documentação) está versionado neste
+repositório Git. A linha temporal oficial é o histórico de
+<em>commits</em> em <code>main</code>; marcos estáveis assinalam-se com
+<em>tags</em> <code>vMAJOR.MINOR.PATCH</code> (SemVer). Dados pesados e
+artefactos gerados localmente <strong>não</strong> entram no Git — ver
+<code>.gitignore</code> (<code>data/raw/</code>, <code>*.mbtiles</code>,
+<code>*.mbtiles.tmp</code>, etc.).</p>
+<p>Comandos úteis no homeserver:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> describe <span class="at">--tags</span> <span class="at">--always</span>     <span class="co"># tag actual ou commit abreviado</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> tag <span class="at">-l</span> <span class="st">&#39;v*&#39;</span>                  <span class="co"># listar releases</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> show v0.1.0 <span class="at">--no-patch</span>       <span class="co"># nota da tag V0</span></span></code></pre></div>
+<p>Para publicar alterações no remoto (após
+<code>git commit</code>):</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> push origin main</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> push origin v0.1.0           <span class="co"># ou: git push origin --tags</span></span></code></pre></div>
+<hr />
+<h2 id="stack-docker-estado-actual-todos-healthy">Stack Docker — estado
+actual (todos healthy)</h2>
+<table>
+<colgroup>
+<col style="width: 28%" />
+<col style="width: 21%" />
+<col style="width: 28%" />
+<col style="width: 21%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Container</th>
+<th>Imagem</th>
+<th>Porta host</th>
+<th>Função</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>infra-db-1</code></td>
+<td><code>postgis/postgis:15-3.3</code></td>
+<td><strong>5433</strong>→5432 (host→container)</td>
+<td>PostgreSQL + PostGIS — <strong>evitar mapear 5432:5432</strong> no
+host se já existir outro PostgreSQL local</td>
+</tr>
+<tr class="even">
+<td><code>infra-geoserver-1</code></td>
+<td><code>oscarfonts/geoserver:latest</code></td>
+<td><strong>8080</strong></td>
+<td>WMS / WFS / SLD</td>
+</tr>
+<tr class="odd">
+<td><code>infra-tileserver-1</code></td>
+<td><code>maptiler/tileserver-gl:latest</code></td>
+<td><strong>8081</strong></td>
+<td>MBTiles raster (satélite local)</td>
+</tr>
+<tr class="even">
+<td><code>infra-web-1</code></td>
+<td><code>nginx:alpine</code></td>
+<td><strong>8088</strong></td>
+<td>Frontend + proxy <code>/geoserver</code>, <code>/tiles</code>,
+<code>/api</code></td>
+</tr>
+<tr class="odd">
+<td><code>infra-api-1</code></td>
+<td>build <code>backend/</code> (Node)</td>
+<td><strong>3000</strong></td>
+<td>API REST (via <code>:8088/api/</code>):
+<code>GET /api/translations/:lang</code>;
+<code>GET/POST/PATCH /api/users</code>,
+<code>PATCH /api/users/:id/group</code>;
+<code>GET /api/security/groups</code>,
+<code>GET /api/security/privileges</code>,
+<code>GET /api/security/users/:id/effective-access</code>,
+<code>PUT /api/security/groups/:id/privileges</code>;
+<code>GET/PATCH /api/work-orders</code>; <code>GET/POST/PATCH</code>
+folha e tarefas em <code>/api/work-orders/:id</code>…;
+<code>GET /api/geocode</code>, <code>GET /api/geocode-local</code>;
+<strong><code>GET</code>/<code>PUT /api/ref/types</code></strong>;
+<code>GET /api/teams</code>; <code>GET /api/mwm/demo-routes</code>;
+<code>GET /api/oms/work-orders/aggregate</code>;
+<code>GET /api/oms/work-orders</code>;
+<code>GET /api/audit/operations-archive</code>;
+<strong><code>GET /api/schematic/views</code></strong>,
+<strong><code>GET /api/schematic/views/:id</code></strong>,
+<strong><code>PATCH /api/schematic/views/:viewId/nodes/:nodeId</code></strong>;
+<strong><code>GET /api/events</code></strong>,
+<strong><code>GET /api/events/export</code></strong> (cursor
+<code>after_id</code>, opcional <code>shape=mongo</code> — ver
+<code>docs/mds/EVENTS_ARCHITECTURE.md</code>);
+<strong><code>GET /api/topology/meta</code></strong>,
+<strong><code>GET /api/topology/spans</code></strong> (topologia PostGIS
+nativa — ver <code>docs/mds/TOPOLOGY_NATIVE_POSTGIS.md</code>). Com
+<strong><code>SECURITY_ENFORCE=1</code></strong>: header obrigatório
+<strong><code>X-TabGis-User-Id</code></strong> e privilégios por rota
+(<code>module.oms</code>, <code>module.mwm</code>,
+<code>module.aud</code>, <strong><code>module.esq</code></strong>, etc.;
+catálogo em <code>security.privilege</code> via
+<code>18_security_groups_privileges.sql</code>).</td>
+</tr>
+<tr class="even">
+<td><code>infra-mongodb-1</code></td>
+<td><code>mongo:latest</code></td>
+<td><strong>27017</strong></td>
+<td>Opcional / legado — trilha de eventos canónica em Postgres
+(<code>events</code>); ver
+<code>docs/mds/EVENTS_ARCHITECTURE.md</code></td>
+</tr>
+</tbody>
+</table>
+<h3
+id="portas-de-acesso-de-outro-notebook-na-mesma-rede-ou-via-ssh-tunnel">Portas
+de acesso (de outro notebook na mesma rede ou via SSH tunnel)</h3>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 38%" />
+<col style="width: 35%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Serviço</th>
+<th>URL directa</th>
+<th>Observação</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Frontend (recomendado)</strong></td>
+<td><code>http://homeserver:8088/</code></td>
+<td>nginx — same-origin para WMS, WFS, tiles e <code>/api</code></td>
+</tr>
+<tr class="even">
+<td>GeoServer UI</td>
+<td><code>http://homeserver:8080/geoserver/web</code></td>
+<td>Admin directo</td>
+</tr>
+<tr class="odd">
+<td>TileServer</td>
+<td><code>http://homeserver:8081/</code></td>
+<td>Acesso directo (diagnóstico)</td>
+</tr>
+<tr class="even">
+<td>PostGIS</td>
+<td><code>homeserver:5433</code> (mapeamento em
+<code>infra/docker-compose.yml</code>)</td>
+<td>Só admin / <code>psql</code> (porta 5432 é a interna à rede
+Docker)</td>
+</tr>
+<tr class="odd">
+<td>MongoDB</td>
+<td><code>homeserver:27017</code></td>
+<td>Só admin</td>
+</tr>
+</tbody>
+</table>
+<h3 id="credenciais-de-desenvolvimento-trocar-em-produção">Credenciais
+de desenvolvimento (trocar em produção)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Serviço</th>
+<th>Utilizador</th>
+<th>Password</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>PostGIS</td>
+<td><code>tabgis_admin</code></td>
+<td>ver <code>infra/docker-compose.yml</code></td>
+</tr>
+<tr class="even">
+<td>GeoServer</td>
+<td><code>admin</code></td>
+<td><code>geoserver</code> (imagem padrão)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="dados-e-schemas">Dados e schemas</h2>
+<p>O banco de dados foi estruturado em <em>schemas</em> fundamentais
+para sustentar o comportamento da aplicação em ambiente agnóstico de
+idioma e localidade:</p>
+<ol type="1">
+<li><strong><code>landbase</code></strong>: Contém todos os dados
+geográficos e topológicos puros do basemap e da rede (antigo
+<code>basemap</code>). Todas as camadas do GeoServer apontam para
+cá.</li>
+<li><strong><code>config</code></strong>: Estruturas de parametrização
+dinâmica (<code>config.parameter</code>), traduções globais
+(<code>config.translation</code>) e idiomas suportados
+(<code>config.language</code>: EN, PT, ES, IT).</li>
+<li><strong><code>security</code></strong>: Utilizadores em
+<strong><code>security.users</code></strong> (roles <code>ADMIN</code>,
+<code>CONSULTA</code>, <code>OPERACAO</code>); migração a partir de
+<code>security.user</code> em <code>01_init_schemas.sql</code>.</li>
+<li><strong><code>audit</code></strong>: Histórico detalhado gerado por
+Triggers no PostGIS, gravando alterações em parâmetros
+(<code>audit.parameter_history</code>), sessões de usuário
+(<code>audit.login_history</code>), <strong>arquivo obrigatório antes de
+<code>DELETE</code></strong> em tabelas operacionais
+(<code>audit.operations_row_archive</code>) e
+<strong><code>audit.domain_event</code></strong> (correlação de
+alterações — ver <code>infra/sql/04_gis_oms_mwm_domain.sql</code>).</li>
+<li><strong><code>operations</code></strong>: Equipas
+(<code>operations.team</code>), ordens
+(<code>operations.work_order</code> com <code>owner_id</code> e
+<code>locked_by_id</code> → <code>security.users</code>), deslocamentos
+equipa–ordem (<code>operations.team_order_displacement</code>), rotas
+por janela temporal (<code>operations.team_route</code>, ex. últimas
+48h). Scripts: <code>03_operations_schema.sql</code>,
+<code>04_gis_oms_mwm_domain.sql</code>. Regra: <em>nada</em> é removido
+das tabelas principais de <code>operations</code> sem inserção prévia do
+registo em <code>audit.operations_row_archive</code> (triggers
+<code>BEFORE DELETE</code>).</li>
+<li><strong><code>ref</code></strong>,
+<strong><code>gis</code></strong>, <strong><code>oms</code></strong>,
+<strong><code>mwm</code></strong>: Modelo canónico utilities
+(consumidores, equipamentos, chamadas, ordens, equipas, rotas) conforme
+<code>docs/mds/Database_Structure_Context.md</code>; criado por
+<code>04_gis_oms_mwm_domain.sql</code>.</li>
+<li><strong><code>events</code></strong>: Diário append-only
+(<code>events.event</code>) + função <code>events.append_event</code>
+(chamada <strong>só</strong> pelo sink na API Node; <strong>sem
+triggers</strong> em <code>events</code>) — ver
+<code>docs/mds/EVENTS_ARCHITECTURE.md</code>.</li>
+<li><strong><code>schematic</code></strong>: Vistas
+estáticas/sequenciais (<code>schematic.network_view</code>,
+<code>schematic.view_node</code>, <code>schematic.view_edge</code>);
+foco «Ir para o mapa» via <code>focus_lat</code>/<code>focus_lng</code>
+e/ou <code>equipment_id</code> → <code>gis.equipment</code>
+(<code>infra/sql/16_schematic_schema.sql</code>, opcional
+<code>17_schematic_link_poc_equipment.sql</code>).</li>
+<li><strong>Topologia nativa utilities</strong>: extensão
+<strong><code>postgis_topology</code></strong> + schema da topologia
+<strong><code>tabgis_utilities_topo</code></strong> (primitivas
+<code>edge_data</code>, <code>node</code>, <code>face</code>,
+<code>relation</code>) e <strong>segmentos lineares da rede</strong> em
+<strong><code>gis.network_span</code></strong> / vista
+<strong><code>gis.v_network_span_readable</code></strong> —
+<code>infra/sql/21_postgis_topology_utilities.sql</code>; documentação
+<code>docs/mds/TOPOLOGY_NATIVE_POSTGIS.md</code>; API
+<code>GET /api/topology/meta</code>,
+<code>GET /api/topology/spans</code> (privilégio
+<strong><code>module.oms</code></strong> quando
+<code>SECURITY_ENFORCE=1</code>). Terminologia UI regionalizada: chaves
+<code>UI_GLOSSARY_*</code> / <code>UI_HELP_*</code> em
+<code>infra/sql/02_populate_translations.sql</code>.</li>
+</ol>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 14%" />
+<col style="width: 30%" />
+<col style="width: 34%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Artefacto</th>
+<th>Origem</th>
+<th>Tabelas PostGIS</th>
+<th>Camadas GeoServer</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>SP estado</strong> (activo)</td>
+<td>IBGE UF + municípios; OSM PBF</td>
+<td><code>landbase.uf_sp</code>, <code>landbase.municipios_sp</code>,
+<code>landbase.vias_sp</code></td>
+<td><code>base_sp:uf_sp</code>, <code>base_sp:municipios_sp</code>,
+<code>base_sp:vias_sp</code></td>
+</tr>
+<tr class="even">
+<td><strong>SP Centro</strong> (legado)</td>
+<td>IBGE municípios; OSM Overpass</td>
+<td><code>landbase.municipio_sp</code>,
+<code>landbase.aoi_centro_sp</code>,
+<code>landbase.vias_centro_sp</code></td>
+<td>camadas homólogas</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>SRID administrativo (IBGE):</strong> EPSG:4674 (SIRGAS
+2000)</li>
+<li><strong>OSM (<code>osm2pgsql</code>):</strong> EPSG:3857 na coluna
+<code>way</code>; <code>landbase.vias_sp</code> usa
+<code>ST_Transform(way, 4674)</code></li>
+<li><strong>Vias por zoom:</strong> tabela
+<code>landbase.via_zoom_config</code> + SLD
+<code>base_sp_vias_zoom_scales</code> — script de aplicação:
+<code>infra/scripts/apply_via_zoom_config_and_style.sh</code></li>
+</ul>
+<hr />
+<h2 id="recorte-prioritário-municípios-alvo-rmsp-ampliada">Recorte
+prioritário — municípios-alvo (RMSP ampliada)</h2>
+<p>24 municípios: São Paulo (capital), Barueri, Cajamar, Carapicuíba,
+Cotia, Diadema, Embu-Guaçu, Embu das Artes, Itapecerica da Serra,
+Itapevi, Jandira, Juquitiba, Mauá, Osasco, Pirapora do Bom Jesus,
+Ribeirão Pires, Rio Grande da Serra, Santana de Parnaíba, Santo André,
+São Bernardo do Campo, São Caetano do Sul, São Lourenço da Serra, Taboão
+da Serra, Vargem Grande Paulista.</p>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 27%" />
+<col style="width: 34%" />
+<col style="width: 38%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Entregável</th>
+<th>Tabela PostGIS</th>
+<th>Camada GeoServer</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Municípios-alvo destacados</td>
+<td><code>landbase.municipios_alvo_sp</code></td>
+<td><code>base_sp:municipios_alvo_sp</code></td>
+</tr>
+<tr class="even">
+<td>Bairros dos municípios-alvo</td>
+<td><code>landbase.bairros_alvo_sp</code></td>
+<td><code>base_sp:bairros_alvo_sp</code></td>
+</tr>
+<tr class="odd">
+<td>Vias públicas dos municípios-alvo</td>
+<td><code>landbase.vias_alvo_sp</code></td>
+<td><code>base_sp:vias_alvo_sp</code></td>
+</tr>
+</tbody>
+</table>
+<p>Script de geração:
+<code>infra/scripts/setup_municipios_alvo_sp.sh</code></p>
+<hr />
+<h2 id="scripts-versionados">Scripts versionados</h2>
+<table>
+<colgroup>
+<col style="width: 32%" />
+<col style="width: 32%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Script</th>
+<th>Função</th>
+<th>Runbook</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>infra/sql/01_init_schemas.sql</code></td>
+<td>Schemas <code>landbase</code>, <code>config</code>,
+<code>security</code>, <code>audit</code> (tabelas base, parâmetros,
+histórico)</td>
+<td><code>docs/mds/DEPLOY.md</code> §2</td>
+</tr>
+<tr class="even">
+<td><code>infra/sql/02_populate_translations.sql</code></td>
+<td>Chaves <code>config.translation</code> (EN/PT/ES/IT),
+<code>ON CONFLICT DO UPDATE</code></td>
+<td><code>docs/mds/DEPLOY.md</code> §2</td>
+</tr>
+<tr class="odd">
+<td><code>infra/sql/03_operations_schema.sql</code></td>
+<td>Schema <code>operations</code> + arquivo
+<code>audit.operations_row_archive</code> + triggers
+<code>BEFORE DELETE</code>; <code>work_order.owner_id</code> /
+<code>locked_by_id</code> → <code>security.users</code></td>
+<td><code>docs/mds/DEPLOY.md</code> §2</td>
+</tr>
+<tr class="even">
+<td><code>infra/sql/04_gis_oms_mwm_domain.sql</code></td>
+<td>Schemas <code>ref</code>, <code>gis</code>, <code>oms</code>,
+<code>mwm</code>; <code>audit.domain_event</code>; utilizadores e ordens
+iniciais</td>
+<td><code>docs/mds/DEPLOY.md</code> §2</td>
+</tr>
+<tr class="odd">
+<td><code>infra/sql/05_operational_demo_data.sql</code></td>
+<td>Dados fictícios operacionais (equipas com coordenadas, mais ordens e
+utilizadores)</td>
+<td><code>docs/mds/DEPLOY.md</code> §2</td>
+</tr>
+<tr class="even">
+<td><code>infra/sql/06_work_order_sheet_model.sql</code></td>
+<td>Colunas decisórias; tabelas <code>work_order_task</code> /
+<code>work_order_complaint</code>; dados de exemplo; normalização de
+prefixos em <code>order_code</code> legado</td>
+<td><code>docs/mds/DEPLOY.md</code> §2</td>
+</tr>
+<tr class="odd">
+<td><code>infra/sql/06_work_order_sheet_model_functions_triggers.sql</code></td>
+<td><code>generate_work_order_code()</code> (YYYYMMDD + sequência diária
+SP); triggers de código, contagem de reclamações e arquivo
+pré-delete</td>
+<td><code>docs/mds/DEPLOY.md</code> §2</td>
+</tr>
+<tr class="even">
+<td><code>infra/sql/07_work_order_oms_grid_columns.sql</code></td>
+<td>Grelha OMS: <code>started_at</code>, <code>callback_auto</code></td>
+<td><code>docs/mds/DEPLOY.md</code> §2</td>
+</tr>
+<tr class="odd">
+<td><code>infra/sql/08_oms_test_orders_extra.sql</code> …
+<code>infra/sql/13_oms_bulk_clustered_demo.sql</code></td>
+<td>Dados de teste / vistas OMS-MWM opcionais (ambiente de
+laboratório)</td>
+<td>aplicar manualmente conforme necessidade</td>
+</tr>
+<tr class="even">
+<td><code>infra/sql/14_gis_equipment_network_demo.sql</code></td>
+<td>Massa idempotente <code>gis.equipment</code> +
+<code>gis.consumer</code> (prefixos <code>POC_DEMO_</code> /
+<code>POC-DEMO-</code>)</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td><code>infra/sql/15_events_schema.sql</code></td>
+<td>Schema <code>events</code> + tabela <code>events.event</code> +
+<code>events.append_event</code> (diário multi-domínio)</td>
+<td><code>docs/mds/EVENTS_ARCHITECTURE.md</code></td>
+</tr>
+<tr class="even">
+<td><code>infra/sql/16_schematic_schema.sql</code></td>
+<td>Schema <code>schematic</code> (<code>network_view</code>,
+<code>view_node</code>, <code>view_edge</code>) + dados de demonstração
+de unifilar / P,Q</td>
+<td>aba <strong>ESQ</strong> (Operação)</td>
+</tr>
+<tr class="odd">
+<td><code>infra/sql/17_schematic_link_poc_equipment.sql</code></td>
+<td>Liga nós da vista demo a <code>gis.equipment</code> POC
+(<code>POC_DEMO_*</code>)</td>
+<td>opcional; enriquece <strong>GET</strong>
+<code>/api/schematic/views/:id</code> com tipo e
+<code>location_desc</code></td>
+</tr>
+<tr class="even">
+<td><code>infra/sql/18_security_groups_privileges.sql</code></td>
+<td>RBAC base: <code>security.privilege</code>,
+<code>security.user_group</code>, <code>security.group_privilege</code>,
+<code>security.user_group_member</code> +
+<code>security.users.is_active</code></td>
+<td>Configurações → Utilizadores (desativação, grupo e privilégios)</td>
+</tr>
+<tr class="odd">
+<td><code>infra/sql/19_fix_bairros_alvo_mapping.sql</code></td>
+<td>Remove linhas em <code>landbase.bairros_alvo_sp</code> onde
+<code>bairro_nome</code> coincide com nome de município-alvo (ruído
+OSM)</td>
+<td>Opcional pós-<code>setup_municipios_alvo_sp.sh</code></td>
+</tr>
+<tr class="even">
+<td><code>infra/sql/20_sanity_bairros_alvo_sp.sql</code></td>
+<td>Verificação: zero violações da mesma regra (falha <code>psql</code>
+se existirem)</td>
+<td>CI / sanidade manual</td>
+</tr>
+<tr class="odd">
+<td><code>infra/sql/21_postgis_topology_utilities.sql</code></td>
+<td>Extensão <code>postgis_topology</code>; topologia
+<code>tabgis_utilities_topo</code>; <code>gis.network_span</code>
+(segmentos lineares) + <code>TopoGeometry</code>; dados demo
+<code>TOPO_DEMO_SEG_*</code></td>
+<td><code>docs/mds/TOPOLOGY_NATIVE_POSTGIS.md</code></td>
+</tr>
+<tr class="even">
+<td><code>infra/scripts/apply_poc_test_mass.sh</code></td>
+<td>Executa o SQL 14 contra o contentor <code>db</code>
+(<code>psql</code>)</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td><code>infra/scripts/repair_geosampa_mbtiles.py</code></td>
+<td>Reparação incremental do MBTiles GeoSampa (só tiles em falta na
+tabela <code>tiles</code>)</td>
+<td><code>docs/mds/GeoSampa_offline_tecnico.md</code></td>
+</tr>
+<tr class="even">
+<td><code>infra/scripts/repair_geosampa_offline_mbtiles.sh</code></td>
+<td>Wrapper venv para a reparação; típico em background:
+<code>nohup … &gt;&gt; /tmp/geosampa_repair.log &amp;</code></td>
+<td><code>docs/mds/GeoSampa_offline_operacao.md</code></td>
+</tr>
+<tr class="odd">
+<td><code>infra/scripts/setup_landbase_sp_estado.sh</code></td>
+<td>Importa IBGE + OSM → PostGIS + GeoServer (SP estado)</td>
+<td><code>docs/mds/RUNBOOK_BASEMAP_SP_ESTADO.md</code></td>
+</tr>
+<tr class="even">
+<td><code>infra/scripts/setup_landbase_sp.sh</code></td>
+<td>Basemap São Paulo Centro (legado)</td>
+<td><code>docs/mds/RUNBOOK_BASEMAP_SP.md</code></td>
+</tr>
+<tr class="odd">
+<td><code>infra/scripts/setup_municipios_alvo_sp.sh</code></td>
+<td>Municípios-alvo + bairros + vias</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td><code>infra/scripts/apply_via_zoom_config_and_style.sh</code></td>
+<td>Aplica SLD de vias por zoom</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td><code>infra/scripts/build_sp_satellite_mbtiles.sh</code></td>
+<td>Gera MBTiles raster (satélite offline)</td>
+<td>ver secção abaixo</td>
+</tr>
+</tbody>
+</table>
+<p>Estilos SLD versionados:
+<code>infra/geoserver/styles/*.sld</code></p>
+<hr />
+<h2 id="mbtiles-satélite-raster-local">MBTiles — satélite raster
+local</h2>
+<h3 id="estado-actual-do-pacote">Estado actual do pacote</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Ficheiro</td>
+<td><code>data/tiles/sp_satellite.mbtiles</code></td>
+</tr>
+<tr class="even">
+<td>Tiles</td>
+<td><strong>175 306</strong></td>
+</tr>
+<tr class="odd">
+<td>Zoom</td>
+<td><strong>10–17</strong></td>
+</tr>
+<tr class="even">
+<td>Bounds</td>
+<td><code>-47.2, -24.1, -46.2, -23.2</code> (capital SP)</td>
+</tr>
+<tr class="odd">
+<td>Tamanho</td>
+<td><strong>~3 GB</strong></td>
+</tr>
+<tr class="even">
+<td>Resolução</td>
+<td><strong>1,2 m/px</strong> (zoom 17)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="escala-por-zmax-bbox-capital-sp">Escala por ZMAX (bbox capital
+SP)</h3>
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 14%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 22%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>ZMAX</th>
+<th>Tiles</th>
+<th>Tempo est.</th>
+<th>Disco est.</th>
+<th>Resolução</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>14</td>
+<td>2 959</td>
+<td>~4 min</td>
+<td>~50 MB</td>
+<td>9 m/px</td>
+</tr>
+<tr class="even">
+<td>15</td>
+<td>11 331</td>
+<td>~25 min</td>
+<td>~200 MB</td>
+<td>5 m/px</td>
+</tr>
+<tr class="odd">
+<td>16</td>
+<td>44 271</td>
+<td>~1h15</td>
+<td>~763 MB</td>
+<td>2,4 m/px</td>
+</tr>
+<tr class="even">
+<td><strong>17</strong></td>
+<td><strong>175 306</strong></td>
+<td><strong>~3,5 h</strong></td>
+<td><strong>~3 GB</strong></td>
+<td><strong>1,2 m/px</strong> ← instalado</td>
+</tr>
+<tr class="odd">
+<td>18</td>
+<td>697 270</td>
+<td>~14 h</td>
+<td>~12 GB</td>
+<td>0,6 m/px (impraticável neste recorte)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="procedimento-de-upgrade-aprovado-zmax17">Procedimento de upgrade
+(aprovado: ZMAX=17)</h3>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Gerar novo pacote (escreve em .tmp, substituição atómica no fim)</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="va">ZMAX</span><span class="op">=</span>17 <span class="ex">./infra/scripts/build_sp_satellite_mbtiles.sh</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Após conclusão, reiniciar tileserver E web (nginx re-resolve DNS Docker)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose <span class="at">-f</span> infra/docker-compose.yml restart tileserver web</span></code></pre></div>
+<blockquote>
+<p><strong>Nota Docker DNS:</strong> o container <code>web</code>
+(nginx) resolve o hostname <code>tileserver</code> na rede interna
+Docker apenas no arranque. Se o <code>tileserver</code> for criado ou
+recriado depois do <code>web</code>, o nginx serve
+<code>index.html</code> para todos os pedidos <code>/tiles/*</code>. O
+restart conjunto resolve isso.</p>
+</blockquote>
+<h3 id="comportamento-da-camada-no-frontend">Comportamento da camada no
+frontend</h3>
+<ul>
+<li>O toggle <strong>Satélite local</strong> faz fetch a
+<code>/tiles/data/sp_sat.json</code> antes de activar a camada.</li>
+<li>Se o TileServer responder → activa, mostra mensagem de satélite
+local activo (capital SP, zoom nativo 10–17).</li>
+<li>Se falhar → desactiva toggle, mostra mensagem com instrução de
+remediação.</li>
+<li>404s de tiles fora da bbox são silenciados (cobertura parcial é
+comportamento normal).</li>
+<li><code>minNativeZoom: 10</code> / <code>maxNativeZoom: 17</code> em
+<code>main.js</code> — Leaflet faz upscale acima e abaixo do
+intervalo.</li>
+</ul>
+<hr />
+<h2 id="frontend">Frontend</h2>
+<table>
+<colgroup>
+<col style="width: 52%" />
+<col style="width: 47%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ficheiro</th>
+<th>Função</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>frontend/index.html</code></td>
+<td>Topbar, Busca/Camadas, <strong>Configurações</strong> (modais:
+visualização, <strong>utilizadores</strong> com grupos/privilégios e
+desativação, <strong>tipos <code>ref.*</code></strong>, traduções,
+<strong>ajuda</strong> <code>help.html</code>), painel
+<strong>Operação</strong> 50/50, folha OMS, toggles de camadas</td>
+</tr>
+<tr class="even">
+<td><code>frontend/help.html</code></td>
+<td>Ajuda ao operador (resumo funcional; liga a
+<code>styles.css</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>frontend/styles.css</code></td>
+<td>Tokens, topbar, painel operação, modais, clima (TMP), tabelas
+<code>ref</code> em modal</td>
+</tr>
+<tr class="even">
+<td><code>frontend/main.js</code></td>
+<td>Leaflet, i18n, Operação, modais de configuração (inclui gestão de
+colaborador activo/inactivo, grupo e privilégios),
+<strong>Open-Meteo</strong> na guia TMP,
+<code>GET</code>/<code>PUT</code> <code>/api/ref/types</code>, vista
+inicial e zoom</td>
+</tr>
+<tr class="odd">
+<td><code>backend/server.js</code></td>
+<td>API Express — traduções, geocodificação, utilizadores, segurança
+RBAC, ordens/tarefas, <strong><code>/api/ref/types</code></strong>,
+equipas, auditoria, rotas demo MWM,
+<strong><code>/api/schematic/*</code></strong>,
+<strong><code>/api/topology/*</code></strong>, barramento
+<strong><code>events</code></strong> (<code>emitWithRequest</code>,
+<code>GET /api/events</code>, <code>GET /api/events/export</code>)</td>
+</tr>
+<tr class="even">
+<td><code>backend/lib/*.test.js</code></td>
+<td>Testes unitários (<code>node:test</code>) — lógica pura
+OMS/geocode</td>
+</tr>
+<tr class="odd">
+<td><code>e2e/</code></td>
+<td><strong>Playwright</strong> — testes de fumo
+(<code>specs/smoke.spec.ts</code>): mapa, traduções, menu
+Configurações</td>
+</tr>
+<tr class="even">
+<td><code>scripts/</code></td>
+<td>Autonomia (<code>autonomy/</code>), stress HTTP
+(<code>stress/</code>) — ver <code>scripts/README.md</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Tipografia:</strong> Inter (Google Fonts CDN); fallback
+<code>system-ui</code></li>
+<li><strong>Modo recomendado (<code>:8088</code>):</strong> GeoServer em
+<code>window.location.origin + '/geoserver'</code> (same-origin)</li>
+<li><strong>Modo dev (<code>:5173</code>):</strong> GeoServer em
+<code>:8080</code>; WFS/GFI podem falhar por CORS</li>
+</ul>
+<h3 id="topbar-uma-única-linha-altura-var--topbar-height-60px">Topbar
+(uma única linha, altura <code>var(--topbar-height)</code> = 60px)</h3>
+<table>
+<colgroup>
+<col style="width: 35%" />
+<col style="width: 64%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Zona</th>
+<th>Conteúdo</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Esquerda</strong> (<code>topbar-left</code>)</td>
+<td>Marca TabGis, botão Início, botão <strong>Operação</strong>
+(abre/fecha split 50/50)</td>
+</tr>
+<tr class="even">
+<td><strong>Centro</strong> (<code>topbar-titles-layer</code>,
+<code>pointer-events: none</code>, <code>z-index: 0</code>)</td>
+<td>Camada absoluta sobre a barra: em tela <strong>cheia</strong> mostra
+só <strong>Mapa</strong> (tipografia próxima da marca, cor
+<code>var(--text-muted)</code>). Com <strong>Operação aberta</strong>
+(<code>.app.has-left-panel</code>): metade esquerda <strong>Centro de
+Controle</strong> (<code>UI_SPLIT_CONTROL_CENTER</code>), metade direita
+<strong>Mapa</strong> (<code>UI_SPLIT_MAP</code>) — alinhado às colunas
+50/50 do conteúdo</td>
+</tr>
+<tr class="odd">
+<td><strong>Direita</strong> (<code>topbar-right</code>)</td>
+<td><strong>Atalho clima</strong> (ícone cápsula sol+nuvem → guia TMP),
+<strong>Busca</strong> (WFS + geocodificação), <strong>Camadas</strong>,
+estado (<code>#status</code>), engrenagem (<strong>idioma</strong>,
+visualização, utilizadores, tipos <code>ref</code>, traduções,
+ajuda).</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Busca vs filtro:</strong> o rótulo do menu passou de
+«Filtros» para <strong>«Busca»</strong> (<code>UI_MENU_SEARCH</code>). A
+palavra <em>filtro</em> reserva-se a listagens tabulares futuras. Chaves
+de campo: <code>UI_SEARCH_MUNI_LABEL</code>,
+<code>UI_SEARCH_NEIGHBORHOOD_LABEL</code>, mensagens de <em>select</em>
+<code>UI_SEARCH_*</code>.</li>
+</ul>
+<h3 id="painel-operação-split-5050">Painel Operação (split 50/50)</h3>
+<ul>
+<li><strong>Classe</strong> <code>.app.has-left-panel</code> no
+contentor raiz; <code>aside#left-panel</code> + <code>#map</code> dentro
+de <code>.split-main-row</code>.</li>
+<li><strong>Ordem das guias (tab bar):</strong> 1) <strong>OMS</strong>,
+2) <strong>MWM</strong>, 3) <strong>DMS</strong>, 4)
+<strong>IND</strong>, 5) <strong>SMT</strong>, 6) <strong>ESQ</strong>
+(esquemático / unifilar: <code>GET /api/schematic/views</code>,
+<code>GET /api/schematic/views/:id</code>, edição
+<code>PATCH .../nodes/:nodeId</code>; botão <strong>Ir para o
+mapa</strong> por nó usa foco do nó ou geometria de
+<code>gis.equipment</code> quando aplicável), 7) <strong>TMP</strong>
+(clima: cartões Open-Meteo + opcional <strong>radar RainViewer</strong>
+e <strong>círculo de referência</strong> no mapa Leaflet, controlos na
+própria guia), 8) <strong>AUD</strong>. A guia
+<strong>Utilizadores</strong> foi <strong>retirada da barra</strong>: a
+gestão de <code>security.users</code> passou para <strong>Configurações
+→ Gerenciar utilizadores</strong> (modal). OMS consome
+<code>/api/work-orders</code> (e folha); utilizadores consomem
+<code>/api/users</code> a partir desse modal.</li>
+<li><strong>Cabeçalho do painel:</strong> sem linha separada «Operação»;
+primeira linha = grelha de guias + botão fechar
+(<code>.operacao-top</code>).</li>
+<li><strong>Conteúdo:</strong> tabelas e detalhe de ordens (OMS),
+equipas/rotas demo (MWM), política de auditoria (AUD); textos com
+<code>data-i18n</code> (prefixo <code>UI_OP_*</code>).</li>
+<li><strong>Tipos de domínio (<code>ref.*</code>):</strong> não há guia
+no painel; edição de <code>label_en</code> / <code>label_pt</code>
+(códigos fixos) em <strong>Configurações → Tipos de domínio
+(ref)</strong> com
+<strong><code>GET</code>/<code>PUT /api/ref/types</code></strong>
+(ambiente dev sem autenticação por rota).</li>
+<li><strong><code>SECURITY_ENFORCE=1</code>:</strong> rotas OMS, MWM,
+AUD, ESQ e <strong>topologia</strong> (<code>/api/topology/*</code>,
+privilégio <strong><code>module.oms</code></strong>) e outras com
+<code>ensurePrivilege</code> devolvem <strong>401/403</strong> sem
+utilizador válido ou sem privilégio (ex.:
+<strong><code>module.esq</code></strong> para esquemático).</li>
+</ul>
+<h3 id="vista-inicial-do-mapa-main.js">Vista inicial do mapa
+(<code>main.js</code>)</h3>
+<table>
+<colgroup>
+<col style="width: 34%" />
+<col style="width: 25%" />
+<col style="width: 40%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Constante</th>
+<th>Valor</th>
+<th>Significado</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>HOME_INSET_FULL</code></td>
+<td><code>0.9 × 1.04</code></td>
+<td>Tela cheia: bbox efectivo = 90% da meia-extensão × 1,04 (~4% menos
+«zoom agressivo» que 0,9 puro)</td>
+</tr>
+<tr class="even">
+<td><code>HOME_INSET_SPLIT</code></td>
+<td><code>HOME_INSET_FULL / 1.08</code></td>
+<td>Com painel 50%: ~8% mais zoom que a referência de tela cheia
+(compensa metade da largúra do mapa)</td>
+</tr>
+<tr class="odd">
+<td>Bbox cheio</td>
+<td><code>-47.6480, -24.0674, -45.9180, -23.2733</code></td>
+<td>RMSP / capital</td>
+</tr>
+<tr class="even">
+<td>Bbox split</td>
+<td><code>-47.2496, -24.1088, -46.2513, -23.1966</code></td>
+<td>Recorte quando o mapa ocupa metade da largura</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong><code>setHomeView()</code>:</strong>
+<code>map.invalidateSize()</code> + <code>requestAnimationFrame</code> →
+<code>fitBoundsHomeInset(...)</code> com o inset adequado. Botão
+<strong>Inicial</strong> e abertura do painel Operação usam a mesma
+função.</li>
+<li><strong>Arranque:</strong> <code>map.whenReady</code> +
+<code>requestAnimationFrame</code> chama
+<code>runInitialMapLayout()</code> (define vista +
+<code>setStatus("Mapa carregado.")</code>). <strong>Respaldo</strong>
+<code>setTimeout(..., 400)</code> repete <code>setHomeView()</code> para
+contentores flex que só ganham altura após pintura; a mensagem de estado
+só é definida <strong>uma vez</strong>
+(<code>mapInitialStatusDone</code>).</li>
+</ul>
+<h3 id="camadas-alvo-zoom-e-toggles">Camadas alvo — zoom e toggles</h3>
+<ul>
+<li><strong>Threshold:</strong> zoom Leaflet <strong>≥ 12</strong>
+trata-se de «vista de detalhe».</li>
+<li><strong>Comportamento:</strong> se a checkbox
+<strong>Bairros</strong> (<code>#bairros_alvo_sp</code>) está
+<strong>marcada</strong> em zoom ≥ 12, mostra-se
+<code>bairrosAlvoLayer</code> e remove-se
+<code>municipiosAlvoLayer</code> da vista (checkbox municípios-alvo
+desmarcada). Se <strong>desmarcada</strong>, mantêm-se municípios-alvo
+visíveis e bairros fora — útil para ver <strong>rótulos de
+município</strong> sem poluição dos bairros.</li>
+<li><strong>Zoom &lt; 12:</strong> bairros removidos, municípios-alvo
+repostos por defeito.</li>
+</ul>
+<h3 id="estilos-geoserver-recorte-alvo-ficheiros-em-repo">Estilos
+GeoServer (recorte alvo) — ficheiros em repo</h3>
+<table>
+<colgroup>
+<col style="width: 23%" />
+<col style="width: 38%" />
+<col style="width: 38%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>SLD</th>
+<th>Camada</th>
+<th>Notas</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>infra/geoserver/styles/base_sp_bairros_alvo.sld</code></td>
+<td><code>base_sp:bairros_alvo_sp</code></td>
+<td>Preenchimento/contorno <strong>suaves</strong> (tons slate,
+opacidades baixas); rótulos <code>municipio_nome</code> +
+<code>bairro_nome</code> mais discretos</td>
+</tr>
+<tr class="even">
+<td><code>infra/geoserver/styles/base_sp_municipios_alvo_highlight.sld</code></td>
+<td><code>base_sp:municipios_alvo_sp</code></td>
+<td>Rótulos <code>nm_mun</code> <strong>em todas as escalas</strong>
+(removido <code>MinScaleDenominator</code> que escondia nomes em zoom
+próximo)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Após alterar SLD no Git, republicar no GeoServer (Styles → substituir
+XML ou reexecutar script que aplica estilos, se existir no teu
+fluxo).</p>
+</blockquote>
+<h3 id="chaves-i18n-relevantes-amostra">Chaves i18n relevantes
+(amostra)</h3>
+<table>
+<colgroup>
+<col style="width: 77%" />
+<col style="width: 22%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Prefixo / chave</th>
+<th>Uso</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>UI_MENU_SEARCH</code>, <code>UI_SEARCH_*</code></td>
+<td>Menu Busca e textos dos selects</td>
+</tr>
+<tr class="even">
+<td><code>UI_SPLIT_MAP</code>, <code>UI_SPLIT_CONTROL_CENTER</code></td>
+<td>Títulos na faixa central do topbar</td>
+</tr>
+<tr class="odd">
+<td><code>UI_BTN_OPERATION</code></td>
+<td>Botão Operação</td>
+</tr>
+<tr class="even">
+<td><code>UI_OP_TAB_*</code>, <code>UI_OP_*</code></td>
+<td>Painel Operação (guias, colunas, mock, auditoria)</td>
+</tr>
+</tbody>
+</table>
+<p>Lista completa mantida em
+<code>infra/sql/02_populate_translations.sql</code>; API devolve mapa
+chave → texto por idioma. <strong>Glossário técnico
+(EN/PT/ES/IT):</strong> <code>UI_GLOSSARY_LINEAR_NETWORK_SEGMENT</code>,
+<code>UI_GLOSSARY_POSTGIS_TOPOLOGY</code>,
+<code>UI_HELP_STACK_POSTGIS_TOPOLOGY</code>,
+<code>UI_HELP_API_TOPOLOGY</code> — termos sem duplo sentido coloquial
+(p.ex. «segmento linear da rede» em vez de «troço»).</p>
+<h3 id="convenção-de-mensagens-de-erro">Convenção de mensagens de
+erro</h3>
+<p>Todas as falhas em <code>main.js</code> seguem:</p>
+<pre><code>&quot;Falha em [recurso]. [Instrução de remediação] (ver docs/[RUNBOOK].md).&quot;</code></pre>
+<table>
+<colgroup>
+<col style="width: 64%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ponto de falha</th>
+<th>Mensagem</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Tiles WMS</td>
+<td><code>Falha ao carregar tiles WMS. Verifique GeoServer em &lt;URL&gt; (ver docs/mds/DEPLOY.md).</code></td>
+</tr>
+<tr class="even">
+<td>Tiles MBTiles</td>
+<td><code>Falha tiles MBTiles. Gere sp_satellite.mbtiles e suba tileserver (ver docs/mds/DEPLOY.md).</code></td>
+</tr>
+<tr class="odd">
+<td>WFS municípios</td>
+<td><code>Falha ao carregar municípios (WFS). Prefira http://HOST:8088 e verifique GeoServer (ver docs/mds/DEPLOY.md).</code></td>
+</tr>
+<tr class="even">
+<td>Busca de bairros</td>
+<td><code>Falha na busca de bairros. Verifique GeoServer em &lt;URL&gt; (ver docs/mds/DEPLOY.md).</code></td>
+</tr>
+<tr class="odd">
+<td>GetFeatureInfo</td>
+<td><code>Falha ao consultar feição. Verifique GeoServer em &lt;URL&gt; (ver docs/mds/DEPLOY.md).</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="acesso-remoto-outro-notebook-via-cursor-ssh">Acesso remoto —
+outro notebook via Cursor SSH</h2>
+<p>Para continuar o desenvolvimento neste repositório a partir de outro
+notebook:</p>
+<ol type="1">
+<li><p><strong>Configurar SSH no notebook cliente</strong>
+(<code>~/.ssh/config</code>):</p>
+<pre><code>Host homeserver
+    HostName &lt;IP-do-homeserver&gt;
+    User wesley
+    IdentityFile ~/.ssh/id_rsa   # ou a chave que já usa</code></pre></li>
+<li><p><strong>Abrir no Cursor:</strong>
+<code>File → Connect to Remote → homeserver</code> (extensão Remote
+SSH)</p></li>
+<li><p><strong>Abrir pasta:</strong>
+<code>/home/wesley/projects/TabGis</code></p></li>
+<li><p><strong>Aceder ao frontend:</strong>
+<code>http://homeserver:8088/</code> (ou
+<code>http://&lt;IP&gt;:8088/</code> se não tiver DNS local)</p></li>
+<li><p><strong>Verificar stack antes de trabalhar:</strong></p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> ps <span class="at">--format</span> <span class="st">&quot;table {{.Names}}\t{{.Status}}&quot;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Todos devem aparecer como &quot;Up ... (healthy)&quot; ou &quot;Up ...&quot;</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Se algum estiver ausente:</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose <span class="at">-f</span> infra/docker-compose.yml up <span class="at">-d</span></span></code></pre></div></li>
+</ol>
+<blockquote>
+<p><strong>Cursor Rules:</strong> o ficheiro <code>.cursorrules</code>
+na raiz do repositório é lido automaticamente pelo Cursor em cada sessão
+— contém as regras de contexto e comportamento da IA para este
+projecto.</p>
+</blockquote>
+<hr />
+<h2 id="definições-técnicas-tabgis">Definições técnicas (TabGis)</h2>
+<ul>
+<li>O esquemático será <strong>estático/sequencial</strong> com metadado
+<strong>“Ir para o Mapa”</strong> por objecto.</li>
+<li>O versionamento utilizará lógica de instâncias <strong>reais
+vs. históricas</strong> (bi-temporal).</li>
+<li>Foco actual: landbase offline operacional; topologia de
+<strong>segmentos lineares da rede</strong> com
+<strong><code>postgis_topology</code></strong>
+(<code>gis.network_span</code>); evolução — edição REST, camadas mapa e
+CRS projetado onde necessário.</li>
+</ul>
+<hr />
+<h2 id="próximos-passos">Próximos passos</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 42%" />
+<col style="width: 28%" />
+<col style="width: 28%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Prioridade</th>
+<th>Tarefa</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Upgrade satélite MBTiles para ZMAX=17 (1,2 m/px)</td>
+<td><strong>✅ Operacional</strong></td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>UI Operação + schema <code>operations</code> + arquivo
+<code>audit.operations_row_archive</code></td>
+<td><strong>✅ Estrutura base + mock UI</strong></td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Modelagem explícita da topologia de rede (PostGIS Topology
+nativo)</td>
+<td><strong>✅ MVP:</strong> <code>tabgis_utilities_topo</code> +
+<code>gis.network_span</code> + API leitura; pendente edição, WFS e
+topologia projectada opcional</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>APIs/backend para edição, ordens, rotas 48h e diário
+<code>events</code> (exportável a Mongo/externo)</td>
+<td><strong>Parcial:</strong> mutações emitem eventos;
+<code>GET /api/events</code>;
+<strong><code>GET /api/events/export</code></strong> com cursor +
+formato Mongo; sink/webhook dedicado fora da API continua opcional</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>Vista esquemática (schema <code>schematic</code>, REST, guia
+<strong>ESQ</strong>, «Ir para o mapa»)</td>
+<td><strong>✅ POC</strong> (SVG escada + PATCH nó; endurecer com auth
+real além de <code>SECURITY_ENFORCE</code>)</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>Endurecimento de segurança (credenciais, TLS, sessão)</td>
+<td>Fora do âmbito desta fase</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="índice-de-documentação-markdown">Índice de documentação
+Markdown</h2>
+<table>
+<colgroup>
+<col style="width: 47%" />
+<col style="width: 52%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ficheiro</th>
+<th>Conteúdo</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>docs/README.md</code></td>
+<td><strong>Home</strong> do índice de documentação; liga a
+<code>docs/mds/*.md</code>, <code>docs/html/</code>,
+<code>docs/pdfs/</code></td>
+</tr>
+<tr class="even">
+<td><code>docs/mds/ARCHITECTURE_BPMN.md</code></td>
+<td>Diagrama de colaboração (Mermaid): GitHub, PostGIS, GeoServer,
+GeoSampa, regionalização, Mongo pendente, deploy, linguagens</td>
+</tr>
+<tr class="odd">
+<td><code>docs/mds/REGIONALIZATION.md</code></td>
+<td>Tabela de idiomas e cadastro <code>config.translation</code></td>
+</tr>
+<tr class="even">
+<td><code>docs/mds/MAPS_AND_SOURCES.md</code></td>
+<td>Mapas offline, origens, baseline datado</td>
+</tr>
+<tr class="odd">
+<td><code>docs/mds/CONTEXT_STATE.md</code></td>
+<td>Este ficheiro — estado da stack, frontend, SQL, estilos</td>
+</tr>
+<tr class="even">
+<td><code>docs/mds/Escopo_Projeto_TabGis.md</code></td>
+<td>Escopo de produto TabGis, arquitectura e roadmap</td>
+</tr>
+<tr class="odd">
+<td><code>docs/mds/Escopo_Projeto_GeoUtil.md</code></td>
+<td>Referência histórica de escopo académico</td>
+</tr>
+<tr class="even">
+<td><code>docs/mds/DEPLOY.md</code></td>
+<td>Guia principal de deploy</td>
+</tr>
+<tr class="odd">
+<td><code>docs/mds/DEPLOY_POC.md</code></td>
+<td>Deploy Docker legado, ordem SQL alargada, diagnóstico</td>
+</tr>
+<tr class="even">
+<td><code>docs/mds/EVENTS_ARCHITECTURE.md</code></td>
+<td>Schema <code>events</code>, barramento Node, exportação
+Mongo-compatível</td>
+</tr>
+<tr class="odd">
+<td><code>docs/mds/TOPOLOGY_NATIVE_POSTGIS.md</code></td>
+<td>Topologia nativa <code>postgis_topology</code>, segmentos lineares
+<code>gis.network_span</code>, API <code>/api/topology/*</code>;
+glossário i18n em <code>02_populate_translations.sql</code></td>
+</tr>
+<tr class="even">
+<td><code>.github/workflows/ci.yml</code></td>
+<td>CI: testes unitários do backend (<code>npm test</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>.github/workflows/pages.yml</code></td>
+<td>GitHub Pages: <code>docs/mds/*.md</code> →
+<code>docs/html/*.html</code> + PDFs + artefacto <code>_site/</code>
+(hub + páginas + <code>help/</code>)</td>
+</tr>
+<tr class="even">
+<td><code>docs/mds/RUNBOOK_BASEMAP_SP_ESTADO.md</code></td>
+<td>Pipeline landbase SP estado</td>
+</tr>
+<tr class="odd">
+<td><code>docs/mds/RUNBOOK_BASEMAP_SP.md</code></td>
+<td>Pipeline SP Centro (legado)</td>
+</tr>
+<tr class="even">
+<td><code>frontend/README.md</code></td>
+<td>Cliente web, modos :8088 / :5173, camadas</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS config.translation (
 -- ==========================================
 CREATE SCHEMA IF NOT EXISTS security;
 
--- Migração idempotente: legado security."user" → security.users (ver docs/Database_Structure_Context.md)
+-- Migração idempotente: legado security."user" → security.users (ver docs/mds/Database_Structure_Context.md)
 DO $$
 BEGIN
     IF EXISTS (

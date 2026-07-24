@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>GeoSampa_offline_tecnico</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">GeoSampa_offline_tecnico</h1>
+</header>
+<h1 id="geosampa-offline-referência-técnica-tabgis">GeoSampa offline —
+Referência técnica (TabGis)</h1>
+<p>Documento <strong>técnico</strong>: ficheiros, variáveis de ambiente,
+esquema MBTiles, APIs externas e semântica de falhas.</p>
+<hr />
+<h2 id="ficheiros-relevantes">1. Ficheiros relevantes</h2>
+<table>
+<colgroup>
+<col style="width: 55%" />
+<col style="width: 44%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ficheiro</th>
+<th>Função</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>infra/scripts/build_geosampa_mbtiles.py</code></td>
+<td>Geração completa (apaga <code>.tmp</code>, preenche todos os tiles,
+substitui o <code>.mbtiles</code>).</td>
+</tr>
+<tr class="even">
+<td><code>infra/scripts/build_geosampa_offline_mbtiles.sh</code></td>
+<td>Wrapper: venv, <code>pip</code>, env <code>MBTILES_OUT</code>,
+<code>ZMIN</code>, <code>ZMAX</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>infra/scripts/repair_geosampa_mbtiles.py</code></td>
+<td><strong>Reparação incremental</strong>: compara mercantile × BBOX
+com <code>SELECT</code> em <code>tiles</code>; só faz
+<code>GetMap</code> para chaves em falta.</td>
+</tr>
+<tr class="even">
+<td><code>infra/scripts/repair_geosampa_offline_mbtiles.sh</code></td>
+<td>Wrapper da reparação (mesmo venv).</td>
+</tr>
+<tr class="odd">
+<td><code>data/tiles/config.json</code></td>
+<td>Registo <code>geosampa_offline</code> para o TileServer.</td>
+</tr>
+<tr class="even">
+<td><code>frontend/main.js</code></td>
+<td><code>geosampaOfflineLayer</code>,
+<code>checkLocalRasterHealth("geosampa_offline")</code>.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="variáveis-de-ambiente-build-e-reparação">2. Variáveis de
+ambiente (build e reparação)</h2>
+<table>
+<colgroup>
+<col style="width: 47%" />
+<col style="width: 52%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variável</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>MBTILES_OUT</code></td>
+<td>Caminho do ficheiro MBTiles (default
+<code>data/tiles/geosampa_offline.mbtiles</code>).</td>
+</tr>
+<tr class="even">
+<td><code>BBOX</code></td>
+<td><code>west,south,east,north</code> WGS84 (default recorte SP
+aproximado no script).</td>
+</tr>
+<tr class="odd">
+<td><code>ZMIN</code>, <code>ZMAX</code></td>
+<td>Zoom Web Mercator (default 10–19).</td>
+</tr>
+<tr class="even">
+<td><code>WMS_BASE</code>, <code>WMS_LAYER</code></td>
+<td>Endpoint e camada WMS (ex. mosaico RGB).</td>
+</tr>
+<tr class="odd">
+<td><code>DELAY_MS</code></td>
+<td>Pausa entre pedidos HTTP (rate limit cortesia).</td>
+</tr>
+<tr class="even">
+<td><code>TIMEOUT_SEC</code></td>
+<td>Timeout por <code>GetMap</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>WMS_MAX_ATTEMPTS</code>, <code>RETRY_DELAY_MS</code></td>
+<td>Retentativas (build e reparação).</td>
+</tr>
+<tr class="even">
+<td><code>REPAIR_COMMIT_EVERY</code></td>
+<td><em>(só reparação)</em> <code>COMMIT</code> SQLite a cada N
+inserções (default 200).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="modelo-de-dados-mbtiles">3. Modelo de dados MBTiles</h2>
+<ul>
+<li>Tabela <code>tiles</code> (<code>zoom_level</code>,
+<code>tile_column</code>, <code>tile_row</code>, <code>tile_data</code>
+BLOB PNG).</li>
+<li><code>tile_row</code> segue convenção <strong>MBTiles</strong> (eixo
+Y invertido face ao XYZ); o código usa
+<code>flip_y_to_mbtiles_row</code> em
+<code>build_geosampa_mbtiles.py</code>.</li>
+<li>A reparação considera «em falta» qualquer tile
+<strong>esperado</strong> pela grelha mercantile que
+<strong>não</strong> tenha linha correspondente.</li>
+</ul>
+<hr />
+<h2 id="fontes-http">4. Fontes HTTP</h2>
+<ul>
+<li><strong>WMS:</strong>
+<code>raster.geosampa.prefeitura.sp.gov.br</code> — <code>GetMap</code>
+PNG transparente, EPSG:3857.</li>
+<li><strong>Reparação:</strong> reutiliza <code>build_wms_url</code> e
+<code>fetch_wms_tile_png</code> via import do módulo Python no mesmo
+directório.</li>
+</ul>
+<hr />
+<h2 id="falhas-e-contadores">5. Falhas e contadores</h2>
+<ul>
+<li><strong><code>fail</code> no build:</strong> pedidos que, após
+retentativas, não produzem PNG válido (HTTP, XML
+<code>ServiceException</code>, corpo vazio, etc.). O build
+<strong>continua</strong> e promove o ficheiro se
+<code>ok &gt; 0</code>.</li>
+<li><strong>Reparação:</strong> só tenta tiles <strong>ausentes</strong>
+na BD; <code>fail</code> indica tiles que continuam sem inserção após
+retentativas.</li>
+</ul>
+<hr />
+<h2 id="desempenho-e-disco">6. Desempenho e disco</h2>
+<ul>
+<li>Leitura inicial da reparação:
+<code>SELECT zoom_level, tile_column, tile_row FROM tiles</code> — para
+~1M linhas pode demorar <strong>minutos</strong> e usar memória para o
+<code>set</code> de chaves.</li>
+<li>I/O: <code>PRAGMA synchronous=OFF</code> durante reparação (como no
+build) para acelerar escrita; risco de corrupção em falha de energia —
+aceitável em laboratório.</li>
+</ul>
+<hr />
+<h2 id="guia-operacional">Guia operacional</h2>
+<p>Ver <a
+href="./GeoSampa_offline_operacao.md"><code>GeoSampa_offline_operacao.md</code></a>.</p>
+</body>
+</html>

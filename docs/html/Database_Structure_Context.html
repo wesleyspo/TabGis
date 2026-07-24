@@ -1,0 +1,2172 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Database_Structure_Context</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Database_Structure_Context</h1>
+</header>
+<h1 id="tabgis-especificação-de-dados-utilities">TabGis — Especificação
+de dados (utilities)</h1>
+<blockquote>
+<p><strong>Convenção deste documento:</strong> cada entidade é uma
+<strong>tabela</strong> com colunas <strong>Campo</strong>, <strong>Tipo
+(PostgreSQL)</strong>, <strong>Comentário (inglês, US)</strong> e
+<strong>Comentário (português)</strong>. Nomes de
+<strong>schemas</strong>, <strong>tabelas</strong> e
+<strong>campos</strong> em <strong>inglês</strong>.<br />
+<strong>Motor:</strong> PostgreSQL 15+ / PostGIS. Campos
+<code>TYPE</code> / <code>STATUS</code> com domínio fechado exigem
+<strong>tabela de controlo</strong> correspondente (cadastro +
+auditoria), conforme regra global do modelo.<br />
+<strong>Diagramas:</strong> versão HTML gerada a partir deste MD em <a
+href="../html/Database_Structure_Context.html"><code>../html/Database_Structure_Context.html</code></a>;
+diagrama interactivo legado em <a
+href="../html/Database_Structure_Context.diagram-legacy.html"><code>../html/Database_Structure_Context.diagram-legacy.html</code></a>.</p>
+</blockquote>
+<hr />
+<h2 id="partição-de-schemas-definição-do-modelo">1. Partição de schemas
+(definição do modelo)</h2>
+<table>
+<colgroup>
+<col style="width: 40%" />
+<col style="width: 60%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Schema</th>
+<th>Conteúdo</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong><code>gis</code></strong></td>
+<td><strong>Consumidores</strong> (<em>consumers</em>) e
+<strong>equipamentos</strong> (<em>equipment</em>) da rede — dados
+espaciais e cadastro de ativos / pontos de entrega.</td>
+</tr>
+<tr class="even">
+<td><strong><code>oms</code></strong></td>
+<td><strong>Chamadas</strong> (<em>calls</em>),
+<strong>feedbacks</strong> de contato, <strong>ordens</strong> (<em>work
+orders</em>), <strong>tarefas</strong> (<em>tasks</em>), <strong>eventos
+de rede</strong> (<em>network events</em>), <strong>interrupções ao
+consumidor</strong> (<em>customer interruptions</em>).</td>
+</tr>
+<tr class="odd">
+<td><strong><code>mwm</code></strong></td>
+<td><strong>Equipas</strong> (<em>crews</em>), <strong>turnos</strong>,
+<strong>atribuição equipa–ordem</strong>, <strong>trajectos</strong>
+(tempo real / histórico).</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Schemas já existentes no projecto (fora desta
+partição):</strong> <code>landbase</code> (fundo cartográfico),
+<code>config</code>, <code>security</code>, <code>audit</code>,
+<strong><code>events</code></strong> (diário append-only de integração —
+ver <code>docs/mds/EVENTS_ARCHITECTURE.md</code>),
+<strong><code>schematic</code></strong> (vistas unifilares / fluxo com
+foco geográfico), <strong><code>tabgis_utilities_topo</code></strong>
+(topologia PostGIS nativa — primitivas
+<code>edge_data</code>/<code>node</code>/…; ver
+<code>docs/mds/TOPOLOGY_NATIVE_POSTGIS.md</code>). A POC
+<code>operations.*</code> é subconjunto temporário até alinhar DDL com
+<code>oms</code> / <code>mwm</code>.</p>
+<hr />
+<h2 id="dependências-entre-entidades-fk-lógicas">2. Dependências entre
+entidades (FK lógicas)</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 21%" />
+<col style="width: 28%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Origem</th>
+<th>Campo</th>
+<th>Destino</th>
+<th>Notas</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>gis.equipment</code></td>
+<td><code>parent_equipment_id</code></td>
+<td><code>gis.equipment.id</code></td>
+<td>Hierarquia de alimentação (opcional).</td>
+</tr>
+<tr class="even">
+<td><code>gis.consumer</code></td>
+<td><code>equipment_id</code></td>
+<td><code>gis.equipment.id</code></td>
+<td>Equipamento que serve o ponto de entrega.</td>
+</tr>
+<tr class="odd">
+<td><code>gis.consumer</code></td>
+<td><code>parent_equipment_id</code></td>
+<td><code>gis.equipment.id</code></td>
+<td>Equipamento “pai” na topologia.</td>
+</tr>
+<tr class="even">
+<td><code>oms.call</code></td>
+<td><code>consumer_id</code></td>
+<td><code>gis.consumer.id</code></td>
+<td>Opcional até resolução cadastral.</td>
+</tr>
+<tr class="odd">
+<td><code>oms.call</code></td>
+<td><code>work_order_id</code></td>
+<td><code>oms.work_order.id</code></td>
+<td>Chamada gera ou associa ordem.</td>
+</tr>
+<tr class="even">
+<td><code>oms.call_feedback</code></td>
+<td><code>call_id</code></td>
+<td><code>oms.call.id</code></td>
+<td>Nulo se contato exclusivamente proactivo.</td>
+</tr>
+<tr class="odd">
+<td><code>oms.work_order</code></td>
+<td><code>equipment_id</code></td>
+<td><code>gis.equipment.id</code></td>
+<td>Equipamento afetado.</td>
+</tr>
+<tr class="even">
+<td><code>oms.work_order</code></td>
+<td><code>owner_id</code></td>
+<td><code>security.users.id</code></td>
+<td>Utilizador responsável pela ordem (POC).</td>
+</tr>
+<tr class="odd">
+<td><code>oms.work_order</code></td>
+<td><code>locked_by_id</code></td>
+<td><code>security.users.id</code></td>
+<td>Utilizador que detém bloqueio de edição (POC).</td>
+</tr>
+<tr class="even">
+<td><code>oms.task</code></td>
+<td><code>work_order_id</code></td>
+<td><code>oms.work_order.id</code></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>oms.task</code></td>
+<td><code>equipment_id</code></td>
+<td><code>gis.equipment.id</code></td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>oms.task</code></td>
+<td><code>parent_task_id</code></td>
+<td><code>oms.task.id</code></td>
+<td>Hierarquia de tarefas.</td>
+</tr>
+<tr class="odd">
+<td><code>oms.network_event</code></td>
+<td><code>work_order_id</code></td>
+<td><code>oms.work_order.id</code></td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>oms.network_event</code></td>
+<td><code>task_id</code></td>
+<td><code>oms.task.id</code></td>
+<td>Opcional.</td>
+</tr>
+<tr class="odd">
+<td><code>oms.network_event</code></td>
+<td><code>equipment_id</code></td>
+<td><code>gis.equipment.id</code></td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>oms.customer_interruption</code></td>
+<td><code>consumer_id</code></td>
+<td><code>gis.consumer.id</code></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>mwm.crew_order_assignment</code></td>
+<td><code>crew_id</code></td>
+<td><code>mwm.crew.id</code></td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>mwm.crew_order_assignment</code></td>
+<td><code>work_order_id</code></td>
+<td><code>oms.work_order.id</code></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>mwm.crew_order_assignment</code></td>
+<td><code>task_id</code></td>
+<td><code>oms.task.id</code></td>
+<td>Opcional.</td>
+</tr>
+<tr class="even">
+<td><code>mwm.crew_shift</code></td>
+<td><code>crew_id</code></td>
+<td><code>mwm.crew.id</code></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>mwm.crew_route_daily</code></td>
+<td><code>crew_id</code></td>
+<td><code>mwm.crew.id</code></td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>mwm.crew_route_history</code></td>
+<td><code>crew_id</code></td>
+<td><code>mwm.crew.id</code></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>Todas as tabelas de negócio abaixo</td>
+<td><code>event_id</code></td>
+<td><code>audit.domain_event.id</code></td>
+<td>Última alteração rastreada (ver §8).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="schema-gis">3. Schema <code>gis</code></h2>
+<h3 id="gis.consumer-consumidor-conta-contratual">3.1
+<code>gis.consumer</code> (consumidor / conta contratual)</h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK to <code>audit.domain_event</code>; last change tracking.</td>
+<td>FK evento de alteração; rastreio da última mudança.</td>
+</tr>
+<tr class="odd">
+<td><code>account_number</code></td>
+<td><code>VARCHAR(30)</code></td>
+<td>Unique commercial account identifier.</td>
+<td>Identificador único da conta comercial.</td>
+</tr>
+<tr class="even">
+<td><code>status_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>FK to controlled status table (active, suspended, etc.).</td>
+<td>FK tabela de estados possíveis do cadastro.</td>
+</tr>
+<tr class="odd">
+<td><code>type_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>FK to controlled consumer type table; audited.</td>
+<td>FK tabela de <strong>TYPE</strong>; cadastro e auditoria
+obrigatórios.</td>
+</tr>
+<tr class="even">
+<td><code>equipment_id</code></td>
+<td><code>VARCHAR(30)</code></td>
+<td>Served network equipment identifier (FK to
+<code>gis.equipment</code> by business key or id).</td>
+<td>ID do equipamento de rede servido.</td>
+</tr>
+<tr class="odd">
+<td><code>parent_equipment_id</code></td>
+<td><code>VARCHAR(30)</code></td>
+<td>Upstream feeding equipment identifier.</td>
+<td>ID do equipamento que alimenta (pai).</td>
+</tr>
+<tr class="even">
+<td><code>last_name</code></td>
+<td><code>VARCHAR(64)</code></td>
+<td>Customer last name.</td>
+<td>Apelido / nome de família.</td>
+</tr>
+<tr class="odd">
+<td><code>first_name</code></td>
+<td><code>VARCHAR(64)</code></td>
+<td>Customer first name.</td>
+<td>Primeiro nome.</td>
+</tr>
+<tr class="even">
+<td><code>email</code></td>
+<td><code>VARCHAR(255)</code></td>
+<td>Contact email.</td>
+<td>E-mail de contacto.</td>
+</tr>
+<tr class="odd">
+<td><code>identity_document_type</code></td>
+<td><code>VARCHAR(16)</code></td>
+<td>ID document type (CPF, RG, etc.).</td>
+<td>Tipo de documento de identidade.</td>
+</tr>
+<tr class="even">
+<td><code>identity_document_number</code></td>
+<td><code>VARCHAR(32)</code></td>
+<td>ID document number.</td>
+<td>Número do documento.</td>
+</tr>
+<tr class="odd">
+<td><code>contract_type_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>FK to contract type (consumption tier, Mbps, kWh, channels).</td>
+<td>FK tipo de contrato; tabela de controle.</td>
+</tr>
+<tr class="even">
+<td><code>first_connection_date</code></td>
+<td><code>DATE</code></td>
+<td>First grid connection date.</td>
+<td>Data da primeira ligação à rede.</td>
+</tr>
+<tr class="odd">
+<td><code>connection_start_date</code></td>
+<td><code>DATE</code></td>
+<td>Start of current connection period.</td>
+<td>Início do período de ligação actual.</td>
+</tr>
+<tr class="even">
+<td><code>connection_end_date</code></td>
+<td><code>DATE</code></td>
+<td>Grid disconnection date; nullable.</td>
+<td>Data de desligamento da rede.</td>
+</tr>
+<tr class="odd">
+<td><code>street_type</code></td>
+<td><code>VARCHAR(64)</code></td>
+<td>Street type prefix.</td>
+<td>Tipo de logradouro.</td>
+</tr>
+<tr class="even">
+<td><code>street_name</code></td>
+<td><code>VARCHAR(64)</code></td>
+<td>Street name.</td>
+<td>Nome da via.</td>
+</tr>
+<tr class="odd">
+<td><code>house_number</code></td>
+<td><code>VARCHAR(10)</code></td>
+<td>Street number.</td>
+<td>Número.</td>
+</tr>
+<tr class="even">
+<td><code>apartment_number</code></td>
+<td><code>VARCHAR(10)</code></td>
+<td>Apartment / unit.</td>
+<td>Apartamento / unidade.</td>
+</tr>
+<tr class="odd">
+<td><code>postal_code</code></td>
+<td><code>VARCHAR(10)</code></td>
+<td>Postal code.</td>
+<td>Código postal.</td>
+</tr>
+<tr class="even">
+<td><code>city</code></td>
+<td><code>VARCHAR(30)</code></td>
+<td>City.</td>
+<td>Cidade.</td>
+</tr>
+<tr class="odd">
+<td><code>state</code></td>
+<td><code>VARCHAR(30)</code></td>
+<td>State / region.</td>
+<td>Estado / região.</td>
+</tr>
+<tr class="even">
+<td><code>primary_phone_number</code></td>
+<td><code>VARCHAR(16)</code></td>
+<td>Primary phone.</td>
+<td>Telefone principal.</td>
+</tr>
+<tr class="odd">
+<td><code>secondary_phone_number</code></td>
+<td><code>VARCHAR(16)</code></td>
+<td>Secondary phone.</td>
+<td>Telefone secundário.</td>
+</tr>
+<tr class="even">
+<td><code>description</code></td>
+<td><code>VARCHAR(80)</code></td>
+<td>Short free-text description.</td>
+<td>Descrição curta.</td>
+</tr>
+<tr class="odd">
+<td><code>smart_meter</code></td>
+<td><code>BOOLEAN</code></td>
+<td>Smart meter installed flag.</td>
+<td>Indicador de medidor inteligente.</td>
+</tr>
+<tr class="even">
+<td><code>location_desc</code></td>
+<td><code>VARCHAR(80)</code></td>
+<td>Full address text.</td>
+<td>Endereço completo em texto.</td>
+</tr>
+<tr class="odd">
+<td><code>geom</code></td>
+<td><code>geometry(Point,4326)</code></td>
+<td>Service location; prefer over raw lat/long.</td>
+<td>Localização do serviço (PostGIS).</td>
+</tr>
+<tr class="even">
+<td><code>accepts_proactive_contact</code></td>
+<td><code>BOOLEAN</code></td>
+<td>Customer accepts proactive outreach (CPA).</td>
+<td>Aceita comunicação proactiva (CPA).</td>
+</tr>
+<tr class="odd">
+<td><code>utility_domain</code></td>
+<td><code>VARCHAR(16)</code></td>
+<td>Utility sector: electric, gas, water, sewer, telecom.</td>
+<td>Sector: energia, gás, água, esgoto, telecom.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gis.equipment">3.2 <code>gis.equipment</code></h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key (or align with legacy VARCHAR key via unique
+constraint).</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK to <code>audit.domain_event</code>.</td>
+<td>FK evento de alteração.</td>
+</tr>
+<tr class="odd">
+<td><code>type_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>FK to equipment <strong>TYPE</strong> table; audited.</td>
+<td>FK <strong>TYPE</strong> de equipamento; auditado.</td>
+</tr>
+<tr class="even">
+<td><code>network_type_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>FK primary / secondary / transmission / generation.</td>
+<td>FK tipo de rede (primário, secundário, transmissão…).</td>
+</tr>
+<tr class="odd">
+<td><code>network_level_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>FK aerial / underground / submarine / indoor.</td>
+<td>FK nível (aéreo, subterrâneo…).</td>
+</tr>
+<tr class="even">
+<td><code>status_0</code></td>
+<td><code>SMALLINT</code></td>
+<td>Connection state phase 0 (connected / disconnected /
+predicted).</td>
+<td>Estado de ligação fase 0.</td>
+</tr>
+<tr class="odd">
+<td><code>status_1</code></td>
+<td><code>SMALLINT</code></td>
+<td>Phase A (multi-phase / multi-circuit).</td>
+<td>Fase A (POC).</td>
+</tr>
+<tr class="even">
+<td><code>status_2</code></td>
+<td><code>SMALLINT</code></td>
+<td>Phase B.</td>
+<td>Fase B (POC).</td>
+</tr>
+<tr class="odd">
+<td><code>status_3</code></td>
+<td><code>SMALLINT</code></td>
+<td>Phase C.</td>
+<td>Fase C (POC).</td>
+</tr>
+<tr class="even">
+<td><code>normal_status_0</code></td>
+<td><code>SMALLINT</code></td>
+<td>Expected normal state phase 0.</td>
+<td>Estado normal fase 0.</td>
+</tr>
+<tr class="odd">
+<td><code>normal_status_1</code></td>
+<td><code>SMALLINT</code></td>
+<td>Expected normal phase A.</td>
+<td>Estado normal fase A.</td>
+</tr>
+<tr class="even">
+<td><code>normal_status_2</code></td>
+<td><code>SMALLINT</code></td>
+<td>Expected normal phase B.</td>
+<td>Estado normal fase B.</td>
+</tr>
+<tr class="odd">
+<td><code>normal_status_3</code></td>
+<td><code>SMALLINT</code></td>
+<td>Expected normal phase C.</td>
+<td>Estado normal fase C.</td>
+</tr>
+<tr class="even">
+<td><code>monitoring_status_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>Telemetry link: connected / disconnected / no comm.</td>
+<td>Estado de monitorização / comunicação.</td>
+</tr>
+<tr class="odd">
+<td><code>parent_equipment_id</code></td>
+<td><code>VARCHAR(30)</code></td>
+<td>Upstream feeding equipment id.</td>
+<td>ID do equipamento que alimenta.</td>
+</tr>
+<tr class="even">
+<td><code>location_desc</code></td>
+<td><code>VARCHAR(80)</code></td>
+<td>Location text.</td>
+<td>Endereço ou descrição de local.</td>
+</tr>
+<tr class="odd">
+<td><code>geom</code></td>
+<td><code>geometry(Geometry,4326)</code></td>
+<td>Equipment geometry (point or line).</td>
+<td>Geometria PostGIS do ativo.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Nota:</em> Estados <code>status_*</code> /
+<code>normal_status_*</code> devem referenciar tabelas de domínio (ex.:
+<code>ref.connection_state</code>) com o mesmo significado em todos os
+utilities.</p>
+<h3 id="gis.network_span-segmento-linear-da-rede-topogeometry">3.3
+<code>gis.network_span</code> (segmento linear da rede +
+TopoGeometry)</h3>
+<p>Entidade de <strong>segmento linear da rede</strong> (em inglês de
+dados: <em>network span</em>): continuidade física gerida pela extensão
+<strong><code>postgis_topology</code></strong>. DDL e dados demo:
+<code>infra/sql/21_postgis_topology_utilities.sql</code>. Vista legível:
+<strong><code>gis.v_network_span_readable</code></strong>.</p>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>code</code></td>
+<td><code>VARCHAR(96)</code></td>
+<td>Unique business code for the span.</td>
+<td>Código único do segmento linear.</td>
+</tr>
+<tr class="odd">
+<td><code>description</code></td>
+<td><code>TEXT</code></td>
+<td>Optional operator-facing note.</td>
+<td>Nota opcional.</td>
+</tr>
+<tr class="even">
+<td><code>utility_domain</code></td>
+<td><code>VARCHAR(16)</code></td>
+<td>Sector (electric, gas, water, …).</td>
+<td>Sector utility.</td>
+</tr>
+<tr class="odd">
+<td><code>equipment_from_id</code></td>
+<td><code>BIGINT</code></td>
+<td>Optional upstream terminal equipment.</td>
+<td>Equipamento terminal inicial (opcional).</td>
+</tr>
+<tr class="even">
+<td><code>equipment_to_id</code></td>
+<td><code>BIGINT</code></td>
+<td>Optional downstream terminal equipment.</td>
+<td>Equipamento terminal final (opcional).</td>
+</tr>
+<tr class="odd">
+<td><code>span_geom</code></td>
+<td><code>geometry(LineString,4326)</code></td>
+<td>Exchange geometry (WFS/GeoJSON).</td>
+<td>Geometria interoperável.</td>
+</tr>
+<tr class="even">
+<td><code>topo_geom</code></td>
+<td><code>topology.TopoGeometry</code></td>
+<td>Native topology reference (shared nodes).</td>
+<td>Referência topológica nativa (nós partilhados).</td>
+</tr>
+<tr class="odd">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>audit.domain_event</code>; optional.</td>
+<td>Última alteração de domínio (opcional).</td>
+</tr>
+<tr class="even">
+<td><code>metadata</code></td>
+<td><code>JSONB</code></td>
+<td>Free-form span metadata.</td>
+<td>Metadados livres.</td>
+</tr>
+<tr class="odd">
+<td><code>created_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Row creation time.</td>
+<td>Criação do registo.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="schema-oms">4. Schema <code>oms</code></h2>
+<h3 id="oms.call-chamada-gera-ou-associa-ordem">4.1
+<code>oms.call</code> (chamada — gera ou associa ordem)</h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK to <code>audit.domain_event</code>.</td>
+<td>FK evento de alteração.</td>
+</tr>
+<tr class="odd">
+<td><code>processor_id</code></td>
+<td><code>BIGINT</code></td>
+<td>Correlation / merge key for order association.</td>
+<td>Controle de associação entre ordens.</td>
+</tr>
+<tr class="even">
+<td><code>type_id</code></td>
+<td><code>INTEGER</code></td>
+<td>Call <strong>TYPE</strong>; FK controlled table, audited.</td>
+<td><strong>TYPE</strong> da chamada; tabela de controle auditada.</td>
+</tr>
+<tr class="odd">
+<td><code>simple_area_id</code></td>
+<td><code>BIGINT</code></td>
+<td>Neighborhood / simple area id (e.g. landbase link).</td>
+<td>ID do bairro / área simples.</td>
+</tr>
+<tr class="even">
+<td><code>consumer_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>gis.consumer.id</code> when resolved.</td>
+<td>FK consumidor após resolução.</td>
+</tr>
+<tr class="odd">
+<td><code>account_number</code></td>
+<td><code>VARCHAR(30)</code></td>
+<td>Account from intake; matches
+<code>gis.consumer.account_number</code>.</td>
+<td>Número de conta (entrada).</td>
+</tr>
+<tr class="even">
+<td><code>originating_number</code></td>
+<td><code>VARCHAR(32)</code></td>
+<td>External id at creation.</td>
+<td>Número externo informado na criação.</td>
+</tr>
+<tr class="odd">
+<td><code>description</code></td>
+<td><code>VARCHAR(50)</code></td>
+<td>Short description.</td>
+<td>Descrição breve.</td>
+</tr>
+<tr class="even">
+<td><code>field_time_received</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>External-reported receipt time.</td>
+<td>Data/hora informada na origem.</td>
+</tr>
+<tr class="odd">
+<td><code>system_time_received</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>System ingest time.</td>
+<td>Data/hora de entrada no sistema.</td>
+</tr>
+<tr class="even">
+<td><code>received_by</code></td>
+<td><code>VARCHAR(6)</code></td>
+<td>Intake channel code.</td>
+<td>Canal de entrada.</td>
+</tr>
+<tr class="odd">
+<td><code>comments</code></td>
+<td><code>VARCHAR(500)</code></td>
+<td>Caller / agent comments.</td>
+<td>Comentários do cliente / registo.</td>
+</tr>
+<tr class="even">
+<td><code>status</code></td>
+<td><code>VARCHAR(16)</code></td>
+<td>Call status; default <code>open</code>.</td>
+<td>Estado da chamada.</td>
+</tr>
+<tr class="odd">
+<td><code>scheduled_start_time</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Scheduled window start.</td>
+<td>Início agendado.</td>
+</tr>
+<tr class="even">
+<td><code>informative</code></td>
+<td><code>BOOLEAN</code></td>
+<td>Informative-only flag.</td>
+<td>Chamada apenas informativa.</td>
+</tr>
+<tr class="odd">
+<td><code>predict</code></td>
+<td><code>BOOLEAN</code></td>
+<td>If true, expect outage-related order.</td>
+<td>Se verdadeiro, gera ordem com interrupção esperada.</td>
+</tr>
+<tr class="even">
+<td><code>caller_name</code></td>
+<td><code>VARCHAR(80)</code></td>
+<td>Name provided by caller.</td>
+<td>Nome informado.</td>
+</tr>
+<tr class="odd">
+<td><code>contact_no</code></td>
+<td><code>VARCHAR(32)</code></td>
+<td>Phone provided.</td>
+<td>Telefone informado.</td>
+</tr>
+<tr class="even">
+<td><code>email</code></td>
+<td><code>VARCHAR(50)</code></td>
+<td>Email provided.</td>
+<td>E-mail informado.</td>
+</tr>
+<tr class="odd">
+<td><code>callback</code></td>
+<td><code>BOOLEAN</code></td>
+<td>Callback status flag.</td>
+<td>Estado de callback.</td>
+</tr>
+<tr class="even">
+<td><code>work_order_id</code></td>
+<td><code>BIGINT</code></td>
+<td>Related work order FK.</td>
+<td>Ordem relacionada.</td>
+</tr>
+<tr class="odd">
+<td><code>handled_by</code></td>
+<td><code>SMALLINT</code></td>
+<td>Process that linked order; FK control table.</td>
+<td>Processo que associou a ordem.</td>
+</tr>
+<tr class="even">
+<td><code>system_generated</code></td>
+<td><code>BOOLEAN</code></td>
+<td>System- or proactive-generated call.</td>
+<td>Chamada gerada pelo sistema / proactiva.</td>
+</tr>
+<tr class="odd">
+<td><code>auto_callback_status</code></td>
+<td><code>SMALLINT</code></td>
+<td>Derived automatic callback status.</td>
+<td>Estado calculado — callback automático.</td>
+</tr>
+<tr class="even">
+<td><code>human_callback_status</code></td>
+<td><code>SMALLINT</code></td>
+<td>Derived human callback status.</td>
+<td>Estado calculado — callback humano.</td>
+</tr>
+<tr class="odd">
+<td><code>location_resolved</code></td>
+<td><code>BOOLEAN</code></td>
+<td>True if location matched registry vs geocoded.</td>
+<td>Localização encontrada no cadastro vs. calculada.</td>
+</tr>
+<tr class="even">
+<td><code>location_desc</code></td>
+<td><code>VARCHAR(80)</code></td>
+<td>Address text as reported.</td>
+<td>Endereço informado.</td>
+</tr>
+<tr class="odd">
+<td><code>geom</code></td>
+<td><code>geometry(Point,4326)</code></td>
+<td>Call location.</td>
+<td>Localização da chamada.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="oms.call_feedback-contato-com-consumidor">4.2
+<code>oms.call_feedback</code> (contato com consumidor)</h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK to <code>audit.domain_event</code>.</td>
+<td>FK evento de alteração.</td>
+</tr>
+<tr class="odd">
+<td><code>call_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>oms.call</code>; null if proactive-only contact.</td>
+<td>FK chamada; nulo se só contato proactivo.</td>
+</tr>
+<tr class="even">
+<td><code>channel_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>Channel <strong>TYPE</strong> (human, automatic, proactive);
+audited.</td>
+<td>Canal; tabela <strong>CHANNEL</strong> auditada.</td>
+</tr>
+<tr class="odd">
+<td><code>system_msg_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>Template id for WhatsApp/SMS text; audited.</td>
+<td>FK mensagem de sistema (ex.: WhatsApp).</td>
+</tr>
+<tr class="even">
+<td><code>human_msg</code></td>
+<td><code>VARCHAR(1000)</code></td>
+<td>Human agent free-text comment.</td>
+<td>Comentário do contacto humano.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="oms.work_order">4.3 <code>oms.work_order</code></h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK to <code>audit.domain_event</code>.</td>
+<td>FK evento de alteração.</td>
+</tr>
+<tr class="odd">
+<td><code>order_number</code></td>
+<td><code>VARCHAR(24)</code></td>
+<td>Unique business order number.</td>
+<td>Número único da ordem.</td>
+</tr>
+<tr class="even">
+<td><code>status</code></td>
+<td><code>VARCHAR(32)</code></td>
+<td>Order lifecycle status.</td>
+<td>Estado da ordem.</td>
+</tr>
+<tr class="odd">
+<td><code>type_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>Order <strong>TYPE</strong>; FK; audited.</td>
+<td><strong>TYPE</strong> da ordem; controle auditado.</td>
+</tr>
+<tr class="even">
+<td><code>order_group</code></td>
+<td><code>VARCHAR(14)</code></td>
+<td>Grouping code.</td>
+<td>Código de grupo.</td>
+</tr>
+<tr class="odd">
+<td><code>aval_dif</code></td>
+<td><code>SMALLINT</code></td>
+<td>Evaluation / difficulty flag.</td>
+<td>Flag de avaliação / dificuldade.</td>
+</tr>
+<tr class="even">
+<td><code>metric_tp</code></td>
+<td><code>NUMERIC</code></td>
+<td>Dispatch phase metric (legacy TP).</td>
+<td>Métrica fase despacho (TP legado).</td>
+</tr>
+<tr class="odd">
+<td><code>metric_tl</code></td>
+<td><code>NUMERIC</code></td>
+<td>En route duration metric (TL).</td>
+<td>Métrica tempo a caminho (TL).</td>
+</tr>
+<tr class="even">
+<td><code>metric_tr</code></td>
+<td><code>NUMERIC</code></td>
+<td>Field completion metric (TR).</td>
+<td>Métrica conclusão em campo (TR).</td>
+</tr>
+<tr class="odd">
+<td><code>metric_ta</code></td>
+<td><code>NUMERIC</code></td>
+<td>Alternate completion metric (TA).</td>
+<td>Métrica alternativa de conclusão (TA).</td>
+</tr>
+<tr class="even">
+<td><code>base_op</code></td>
+<td><code>TEXT</code></td>
+<td>Operational base filter text.</td>
+<td>Base operacional (filtro).</td>
+</tr>
+<tr class="odd">
+<td><code>micro_region</code></td>
+<td><code>TEXT</code></td>
+<td>Micro-region filter.</td>
+<td>Micro-região.</td>
+</tr>
+<tr class="even">
+<td><code>feeder</code></td>
+<td><code>TEXT</code></td>
+<td>Feeder code / name.</td>
+<td>Alimentador.</td>
+</tr>
+<tr class="odd">
+<td><code>outage_count</code></td>
+<td><code>INTEGER</code></td>
+<td>Interruption count.</td>
+<td>Número de interrupções.</td>
+</tr>
+<tr class="even">
+<td><code>customers_interrupted_current</code></td>
+<td><code>INTEGER</code></td>
+<td>Currently interrupted customers (derived).</td>
+<td>Clientes actualmente interrompidos (calculado).</td>
+</tr>
+<tr class="odd">
+<td><code>number_of_calls</code></td>
+<td><code>INTEGER</code></td>
+<td>Call count (from calls).</td>
+<td>Número de chamadas associadas.</td>
+</tr>
+<tr class="even">
+<td><code>last_call_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Last related call timestamp.</td>
+<td>Data/hora da última chamada.</td>
+</tr>
+<tr class="odd">
+<td><code>duration_minutes</code></td>
+<td><code>INTEGER</code></td>
+<td>Computed duration minutes.</td>
+<td>Duração em minutos (calculada).</td>
+</tr>
+<tr class="even">
+<td><code>chi</code></td>
+<td><code>TEXT</code></td>
+<td>Customer-hours interrupted aggregate string/detail.</td>
+<td>CHI — agregado afetados × horas.</td>
+</tr>
+<tr class="odd">
+<td><code>dm_partial</code></td>
+<td><code>NUMERIC</code></td>
+<td>Partial mean duration (CHI / affected).</td>
+<td>Duração média parcial.</td>
+</tr>
+<tr class="even">
+<td><code>chi_projected</code></td>
+<td><code>NUMERIC</code></td>
+<td>Projected CHI (current + CI × ETR).</td>
+<td>CHI projetado.</td>
+</tr>
+<tr class="odd">
+<td><code>equipment_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>gis.equipment.id</code>.</td>
+<td>Equipamento afetado.</td>
+</tr>
+<tr class="even">
+<td><code>equipment_type_code</code></td>
+<td><code>VARCHAR(10)</code></td>
+<td>Equipment type shortcut FK / denormalized.</td>
+<td>Tipo de equipamento (atalho).</td>
+</tr>
+<tr class="odd">
+<td><code>crew_count</code></td>
+<td><code>INTEGER</code></td>
+<td>Assigned crew count.</td>
+<td>Número de equipas atribuídas.</td>
+</tr>
+<tr class="even">
+<td><code>prep_crew_1</code></td>
+<td><code>NUMERIC</code></td>
+<td>First crew prep time metric.</td>
+<td>Tempo preparo equipa 1 (calculado).</td>
+</tr>
+<tr class="odd">
+<td><code>prep_crew_2</code></td>
+<td><code>NUMERIC</code></td>
+<td>Second crew prep time metric.</td>
+<td>Tempo preparo equipa 2 (calculado).</td>
+</tr>
+<tr class="even">
+<td><code>etr</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Estimated time of restoration.</td>
+<td>Tempo estimado de restauro.</td>
+</tr>
+<tr class="odd">
+<td><code>auto_callback_status</code></td>
+<td><code>SMALLINT</code></td>
+<td>Derived auto callback.</td>
+<td>Callback automático (calculado).</td>
+</tr>
+<tr class="even">
+<td><code>human_callback_status</code></td>
+<td><code>SMALLINT</code></td>
+<td>Derived human callback.</td>
+<td>Callback humano (calculado).</td>
+</tr>
+<tr class="odd">
+<td><code>organization_label</code></td>
+<td><code>VARCHAR(50)</code></td>
+<td>Organization filter label.</td>
+<td>Organização (filtro UI).</td>
+</tr>
+<tr class="even">
+<td><code>etd</code></td>
+<td><code>TEXT</code></td>
+<td>ETD filter / text.</td>
+<td>ETD (filtro).</td>
+</tr>
+<tr class="odd">
+<td><code>complaint_summary</code></td>
+<td><code>VARCHAR(512)</code></td>
+<td>Derived complaint summary.</td>
+<td>Resumo de reclamações (calculado).</td>
+</tr>
+<tr class="even">
+<td><code>priority</code></td>
+<td><code>INTEGER</code></td>
+<td>Priority score.</td>
+<td>Prioridade (calculada ou manual).</td>
+</tr>
+<tr class="odd">
+<td><code>comment</code></td>
+<td><code>VARCHAR(1000)</code></td>
+<td>Internal comment.</td>
+<td>Comentário interno.</td>
+</tr>
+<tr class="even">
+<td><code>customer_message</code></td>
+<td><code>VARCHAR(255)</code></td>
+<td>Outbound message to customer.</td>
+<td>Mensagem para o cliente.</td>
+</tr>
+<tr class="odd">
+<td><code>organization_id</code></td>
+<td><code>INTEGER</code></td>
+<td>Organization FK for filters.</td>
+<td>ID organização (filtro).</td>
+</tr>
+<tr class="even">
+<td><code>order_created_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Order creation time.</td>
+<td>Data de criação da ordem.</td>
+</tr>
+<tr class="odd">
+<td><code>outage_start_time</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Outage / work start for filters.</td>
+<td>Início da interrupção / trabalho.</td>
+</tr>
+<tr class="even">
+<td><code>crew_owner_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK crew that owns edit rights via assignment.</td>
+<td>Equipa “dona” — pode editar a ordem.</td>
+</tr>
+<tr class="odd">
+<td><code>main_crew_id</code></td>
+<td><code>BIGINT</code></td>
+<td>First / primary assigned crew.</td>
+<td>Primeira equipa associada.</td>
+</tr>
+<tr class="even">
+<td><code>owner_id</code></td>
+<td><code>INTEGER</code></td>
+<td>FK <code>security.users.id</code>; human owner of the work order
+record.</td>
+<td>Responsável (utilizador) pela ordem.</td>
+</tr>
+<tr class="odd">
+<td><code>locked_by_id</code></td>
+<td><code>INTEGER</code></td>
+<td>FK <code>security.users.id</code>; optimistic edit lock
+(nullable).</td>
+<td>Bloqueio de edição por utilizador.</td>
+</tr>
+<tr class="even">
+<td><code>assigned_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>First assignment timestamp.</td>
+<td>Primeira atribuição.</td>
+</tr>
+<tr class="odd">
+<td><code>dispatched_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>First dispatch timestamp.</td>
+<td>Primeiro despacho.</td>
+</tr>
+<tr class="even">
+<td><code>enroute_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>First en-route timestamp.</td>
+<td>Primeiro “a caminho”.</td>
+</tr>
+<tr class="odd">
+<td><code>on_site_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>First on-site timestamp.</td>
+<td>Primeiro “no local”.</td>
+</tr>
+<tr class="even">
+<td><code>released_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>First release / clear timestamp.</td>
+<td>Primeira liberação.</td>
+</tr>
+<tr class="odd">
+<td><code>rank_priority</code></td>
+<td><code>NUMERIC</code></td>
+<td>Calculated rank vs all orders in base.</td>
+<td>Prioridade relativa na base.</td>
+</tr>
+<tr class="even">
+<td><code>repeat_incident</code></td>
+<td><code>VARCHAR(3)</code></td>
+<td>Repeat / reincident flag.</td>
+<td>Reincidente (calculado).</td>
+</tr>
+<tr class="odd">
+<td><code>incident_status</code></td>
+<td><code>VARCHAR(40)</code></td>
+<td>Incident status; FK <strong>TYPE</strong> table.</td>
+<td>Estado do incidente; tabela de <strong>TYPE</strong>.</td>
+</tr>
+<tr class="even">
+<td><code>planned_flag</code></td>
+<td><code>SMALLINT</code></td>
+<td>Planned order flag.</td>
+<td>Ordem planejada.</td>
+</tr>
+<tr class="odd">
+<td><code>operational_type</code></td>
+<td><code>VARCHAR(16)</code></td>
+<td>Operational subtype; FK <strong>TYPE</strong>.</td>
+<td>Subtipo operacional.</td>
+</tr>
+<tr class="even">
+<td><code>burst_et_calls</code></td>
+<td><code>INTEGER</code></td>
+<td>NLP/IA flag count — burst / oil / fire patterns in calls.</td>
+<td>Padrão ET / óleo / fogo (IA sobre texto).</td>
+</tr>
+<tr class="odd">
+<td><code>sectioned_wire_calls</code></td>
+<td><code>INTEGER</code></td>
+<td>NLP/IA flag — broken conductor mentions.</td>
+<td>Fio partido — padrão em chamadas.</td>
+</tr>
+<tr class="even">
+<td><code>distinct_calls</code></td>
+<td><code>INTEGER</code></td>
+<td>Distinct caller / call count metric.</td>
+<td>Chamadas distintas (calculado).</td>
+</tr>
+<tr class="odd">
+<td><code>broken_tree</code></td>
+<td><code>INTEGER</code></td>
+<td>NLP/IA flag — fallen tree on network.</td>
+<td>Árvore caída (texto / IA).</td>
+</tr>
+<tr class="even">
+<td><code>broken_pole</code></td>
+<td><code>INTEGER</code></td>
+<td>NLP/IA flag — broken pole.</td>
+<td>Poste caído (texto / IA).</td>
+</tr>
+<tr class="odd">
+<td><code>operational_unit</code></td>
+<td><code>TEXT</code></td>
+<td>Operational unit (UO).</td>
+<td>Unidade operacional.</td>
+</tr>
+<tr class="even">
+<td><code>location_desc</code></td>
+<td><code>VARCHAR(80)</code></td>
+<td>Derived from affected equipment.</td>
+<td>Localização (do equipamento).</td>
+</tr>
+<tr class="odd">
+<td><code>geom</code></td>
+<td><code>geometry(Geometry,4326)</code></td>
+<td>Derived equipment geometry.</td>
+<td>Coordenadas do equipamento afetado.</td>
+</tr>
+<tr class="even">
+<td><code>critical_customers</code></td>
+<td><code>INTEGER</code></td>
+<td>Count of critical customers affected.</td>
+<td>Consumidores críticos afectados.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="oms.task">4.4 <code>oms.task</code></h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK to <code>audit.domain_event</code>.</td>
+<td>FK evento de alteração.</td>
+</tr>
+<tr class="odd">
+<td><code>work_order_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>oms.work_order</code>.</td>
+<td>FK ordem.</td>
+</tr>
+<tr class="even">
+<td><code>crew_assignment_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>mwm.crew_order_assignment</code>.</td>
+<td>FK relação equipa–ordem.</td>
+</tr>
+<tr class="odd">
+<td><code>type_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>Task <strong>TYPE</strong>; may imply outage; audited.</td>
+<td><strong>TYPE</strong> da tarefa; pode gerar interrupção.</td>
+</tr>
+<tr class="even">
+<td><code>status_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>Task status; audited.</td>
+<td>Estado da tarefa.</td>
+</tr>
+<tr class="odd">
+<td><code>field_date</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Field-reported time.</td>
+<td>Data/hora de campo.</td>
+</tr>
+<tr class="even">
+<td><code>system_date</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>System-recorded time.</td>
+<td>Data/hora de sistema.</td>
+</tr>
+<tr class="odd">
+<td><code>equipment_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>gis.equipment</code>.</td>
+<td>Equipamento.</td>
+</tr>
+<tr class="even">
+<td><code>comments</code></td>
+<td><code>TEXT</code></td>
+<td>Task comments.</td>
+<td>Comentários da tarefa.</td>
+</tr>
+<tr class="odd">
+<td><code>parent_task_id</code></td>
+<td><code>BIGINT</code></td>
+<td>Parent task for hierarchy.</td>
+<td>Tarefa pai.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="oms.network_event-pode-gerar-customer_interruption">4.5
+<code>oms.network_event</code> (pode gerar
+<code>customer_interruption</code>)</h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK to <code>audit.domain_event</code>.</td>
+<td>FK evento de alteração.</td>
+</tr>
+<tr class="odd">
+<td><code>work_order_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>oms.work_order</code>.</td>
+<td>Ordem.</td>
+</tr>
+<tr class="even">
+<td><code>type_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>Network event <strong>TYPE</strong>; audited.</td>
+<td><strong>TYPE</strong> do evento de rede.</td>
+</tr>
+<tr class="odd">
+<td><code>field_date</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Field time.</td>
+<td>Data de campo.</td>
+</tr>
+<tr class="even">
+<td><code>system_date</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>System time.</td>
+<td>Data de sistema.</td>
+</tr>
+<tr class="odd">
+<td><code>equipment_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>gis.equipment</code>.</td>
+<td>Equipamento.</td>
+</tr>
+<tr class="even">
+<td><code>status_0</code></td>
+<td><code>SMALLINT</code></td>
+<td>Connection state phase 0 after event.</td>
+<td>Estado fase 0 após evento.</td>
+</tr>
+<tr class="odd">
+<td><code>status_1</code></td>
+<td><code>SMALLINT</code></td>
+<td>Phase A.</td>
+<td>Fase A.</td>
+</tr>
+<tr class="even">
+<td><code>status_2</code></td>
+<td><code>SMALLINT</code></td>
+<td>Phase B.</td>
+<td>Fase B.</td>
+</tr>
+<tr class="odd">
+<td><code>status_3</code></td>
+<td><code>SMALLINT</code></td>
+<td>Phase C.</td>
+<td>Fase C.</td>
+</tr>
+<tr class="even">
+<td><code>task_id</code></td>
+<td><code>BIGINT</code></td>
+<td>Optional FK <code>oms.task</code>.</td>
+<td>Tarefa opcional.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="oms.customer_interruption">4.6
+<code>oms.customer_interruption</code></h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>consumer_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>gis.consumer.id</code>.</td>
+<td>Consumidor interrompido.</td>
+</tr>
+<tr class="odd">
+<td><code>start_event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK opening event (<code>oms.network_event</code> or
+<code>audit.domain_event</code>).</td>
+<td>Evento de início.</td>
+</tr>
+<tr class="even">
+<td><code>end_event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK closing event; nullable while active.</td>
+<td>Evento de fim.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="schema-mwm">5. Schema <code>mwm</code></h2>
+<h3 id="mwm.crew">5.1 <code>mwm.crew</code></h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK to <code>audit.domain_event</code>.</td>
+<td>FK evento de alteração.</td>
+</tr>
+<tr class="odd">
+<td><code>crew_code</code></td>
+<td><code>VARCHAR(32)</code></td>
+<td>Unique crew code.</td>
+<td>Código da equipa.</td>
+</tr>
+<tr class="even">
+<td><code>name</code></td>
+<td><code>VARCHAR(120)</code></td>
+<td>Crew display name.</td>
+<td>Nome da equipa.</td>
+</tr>
+<tr class="odd">
+<td><code>status_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>Crew status; audited.</td>
+<td>Estado da equipa.</td>
+</tr>
+<tr class="even">
+<td><code>type_id</code></td>
+<td><code>SMALLINT</code></td>
+<td>Crew <strong>TYPE</strong>; audited.</td>
+<td><strong>TYPE</strong> da equipa.</td>
+</tr>
+<tr class="odd">
+<td><code>leader_name</code></td>
+<td><code>VARCHAR(120)</code></td>
+<td>Crew leader.</td>
+<td>Líder.</td>
+</tr>
+<tr class="even">
+<td><code>time_in_service</code></td>
+<td><code>INTERVAL</code></td>
+<td>Cumulative time in service.</td>
+<td>Tempo em serviço.</td>
+</tr>
+<tr class="odd">
+<td><code>last_order_id</code></td>
+<td><code>BIGINT</code></td>
+<td>Last work order FK.</td>
+<td>Última ordem.</td>
+</tr>
+<tr class="even">
+<td><code>current_order_id</code></td>
+<td><code>BIGINT</code></td>
+<td>Current work order FK.</td>
+<td>Ordem actual.</td>
+</tr>
+<tr class="odd">
+<td><code>next_order_id</code></td>
+<td><code>BIGINT</code></td>
+<td>Next work order FK.</td>
+<td>Próxima ordem.</td>
+</tr>
+<tr class="even">
+<td><code>idle_time</code></td>
+<td><code>INTERVAL</code></td>
+<td>Time without order.</td>
+<td>Tempo sem ordem.</td>
+</tr>
+<tr class="odd">
+<td><code>base_op</code></td>
+<td><code>VARCHAR(120)</code></td>
+<td>Operational base.</td>
+<td>Base operacional.</td>
+</tr>
+<tr class="even">
+<td><code>organization_id</code></td>
+<td><code>INTEGER</code></td>
+<td>Owning organization.</td>
+<td>Organização.</td>
+</tr>
+<tr class="odd">
+<td><code>last_crew_update_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Last crew record update.</td>
+<td>Última actualização da equipa.</td>
+</tr>
+<tr class="even">
+<td><code>last_coord_update_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Last GPS / coord update.</td>
+<td>Última actualização de coordenadas.</td>
+</tr>
+<tr class="odd">
+<td><code>current_neighborhood_id</code></td>
+<td><code>BIGINT</code></td>
+<td>Current neighborhood id.</td>
+<td>Bairro actual.</td>
+</tr>
+<tr class="even">
+<td><code>geom</code></td>
+<td><code>geometry(Point,4326)</code></td>
+<td>Last known position.</td>
+<td>Última posição conhecida.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mwm.crew_shift">5.2 <code>mwm.crew_shift</code></h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>crew_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>mwm.crew</code>.</td>
+<td>Equipa.</td>
+</tr>
+<tr class="odd">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK to <code>audit.domain_event</code>.</td>
+<td>FK evento de alteração.</td>
+</tr>
+<tr class="even">
+<td><code>shift_availability_start</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Shift window start.</td>
+<td>Início disponibilidade.</td>
+</tr>
+<tr class="odd">
+<td><code>shift_availability_end</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Shift window end.</td>
+<td>Fim disponibilidade.</td>
+</tr>
+<tr class="even">
+<td><code>last_change_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Last schedule change.</td>
+<td>Última alteração do turno.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mwm.crew_order_assignment-relação-equipaordem">5.3
+<code>mwm.crew_order_assignment</code> (relação equipa–ordem)</h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK to <code>audit.domain_event</code>.</td>
+<td>FK evento de alteração.</td>
+</tr>
+<tr class="odd">
+<td><code>work_order_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>oms.work_order</code>.</td>
+<td>Ordem.</td>
+</tr>
+<tr class="even">
+<td><code>task_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>oms.task</code>; optional.</td>
+<td>Tarefa.</td>
+</tr>
+<tr class="odd">
+<td><code>crew_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>mwm.crew</code>.</td>
+<td>Equipa.</td>
+</tr>
+<tr class="even">
+<td><code>status</code></td>
+<td><code>VARCHAR(16)</code></td>
+<td>Assignment lifecycle status.</td>
+<td>Estado da atribuição.</td>
+</tr>
+<tr class="odd">
+<td><code>assigned_time</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Assigned timestamp.</td>
+<td>Hora de atribuição.</td>
+</tr>
+<tr class="even">
+<td><code>dispatched_time</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Dispatched timestamp.</td>
+<td>Despacho.</td>
+</tr>
+<tr class="odd">
+<td><code>enroute_time</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>En route timestamp.</td>
+<td>A caminho.</td>
+</tr>
+<tr class="even">
+<td><code>arrived_time</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Arrived on site.</td>
+<td>Chegada ao local.</td>
+</tr>
+<tr class="odd">
+<td><code>released_time</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Released / cleared.</td>
+<td>Liberação.</td>
+</tr>
+<tr class="even">
+<td><code>is_main_crew</code></td>
+<td><code>BOOLEAN</code></td>
+<td>Primary crew for this order.</td>
+<td>Equipa principal.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Integridade:</em> evitar <code>ON DELETE CASCADE</code> cego;
+preferir <code>RESTRICT</code> ou arquivo em <code>audit</code> antes de
+apagar ordens históricas.</p>
+<h3 id="mwm.crew_route_daily-janela-curta-hoje-ontem">5.4
+<code>mwm.crew_route_daily</code> (janela curta — hoje / ontem)</h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>crew_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>mwm.crew</code>.</td>
+<td>Equipa.</td>
+</tr>
+<tr class="odd">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK to <code>audit.domain_event</code>.</td>
+<td>FK evento de alteração.</td>
+</tr>
+<tr class="even">
+<td><code>locations_today</code></td>
+<td><code>JSONB</code></td>
+<td>GeoJSON or array of timestamped points for current day.</td>
+<td>Pontos do dia actual + horários.</td>
+</tr>
+<tr class="odd">
+<td><code>locations_yesterday</code></td>
+<td><code>JSONB</code></td>
+<td>Previous day track.</td>
+<td>Pontos do dia anterior.</td>
+</tr>
+<tr class="even">
+<td><code>updated_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Last refresh.</td>
+<td>Última actualização.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mwm.crew_route_history-histórico-parametrizável">5.5
+<code>mwm.crew_route_history</code> (histórico parametrizável)</h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>crew_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK <code>mwm.crew</code>.</td>
+<td>Equipa.</td>
+</tr>
+<tr class="odd">
+<td><code>event_id</code></td>
+<td><code>BIGINT</code></td>
+<td>FK to <code>audit.domain_event</code>.</td>
+<td>FK evento de alteração.</td>
+</tr>
+<tr class="even">
+<td><code>window_start</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>History window start.</td>
+<td>Início da janela.</td>
+</tr>
+<tr class="odd">
+<td><code>window_end</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>History window end.</td>
+<td>Fim da janela.</td>
+</tr>
+<tr class="even">
+<td><code>route_geom</code></td>
+<td><code>geometry(MultiLineString,4326)</code></td>
+<td>Consolidated path.</td>
+<td>Trajecto consolidado (PostGIS).</td>
+</tr>
+<tr class="odd">
+<td><code>source</code></td>
+<td><code>VARCHAR(64)</code></td>
+<td>Tracker / AVL source system.</td>
+<td>Origem do rasto.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="evento-de-domínio-e-auditoria-audit">6. Evento de domínio e
+auditoria (<code>audit</code>)</h2>
+<h3
+id="audit.domain_event-rastreio-de-alterações-todas-as-tabelas-acima">6.1
+<code>audit.domain_event</code> (rastreio de alterações — todas as
+tabelas acima)</h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>BIGSERIAL</code></td>
+<td>Primary key; referenced by <code>event_id</code>.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>occurred_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Event timestamp.</td>
+<td>Momento do evento.</td>
+</tr>
+<tr class="odd">
+<td><code>actor_user_id</code></td>
+<td><code>INTEGER</code></td>
+<td>FK <code>security.users</code> optional.</td>
+<td>Utilizador actor.</td>
+</tr>
+<tr class="even">
+<td><code>source</code></td>
+<td><code>VARCHAR(32)</code></td>
+<td>ui, bot, integration, batch.</td>
+<td>Origem (UI, robô, integração).</td>
+</tr>
+<tr class="odd">
+<td><code>payload</code></td>
+<td><code>JSONB</code></td>
+<td>Optional change payload / diff.</td>
+<td>Detalhe opcional da alteração.</td>
+</tr>
+<tr class="even">
+<td><code>correlation_id</code></td>
+<td><code>VARCHAR(64)</code></td>
+<td>Cross-service correlation.</td>
+<td>ID de correlação.</td>
+</tr>
+</tbody>
+</table>
+<p>Tabela <strong>analógica</strong> por domínio (histórico append-only)
+e política de <strong>arquivo antes de DELETE</strong> replicam a ideia
+de <code>audit.operations_row_archive</code> já usada na POC.</p>
+<h3 id="security.users-utilizadores">6.2 <code>security.users</code>
+(utilizadores)</h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 12%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Tipo</th>
+<th>Comentário (EN)</th>
+<th>Comentário (PT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>SERIAL</code></td>
+<td>Primary key.</td>
+<td>Chave primária.</td>
+</tr>
+<tr class="even">
+<td><code>username</code></td>
+<td><code>VARCHAR(50)</code></td>
+<td>Unique login / handle.</td>
+<td>Identificador único.</td>
+</tr>
+<tr class="odd">
+<td><code>email</code></td>
+<td><code>VARCHAR(255)</code></td>
+<td>Contact email; optional in POC.</td>
+<td>E-mail opcional na POC.</td>
+</tr>
+<tr class="even">
+<td><code>first_name</code> / <code>last_name</code></td>
+<td><code>VARCHAR(100)</code></td>
+<td>Display name parts.</td>
+<td>Nome próprio / apelido.</td>
+</tr>
+<tr class="odd">
+<td><code>access_type</code></td>
+<td><code>VARCHAR(20)</code></td>
+<td><code>ADMIN</code>, <code>CONSULTA</code>,
+<code>OPERACAO</code>.</td>
+<td>Perfil de acesso.</td>
+</tr>
+<tr class="even">
+<td><code>status</code></td>
+<td><code>VARCHAR(20)</code></td>
+<td>Session / account hint (<code>online</code>, <code>offline</code>,
+…).</td>
+<td>Estado operacional.</td>
+</tr>
+<tr class="odd">
+<td><code>created_at</code></td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>Row creation.</td>
+<td>Criação do registo.</td>
+</tr>
+<tr class="even">
+<td><code>is_active</code></td>
+<td><code>BOOLEAN</code></td>
+<td>Account enabled; used with RBAC groups
+(<code>security.user_group_member</code>).</td>
+<td>Conta activa; usado com grupos RBAC.</td>
+</tr>
+</tbody>
+</table>
+<p>Grupos e privilégios (<code>security.privilege</code>,
+<code>security.user_group</code>, <code>security.group_privilege</code>,
+<code>security.user_group_member</code>): script
+<code>infra/sql/18_security_groups_privileges.sql</code>.</p>
+<p>A tabela legada <code>security.user</code> é migrada para
+<code>security.users</code> via
+<code>infra/sql/01_init_schemas.sql</code> /
+<code>04_gis_oms_mwm_domain.sql</code>.</p>
+<hr />
+<h2 id="schema-schematic-vistas-esquemáticas-tabgis-actual">7. Schema
+<code>schematic</code> (vistas esquemáticas — TabGis actual)</h2>
+<p>DDL: <code>infra/sql/16_schematic_schema.sql</code>; ligação opcional
+de nós a inventário:
+<code>infra/sql/17_schematic_link_poc_equipment.sql</code>.</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Tabela</th>
+<th>Função</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>schematic.network_view</code></td>
+<td>Vista lógica (unifilar, fluxo de potência ou híbrida); metadados
+JSON (ex.: tensão, código de alimentador).</td>
+</tr>
+<tr class="even">
+<td><code>schematic.view_node</code></td>
+<td>Nó ordenado (<code>seq_no</code>) no desenho; <code>focus_lat</code>
+/ <code>focus_lng</code> para «Ir para o mapa»;
+<code>equipment_id</code> opcional → <code>gis.equipment</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>schematic.view_edge</code></td>
+<td>Aresta entre nós; campos qualitativos de P/Q (kW / kVAr) para
+anotação MVP.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="poc-operations-tabgis-actual">8. POC <code>operations</code>
+(TabGis actual)</h2>
+<table>
+<colgroup>
+<col style="width: 48%" />
+<col style="width: 51%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><code>operations</code></th>
+<th>Mapa conceptual</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>operations.team</code></td>
+<td>→ <code>mwm.crew</code></td>
+</tr>
+<tr class="even">
+<td><code>operations.work_order</code></td>
+<td>→ <code>oms.work_order</code> (POC inclui <code>owner_id</code>,
+<code>locked_by_id</code> → <code>security.users</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>operations.team_order_displacement</code></td>
+<td>→ <code>mwm.crew_order_assignment</code></td>
+</tr>
+<tr class="even">
+<td><code>operations.team_route</code></td>
+<td>→ <code>mwm.crew_route_history</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>Documento orientado à partição <strong>gis / oms / mwm</strong>,
+ao <strong><code>schematic</code></strong> operacional e às dependências
+entre consumidores, equipamentos, chamadas, ordens, tarefas, eventos de
+rede e equipas.</em></p>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>EVENTS_ARCHITECTURE</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">EVENTS_ARCHITECTURE</h1>
+</header>
+<h1 id="arquitectura-de-eventos-schema-events">Arquitectura de eventos
+(schema <code>events</code>)</h1>
+<h2 id="objectivo">Objectivo</h2>
+<p>Um <strong>diário append-only</strong> de tudo o que importa rastrear
+entre domínios (OMS, MWM, segurança, <code>ref</code>, etc.),
+<strong>sem depender de MongoDB</strong>. O desenho da tabela
+<code>events.event</code> segue o mental de <strong>um documento por
+evento</strong> (como numa coleção Mongo ou num tópico Kafka), para
+facilitar <strong>ETL futuro</strong> para Mongo, Elastic ou outro
+sistema.</p>
+<h2 id="postgres-como-fonte-de-verdade">Postgres como fonte de
+verdade</h2>
+<table>
+<colgroup>
+<col style="width: 49%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Conceito Mongo / externo</th>
+<th>Postgres <code>events.event</code></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>_id</code> ObjectId</td>
+<td><code>id</code> (BIGSERIAL) + <code>event_uuid</code> (UUID estável
+para exportação)</td>
+</tr>
+<tr class="even">
+<td><code>insertedAt</code></td>
+<td><code>recorded_at</code></td>
+</tr>
+<tr class="odd">
+<td><code>occurredAt</code></td>
+<td><code>occurred_at</code></td>
+</tr>
+<tr class="even">
+<td><code>type</code> / <code>name</code></td>
+<td><code>event_type</code> (convenção
+<code>dominio.entidade.acção</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>body</code> / <code>data</code></td>
+<td><code>payload</code> (JSONB)</td>
+</tr>
+<tr class="even">
+<td><code>metadata</code></td>
+<td><code>metadata</code> (JSONB) — método HTTP, path,
+<code>correlation_id</code>, etc.</td>
+</tr>
+</tbody>
+</table>
+<p><code>aggregate_type</code> + <code>aggregate_id</code> permitem
+agrupar eventos por entidade de negócio
+(<code>operations.work_order</code>, <code>security.user</code>, …).</p>
+<h2 id="schema-e-função-canónica">Schema e função canónica</h2>
+<ul>
+<li>Script: <code>infra/sql/15_events_schema.sql</code></li>
+<li>Tabela: <code>events.event</code></li>
+<li>Função: <code>events.append_event(...)</code> — invocada
+<strong>apenas a partir da aplicação</strong> (sink em Node), não por
+triggers na base.</li>
+</ul>
+<p>Aplicar no contentor <code>db</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> exec <span class="at">-i</span> infra-db-1 psql <span class="at">-U</span> tabgis_admin <span class="at">-d</span> tabgis_db <span class="op">&lt;</span> infra/sql/15_events_schema.sql</span></code></pre></div>
+<h2 id="domínios-canónicos">Domínios canónicos</h2>
+<p>Lista em <code>backend/lib/events/constants.js</code>
+(<code>DOMAINS</code>): <code>oms</code>, <code>mwm</code>,
+<code>dms</code>, <code>ind</code>, <code>smt</code>, <code>tmp</code>,
+<code>aud</code>, <code>security</code>, <code>ref</code>,
+<code>gis</code>, <code>config</code>, <code>landbase</code>,
+<code>system</code>.</p>
+<p>Novos domínios: acrescentar a <code>DOMAINS</code> e documentar o
+prefixo de <code>event_type</code> aqui.</p>
+<h2 id="barramento-plugável-node">Barramento plugável (Node)</h2>
+<ul>
+<li><code>backend/lib/events/createEventBus.js</code> —
+<code>createEventBus({ sinks })</code>,
+<code>createDefaultEventBus(pool)</code>.</li>
+<li><code>backend/lib/events/createPgSink.js</code> — sink que chama
+<code>events.append_event</code>.</li>
+<li><strong>Desligar</strong> persistência:
+<code>EVENTS_DISABLED=1</code> no ambiente da API (barramento vazio;
+HTTP continua igual).</li>
+</ul>
+<h3 id="novos-sinks-ex.-mongo-fila">Novos sinks (ex.: Mongo, fila)</h3>
+<ol type="1">
+<li>Implementar <code>async function mongoSink(envelope) { ... }</code>
+com o mesmo contrato de <code>envelope</code> que
+<code>createPgSink</code>.</li>
+<li><code>createEventBus({ sinks: [createPgSink(pool), mongoSink] })</code>.</li>
+<li>Garantir que erros são capturados <strong>dentro</strong> do sink (o
+barramento já isola falhas entre sinks).</li>
+</ol>
+<h2 id="api-http">API HTTP</h2>
+<table>
+<colgroup>
+<col style="width: 32%" />
+<col style="width: 24%" />
+<col style="width: 44%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Método</th>
+<th>Rota</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>GET</code></td>
+<td><code>/api/events</code></td>
+<td>Lista recente; query: <code>limit</code>, <code>domain</code>,
+<code>event_type</code>, <code>aggregate_type</code>,
+<code>aggregate_id</code>, <code>since</code> (ISO),
+<code>correlation_id</code></td>
+</tr>
+<tr class="even">
+<td><code>GET</code></td>
+<td><code>/api/events/export</code></td>
+<td><strong>ETL / replicação:</strong> mesmos filtros que
+<code>/api/events</code>, mais <code>after_id</code> (default
+<code>0</code>) e <code>limit</code> (default <code>500</code>, máx.
+<code>2000</code>); ordenação <strong><code>id ASC</code></strong>;
+resposta <code>{ after_id, next_after_id, count, events }</code>. Com
+<strong><code>shape=mongo</code></strong>, cada elemento de
+<code>events</code> segue o formato documentado em §Compatibilidade com
+Mongo (<code>_id</code> = <code>event_uuid</code>). Privilégio:
+<code>module.aud</code> (com <code>SECURITY_ENFORCE=1</code>, igual a
+<code>/api/events</code>).</td>
+</tr>
+<tr class="odd">
+<td><code>PATCH</code></td>
+<td><code>/api/schematic/views/:viewId/nodes/:nodeId</code></td>
+<td>Actualiza rótulo e/ou par de coordenadas de foco do nó; emite evento
+com <code>event_type</code>
+<strong><code>schematic.view_node.updated</code></strong> e
+<strong><code>domain</code></strong> <code>gis</code> (requer privilégio
+<code>module.esq</code> quando <code>SECURITY_ENFORCE=1</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Cabeçalho opcional em <strong>todas</strong> as mutações:
+<code>X-Correlation-ID</code> (UUID). Se omitido, a API gera um UUID por
+pedido e regista-o em <code>metadata.correlation_id</code> e na coluna
+<code>correlation_id</code> quando o sink persiste.</p>
+<h2 id="eventos-já-emitidos-mutações">Eventos já emitidos
+(mutações)</h2>
+<table>
+<colgroup>
+<col style="width: 66%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><code>event_type</code></th>
+<th>Quando</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>security.user.created</code></td>
+<td><code>POST /api/users</code></td>
+</tr>
+<tr class="even">
+<td><code>security.user.updated</code></td>
+<td><code>PATCH /api/users/:id</code> (ex.: activar/desativar
+colaborador)</td>
+</tr>
+<tr class="odd">
+<td><code>security.user.group.updated</code></td>
+<td><code>PATCH /api/users/:id/group</code></td>
+</tr>
+<tr class="even">
+<td><code>security.group.privileges.updated</code></td>
+<td><code>PUT /api/security/groups/:id/privileges</code></td>
+</tr>
+<tr class="odd">
+<td><code>oms.work_order.updated</code></td>
+<td><code>PATCH /api/work-orders/:id</code></td>
+</tr>
+<tr class="even">
+<td><code>oms.work_order_task.created</code></td>
+<td><code>POST /api/work-orders/:id/tasks</code></td>
+</tr>
+<tr class="odd">
+<td><code>oms.work_order_task.updated</code></td>
+<td><code>PATCH /api/work-orders/:id/tasks/:task_id</code></td>
+</tr>
+<tr class="even">
+<td><code>ref.types_batch.updated</code></td>
+<td><code>PUT /api/ref/types</code></td>
+</tr>
+<tr class="odd">
+<td><code>schematic.view_node.updated</code></td>
+<td><code>PATCH /api/schematic/views/:viewId/nodes/:nodeId</code>
+(domínio <code>gis</code> — vista esquemática / unifilar)</td>
+</tr>
+</tbody>
+</table>
+<p>Outros domínios (DMS, IND, SMT, TMP, AUD, GIS, landbase) devem emitir
+<strong>a partir de rotas REST</strong> (ou de processos Node
+dedicados), com o mesmo contrato <code>emitWithRequest</code> /
+barramento.</p>
+<h2 id="política-sem-triggers-postgresql-em-events">Política: sem
+triggers PostgreSQL em <code>events</code></h2>
+<p>Não se usam triggers <code>AFTER INSERT/UPDATE</code> para alimentar
+<code>events.event</code>. Motivos: manutenção mais simples, testes no
+mesmo processo que a API, evitar lógica duplicada e efeitos surpresa em
+cargas em massa ou <code>psql</code>.</p>
+<p><strong>Alternativas quando a alteração não passa por uma rota HTTP
+existente:</strong></p>
+<ol type="1">
+<li><strong>Nova rota ou comando administrativo</strong> na API que
+encapsule a operação e chame <code>emitWithRequest</code> no fim.</li>
+<li><strong>Script ou job Node</strong> (cron, worker) que use o mesmo
+<code>pool</code> + <code>createPgSink</code> /
+<code>eventBus.emit</code>, reutilizando
+<code>events.append_event</code>.</li>
+<li><strong>Rever o fluxo</strong> para que alterações relevantes passem
+sempre por camadas que já emitem eventos.</li>
+</ol>
+<p>A função SQL <code>events.append_event</code> existe para ser chamada
+<strong>a partir do código da aplicação</strong> (sink), não como
+destino de triggers.</p>
+<h2 id="compatibilidade-com-mongo">Compatibilidade com Mongo</h2>
+<p>Um job de exportação pode chamar em ciclo
+<strong><code>GET /api/events/export?after_id=&lt;cursor&gt;&amp;limit=500&amp;shape=mongo</code></strong>
+(ou ler directamente
+<code>SELECT … FROM events.event WHERE id &gt; $cursor ORDER BY id ASC</code>).
+Usar <code>next_after_id</code> da resposta como próximo
+<code>after_id</code> até <code>count === 0</code>. Inserir na coleção
+<code>event_report</code> ou <code>events</code> com
+<strong><code>_id</code> = <code>event_uuid</code></strong> (dedupe
+idempotente).</p>
+<p>Implementação de referência do mapeamento <code>shape=mongo</code>:
+<code>backend/lib/events/eventRowToMongoShape.js</code>.</p>
+</body>
+</html>

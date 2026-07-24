@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Escopo_Projeto_GeoUtil</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Escopo_Projeto_GeoUtil</h1>
+</header>
+<h1
+id="escopo-do-projecto-tabgis-gestão-e-visualização-de-redes-de-utilities">Escopo
+do Projecto: TabGis — Gestão e Visualização de Redes de Utilities</h1>
+<blockquote>
+<p><strong>Nome da solução:</strong> TabGis <strong>Contexto
+académico:</strong> Projecto de doutoramento em Geoprocessamento com IA
+(GeoUtil) <strong>Estado operacional detalhado:</strong>
+<code>docs/mds/CONTEXT_STATE.md</code> <strong>Código-fonte
+(Git):</strong> <code>https://github.com/wesleyspo/TabGis.git</code> —
+marco V0 assinalado pela <em>tag</em>
+<strong><code>v0.1.0</code></strong> (ver também <code>VERSION</code> na
+raiz).</p>
+</blockquote>
+<hr />
+<h2 id="objectivos-do-sistema">1. Objectivos do Sistema</h2>
+<p>Desenvolver uma plataforma Web para gestão de activos de
+<strong>utilities</strong> (redes técnicas genéricas: energia,
+telecomunicações, águas, gás, etc.) com foco em:</p>
+<ul>
+<li><strong>Versionamento bi-temporal</strong> — diferenciação entre
+instâncias reais e históricas</li>
+<li><strong>Topologia de rede</strong> — modelação e validação de
+conectividade em PostGIS</li>
+<li><strong>Ligação esquemático ↔︎ mapa</strong> — cada elemento do
+esquemático tem metadado obrigatório <strong>“Ir para o
+Mapa”</strong></li>
+</ul>
+<hr />
+<h2 id="arquitectura-de-software-e-dados">2. Arquitectura de Software e
+Dados</h2>
+<table>
+<colgroup>
+<col style="width: 38%" />
+<col style="width: 35%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Componente</th>
+<th>Tecnologia</th>
+<th>Função</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Base de dados espacial</td>
+<td>PostgreSQL 15 + PostGIS 3.3</td>
+<td><strong>landbase</strong>, <strong>config</strong>,
+<strong>security</strong>, <strong>audit</strong>,
+<strong>operations</strong> (equipas, ordens, deslocamentos, rotas; ver
+<code>infra/sql/03_operations_schema.sql</code>)</td>
+</tr>
+<tr class="even">
+<td>Servidor de mapas</td>
+<td>GeoServer (oscarfonts)</td>
+<td>Publicação WMS/WFS a partir do PostGIS (<code>landbase</code>)</td>
+</tr>
+<tr class="odd">
+<td>Servidor de tiles raster</td>
+<td>TileServer GL (maptiler)</td>
+<td>MBTiles satélite offline</td>
+</tr>
+<tr class="even">
+<td>Proxy / frontend</td>
+<td>nginx:alpine</td>
+<td>Serve <code>frontend/</code>, proxy <code>/geoserver</code>,
+<code>/tiles</code> e <code>/api</code></td>
+</tr>
+<tr class="odd">
+<td>API de configuração / i18n</td>
+<td>Node.js (Express) em <code>backend/</code></td>
+<td><code>GET /api/translations/:lang</code> →
+<code>config.translation</code> no PostGIS</td>
+</tr>
+<tr class="even">
+<td>Logs / eventos</td>
+<td>MongoDB</td>
+<td><code>event_report</code>, histórico de BOTs (uso futuro)</td>
+</tr>
+<tr class="odd">
+<td>Orquestração</td>
+<td>Docker Compose (<code>infra/docker-compose.yml</code>)</td>
+<td>Stack local reprodutível</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>A IA (Ollama) para consulta em linguagem natural está prevista numa
+fase posterior à estabilização dos dados.</p>
+</blockquote>
+<hr />
+<h2 id="requisitos-funcionais">3. Requisitos Funcionais</h2>
+<h3 id="mapa-geográfico">3.1 Mapa geográfico</h3>
+<ul>
+<li>Basemap offline: limites IBGE (UF + municípios) + vias OSM,
+publicados via GeoServer WMS</li>
+<li>Recorte <strong>municípios-alvo</strong> (24),
+<strong>bairros-alvo</strong>, <strong>vias-alvo</strong> com estilos
+SLD versionados (<code>infra/geoserver/styles/</code>)</li>
+<li>Satélite offline: MBTiles raster (capital SP, zoom 10–17) servidos
+por TileServer GL</li>
+<li>Satélite online: tiles XYZ Esri (requer Internet)</li>
+<li><strong>Busca</strong> (não «filtro» de painel tabular): município e
+bairro via WFS (GeoServer)</li>
+<li>Identificação de feições ao clique (GetFeatureInfo WMS)</li>
+<li>Vista inicial calibrada por <strong>inset</strong> (tela cheia
+vs. mapa com painel 50%); botão Inicial reproduz a mesma lógica do
+primeiro carregamento</li>
+</ul>
+<h3 id="esquemático-fase-futura">3.2 Esquemático (fase futura)</h3>
+<ul>
+<li>Vista lógica/sequencial da rede</li>
+<li>Cada elemento deve permitir navegação para a posição geográfica
+correspondente no mapa</li>
+</ul>
+<h3 id="versionamento-bi-temporal-fase-futura">3.3 Versionamento
+bi-temporal (fase futura)</h3>
+<ul>
+<li>Separação entre estado real (actual) e estados históricos</li>
+<li>Persistência em PostGIS com campos de validade temporal</li>
+</ul>
+<h3 id="ia-consulta-em-linguagem-natural-fase-futura">3.4 IA / Consulta
+em linguagem natural (fase futura)</h3>
+<ul>
+<li>Interface Ollama sobre os dados da rede para suporte à decisão
+operacional</li>
+</ul>
+<hr />
+<h2 id="incremento-actual-basemap-offline-poc-operacional">4. Incremento
+actual: Basemap offline (POC operacional)</h2>
+<h3 id="componentes-entregues">4.1 Componentes entregues</h3>
+<table>
+<colgroup>
+<col style="width: 41%" />
+<col style="width: 27%" />
+<col style="width: 31%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Componente</th>
+<th>Estado</th>
+<th>Detalhe</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Limites IBGE (UF + municípios SP)</td>
+<td>✅ Operacional</td>
+<td><code>landbase.uf_sp</code>, <code>landbase.municipios_sp</code> →
+GeoServer</td>
+</tr>
+<tr class="even">
+<td>Vias OSM (estado SP)</td>
+<td>✅ Operacional</td>
+<td><code>landbase.vias_sp</code> com estilos por zoom</td>
+</tr>
+<tr class="odd">
+<td>Municípios-alvo (24 RMSP)</td>
+<td>✅ Operacional</td>
+<td><code>landbase.municipios_alvo_sp</code> → GeoServer</td>
+</tr>
+<tr class="even">
+<td>Bairros municípios-alvo</td>
+<td>✅ Operacional</td>
+<td><code>landbase.bairros_alvo_sp</code> → GeoServer</td>
+</tr>
+<tr class="odd">
+<td>Vias municípios-alvo</td>
+<td>✅ Operacional</td>
+<td><code>landbase.vias_alvo_sp</code> → GeoServer</td>
+</tr>
+<tr class="even">
+<td>Satélite online (Esri XYZ)</td>
+<td>✅ Operacional</td>
+<td>Requer Internet</td>
+</tr>
+<tr class="odd">
+<td>Satélite offline MBTiles</td>
+<td>✅ Operacional</td>
+<td>Zoom 10–17 (~3 GB), capital SP</td>
+</tr>
+<tr class="even">
+<td>Frontend web</td>
+<td>✅ Operacional</td>
+<td><code>http://homeserver:8088/</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="recorte-operacional-prioritário">4.2 Recorte operacional
+prioritário</h3>
+<p>24 municípios-alvo (capital e entorno metropolitano ampliado) — ver
+lista completa em <code>docs/mds/CONTEXT_STATE.md</code>.</p>
+<p>Scripts: <code>infra/scripts/setup_municipios_alvo_sp.sh</code></p>
+<h3 id="interface-de-visualização-frontend">4.3 Interface de
+visualização (frontend)</h3>
+<p>Princípios de UX estabelecidos:</p>
+<ul>
+<li><strong>Design-system dark:</strong> topbar e painel esquerdo
+(split-screen 50/50) <code>#0f172a</code>, tokens CSS centralizados,
+tipografia Inter</li>
+<li><strong>Topbar única (60px):</strong> esquerda TabGis + Início +
+Operação; centro camada de títulos <strong>Mapa</strong> (tela cheia) ou
+<strong>Centro de Controle | Mapa</strong> (vista dividida); direita
+Busca, Camadas, estado (<code>#status</code>), configurações</li>
+<li><strong>Operação:</strong> guias OMS → MWM → DMS → IND → SMT → ESQ →
+TMP → AUD; primeira guia OMS; cabeçalho compacto (guias + fechar); mocks
+alinhados a <code>operations.*</code> (ESQ consome
+<code>schematic.*</code> + REST)</li>
+<li><strong>Controlos:</strong> toggles CSS,
+<code>&lt;details&gt;</code> para Busca/Camadas, checkboxes e
+<em>pills</em> por camada</li>
+<li><strong>Modal de Traduções:</strong> idioma EN/PT/ES/IT + grelha de
+chaves (espelho parcial de <code>config.translation</code>)</li>
+<li><strong>i18n:</strong> <code>data-i18n</code> + API; ver
+<code>infra/sql/02_populate_translations.sql</code> e
+<code>docs/mds/CONTEXT_STATE.md</code></li>
+<li><strong>Feedback padronizado:</strong> mensagens de erro no padrão
+<code>"Falha em [X]. [Remediação] (ver docs/mds/DEPLOY_POC.md)."</code>
+na barra de estado da topbar</li>
+<li><strong>Código:</strong> blocos principais comentados em
+<code>main.js</code></li>
+</ul>
+<h3 id="centro-de-controlo-operacional-poc">4.4 Centro de controlo
+operacional (POC)</h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Aspecto</th>
+<th>Detalhe</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Persistência</strong></td>
+<td>Schema <code>operations</code>: <code>team</code>,
+<code>work_order</code>, <code>team_order_displacement</code>,
+<code>team_route</code></td>
+</tr>
+<tr class="even">
+<td><strong>Auditoria</strong></td>
+<td><code>audit.operations_row_archive</code> + triggers
+<code>BEFORE DELETE</code> — JSON da linha antes de eliminar</td>
+</tr>
+<tr class="odd">
+<td><strong>UI</strong></td>
+<td>Mocks até existir API; política: sem <code>DELETE</code> em
+<code>operations</code> sem arquivo</td>
+</tr>
+</tbody>
+</table>
+<h3 id="documentação-operacional">4.5 Documentação operacional</h3>
+<table>
+<colgroup>
+<col style="width: 55%" />
+<col style="width: 45%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Documento</th>
+<th>Conteúdo</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>docs/mds/CONTEXT_STATE.md</code></td>
+<td>Stack, frontend detalhado, SQL, SLD, zoom, i18n</td>
+</tr>
+<tr class="even">
+<td><code>docs/mds/DEPLOY_POC.md</code></td>
+<td>Deploy, ordem SQL, estilos GeoServer</td>
+</tr>
+<tr class="odd">
+<td><code>docs/mds/RUNBOOK_BASEMAP_SP_ESTADO.md</code></td>
+<td>Pipeline landbase SP estado</td>
+</tr>
+<tr class="even">
+<td><code>docs/mds/RUNBOOK_BASEMAP_SP.md</code></td>
+<td>Pipeline SP Centro (legado)</td>
+</tr>
+<tr class="odd">
+<td><code>frontend/README.md</code></td>
+<td>Cliente web</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="princípios-de-governança">5. Princípios de governança</h2>
+<ul>
+<li><strong>Open source:</strong> apenas ferramentas e dados de licença
+aberta no pipeline</li>
+<li><strong>Desacoplamento:</strong> landbase e rede de utilities são
+independentes — trocar área geográfica não exige reescrita do modelo de
+rede</li>
+<li><strong>Rastreabilidade de erros:</strong> qualquer falha visível ao
+utilizador inclui instrução de remediação e referência ao runbook, tanto
+no frontend como nos scripts shell</li>
+<li><strong>Credenciais:</strong> valores de POC definidos no
+<code>infra/docker-compose.yml</code>; rever antes de qualquer exposição
+pública</li>
+</ul>
+<hr />
+<h2 id="próximos-passos-roadmap">6. Próximos passos (roadmap)</h2>
+<table>
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 36%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Tarefa</th>
+<th>Prioridade</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Upgrade satélite MBTiles ZMAX=17 (1,2 m/px, ~3,5 h geração)</td>
+<td>✅ Concluído</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Interface split-screen + topbar com títulos Mapa / Centro de
+Controle + Busca</td>
+<td>✅ Concluído (POC)</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Schema <code>operations</code> + arquivo obrigatório pré-DELETE</td>
+<td>✅ Concluído (SQL); API pendente</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Modelagem da topologia de rede em PostGIS (schema dedicado)</td>
+<td>Alta</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>APIs REST para <code>operations</code>, rotas 48h, edição e logs
+MongoDB</td>
+<td>Média</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>Vista esquemática com ligação “Ir para o Mapa”</td>
+<td>Média</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>Integração IA (Ollama) para consulta sobre a rede</td>
+<td>Baixa (fase posterior)</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td>Endurecimento de segurança (TLS, credenciais, reverse proxy
+público)</td>
+<td>Fora do âmbito POC</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

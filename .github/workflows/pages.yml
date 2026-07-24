@@ -1,4 +1,6 @@
-# Publica a página de ajuda estática em GitHub Pages a cada push em main.
+# Publica documentação (MD→HTML+PDF) e ajuda estática em GitHub Pages a cada push em main.
+# Páginas MD: docs/mds/*.md → docs/html/*.html (Pandoc) + docs/pdfs/*.pdf (Docker pandoc/extra).
+# Artefacto _site/: index + *.html na raiz + /help/ (URLs planas; ver docs/README.md).
 # Activar em: Settings → Pages → Build and deployment → Source: GitHub Actions.
 name: Deploy GitHub Pages
 
@@ -22,11 +24,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Pandoc
+        run: sudo apt-get update && sudo apt-get install -y pandoc
+
+      - name: Pull Docker image for PDFs
+        run: docker pull pandoc/extra:3.1
+
       - name: Assemble site
         run: |
-          mkdir -p _site
-          cp frontend/help.html _site/index.html
-          cp frontend/styles.css _site/styles.css
+          chmod +x scripts/docs/build-pages-site.sh
+          scripts/docs/build-pages-site.sh "$GITHUB_WORKSPACE/_site"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

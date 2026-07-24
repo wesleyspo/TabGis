@@ -298,7 +298,40 @@
                 </label>
               </div>
 
+              <p class="layer-group-label" style="margin-top:12px;" data-i18n="UI_LAYER_GROUP_NETWORK">Rede técnica</p>
+              <div class="toggle-row">
+                <span class="toggle-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="5" cy="6" r="2"/>
+                    <circle cx="12" cy="12" r="2"/>
+                    <circle cx="19" cy="18" r="2"/>
+                    <line x1="6.5" y1="7.5" x2="10.5" y2="10.5"/>
+                    <line x1="13.5" y1="13.5" x2="17.5" y2="16.5"/>
+                  </svg>
+                  <span data-i18n="UI_LAYER_NETWORK_SPANS">Segmentos lineares da rede</span>
+                </span>
+                <label class="toggle-switch" data-i18n-title="UI_LAYER_NETWORK_SPANS_HINT" title="Topologia nativa PostGIS (gis.network_span)">
+                  <input type="checkbox" id="network_span_layer" />
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </label>
+              </div>
+
               <p class="layer-group-label" style="margin-top:12px;" data-i18n="UI_LAYER_GROUP_ADMIN">Limites administrativos</p>
+              <p class="layer-group-label" style="margin-top:12px;" data-i18n="UI_LAYER_GROUP_OMS_HEAT">OMS — mapa de calor (ordens agregadas)</p>
+              <div class="layer-heat-row">
+                <label class="layer-heat-label" for="oms-heat-metric">
+                  <span data-i18n="UI_LAYER_OMS_HEAT_METRIC">Métrica</span>
+                </label>
+                <select id="oms-heat-metric" class="layer-heat-select" title="OMS heat map">
+                  <option value="off" data-i18n="UI_LAYER_OMS_HEAT_NONE">Desligado (só marcadores)</option>
+                  <option value="orders" data-i18n="UI_LAYER_OMS_HEAT_ORDERS">Por quantidade de ordens</option>
+                  <option value="clients" data-i18n="UI_LAYER_OMS_HEAT_CLIENTS">Por clientes afectados</option>
+                  <option value="duration" data-i18n="UI_LAYER_OMS_HEAT_DURATION">Por duração aberta (horas)</option>
+                  <option value="priority" data-i18n="UI_LAYER_OMS_HEAT_PRIORITY">Por prioridade (soma dos scores)</option>
+                </select>
+              </div>
+              <p class="mock-hint layer-heat-hint" data-i18n="UI_LAYER_OMS_HEAT_HINT">Visível com zoom afastado (grelha agregada). Requer privilégio OMS.</p>
+
               <div class="toggle-row">
                 <span class="toggle-label">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -440,6 +473,8 @@
                 title="Indicadores operacionais, KPIs e painéis de desempenho (IND)."><span data-i18n="UI_OP_TAB_IND">Indicadores operacionais</span></button>
               <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="smt"
                 title="Instalações de campo, leituras e telemetria associada (SMT)."><span data-i18n="UI_OP_TAB_SMT">Instalações e telemetria</span></button>
+              <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="esq"
+                title="Esquemático, unifilar e anotação de fluxo (ligação geográfica por elemento)."><span data-i18n="UI_OP_TAB_ESQ">Esquemático &amp; unifilar</span></button>
               <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="tmp"
                 title="Clima, condições ambientais e impacto em operações de campo (TMP)."><span data-i18n="UI_OP_TAB_TMP">Clima e operações de campo</span></button>
               <button type="button" class="operacao-tab" role="tab" aria-selected="false" data-tab="aud"
@@ -550,6 +585,20 @@
                 <div class="mock-placeholder" data-i18n="UI_OP_SMT_PLACEHOLDER">Nenhum alarme activo na vista actual. Os fluxos de telemetria serão listados aqui.</div>
               </section>
 
+              <section class="operacao-panel" data-panel="esq" role="tabpanel">
+                <h4 class="mock-section-title" data-i18n="UI_OP_ESQ_TITLE">Esquemático de rede</h4>
+                <p class="mock-hint" data-i18n="UI_OP_ESQ_HINT">Unifilar estático e sequencial com indicação qualitativa de potência. Cada elemento dispõe de coordenadas de foco para «Ir para o mapa».</p>
+                <p id="esq-panel-status" class="mock-hint mock-hint--status" hidden></p>
+                <div class="esq-toolbar mock-form-inline" style="margin-bottom: 10px; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <label for="esq-view-select" class="esq-label" data-i18n="UI_OP_ESQ_SELECT_VIEW">Vista esquemática</label>
+                  <select id="esq-view-select" class="esq-select" disabled aria-label="Vista esquemática">
+                  </select>
+                </div>
+                <div id="esq-schematic-root" class="esq-schematic-root" aria-live="polite">
+                  <p class="mock-hint esq-schematic-prompt">Abra esta guia para carregar o unifilar.</p>
+                </div>
+              </section>
+
               <section class="operacao-panel" data-panel="tmp" role="tabpanel">
                 <h4 class="mock-section-title" data-i18n="UI_OP_TMP_TITLE">Clima</h4>
                 <p class="mock-hint">
@@ -611,13 +660,31 @@
           </div>
         </aside>
 
+        <div
+          id="oper-splitter-row"
+          class="oper-splitter oper-splitter--row"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Redimensionar altura do painel de operação"
+        ></div>
+
         <aside id="oper-detail-pane" class="oper-detail-pane" aria-label="Detalhe da selecção">
           <div class="oper-detail-pane__head" data-i18n="UI_OP_DETAIL_TITLE">Detalhe da selecção</div>
           <div id="oper-detail-body" class="oper-detail-pane__body"></div>
         </aside>
 
-        <!-- ── Mapa ───────────────────────────────────────── -->
-        <section id="map"></section>
+        <div
+          id="oper-splitter-col"
+          class="oper-splitter oper-splitter--col"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Redimensionar largura entre detalhe e mapa"
+        ></div>
+
+        <!-- ── Mapa (contentor dimensionável + cantos arredondados) ── -->
+        <div class="map-panel" id="map-panel">
+          <section id="map"></section>
+        </div>
         </div>
       </main>
 
@@ -962,11 +1029,21 @@
           <div class="modal-body">
             <p class="mock-hint" data-i18n="UI_OP_USERS_HINT">Gestão de contas internas: responsáveis por ordens e bloqueios de edição. O acesso por perfil será endurecido nas próximas iterações.</p>
             <p id="usr-panel-status" class="mock-hint mock-hint--status" hidden></p>
+            <div class="mock-form-inline" style="margin-bottom: 8px;">
+              <label for="session-user-select" style="font-size:12px; color:var(--text-muted);">Sessão simulada</label>
+              <select id="session-user-select" title="session user">
+                <option value="">Sem utilizador simulado</option>
+              </select>
+              <span id="session-user-pill" class="mock-hint">Sem restrições ativas</span>
+            </div>
             <form id="form-new-user" class="mock-form-inline">
               <input type="text" name="username" data-i18n-placeholder="UI_OP_PLACEHOLDER_USERNAME" placeholder="username" required maxlength="50" />
               <input type="email" name="email" data-i18n-placeholder="UI_OP_PLACEHOLDER_EMAIL" placeholder="email" maxlength="255" />
               <input type="text" name="first_name" data-i18n-placeholder="UI_OP_PLACEHOLDER_FIRST" placeholder="nome" maxlength="100" />
               <input type="text" name="last_name" data-i18n-placeholder="UI_OP_PLACEHOLDER_LAST" placeholder="apelido" maxlength="100" />
+              <select name="group_id" id="new-user-group" title="group">
+                <option value="">Grupo…</option>
+              </select>
               <select name="access_type" title="access_type">
                 <option value="CONSULTA">CONSULTA</option>
                 <option value="OPERACAO">OPERACAO</option>
@@ -980,13 +1057,24 @@
                   <tr>
                     <th data-i18n="UI_OP_COL_USERNAME">Utilizador</th>
                     <th data-i18n="UI_OP_COL_EMAIL">E-mail</th>
+                    <th>Grupo</th>
                     <th data-i18n="UI_OP_COL_ACCESS">Perfil</th>
                     <th data-i18n="UI_OP_COL_USER_STATUS">Estado</th>
+                    <th>Ações</th>
                   </tr>
                 </thead>
                 <tbody id="users-tbody"></tbody>
               </table>
             </div>
+            <hr style="margin: 14px 0; border-color: var(--border-input);" />
+            <h4 style="margin: 0 0 8px;">Grupos e privilégios</h4>
+            <div class="mock-form-inline" style="margin-bottom: 8px;">
+              <select id="security-group-select" title="group">
+                <option value="">Selecione grupo…</option>
+              </select>
+              <button type="button" id="btn-security-group-save" class="mock-btn mock-btn--ghost">Guardar privilégios</button>
+            </div>
+            <div id="security-privileges-grid" class="mock-table-wrap" style="max-height: 26vh; overflow:auto;"></div>
           </div>
         </div>
       </div>
@@ -1071,6 +1159,7 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
+    <script src="./vendor/leaflet-heat.js"></script>
     <script src="./main.js"></script>
   </body>
 </html>

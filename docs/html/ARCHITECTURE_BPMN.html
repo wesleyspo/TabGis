@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>ARCHITECTURE_BPMN</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">ARCHITECTURE_BPMN</h1>
+</header>
+<h1
+id="arquitectura-tabgis-vista-de-colaboração-notação-bpmn-like">Arquitectura
+TabGis — vista de colaboração (notação BPMN-like)</h1>
+<p>Este documento resume <strong>módulos externos e internos</strong> do
+TabGis numa vista próxima de <strong>diagrama de colaboração
+BPMN</strong> (pools e fluxos de mensagem). A sintaxe é <a
+href="https://mermaid.js.org/">Mermaid</a> (renderiza em GitHub, VS Code
+e no HTML gerado a partir deste MD).</p>
+<blockquote>
+<p><strong>Nota:</strong> não é ficheiro BPMN 2.0 XML; para editar em <a
+href="https://bpmn.io/">bpmn.io</a> pode transpor manualmente os pools
+abaixo. O ficheiro <a
+href="./TabGis.drawio"><code>TabGis.drawio</code></a> continua
+disponível para diagramas genéricos.</p>
+</blockquote>
+<hr />
+<h2 id="diagrama-colaboração-entre-sistemas">Diagrama — colaboração
+entre sistemas</h2>
+<pre class="mermaid"><code>flowchart TB
+  subgraph GH[&quot;Pool: GitHub&quot;]
+    direction TB
+    GH_REPO[(&quot;Repositório Git&lt;br/&gt;código + docs MD&quot;)]
+    GH_ACT[&quot;GitHub Actions&lt;br/&gt;CI + Pages&quot;]
+    GH_PAGES[&quot;GitHub Pages&lt;br/&gt;site estático&quot;]
+  end
+
+  subgraph OPS[&quot;Pool: Operação / homeserver&quot;]
+    direction TB
+    DC[&quot;Docker Compose&lt;br/&gt;infra/docker-compose.yml&quot;]
+    NG[&quot;nginx :8088&lt;br/&gt;estáticos + proxy&quot;]
+    API[&quot;Node.js API :3000&lt;br/&gt;Express&quot;]
+    PG[(&quot;PostgreSQL / PostGIS&lt;br/&gt;:5433&quot;)]
+    GS[&quot;GeoServer :8080&lt;br/&gt;WMS/WFS/SLD&quot;]
+    TS[&quot;TileServer GL :8081&lt;br/&gt;MBTiles raster&quot;]
+    MG[(&quot;MongoDB :27017&lt;br/&gt;&lt;b&gt;PENDENTE&lt;/b&gt;&lt;br/&gt;recepção event_report / réplica&quot;)]
+  end
+
+  subgraph EXT[&quot;Pool: Origens externas (online)&quot;]
+    OSM[&quot;OpenStreetMap&lt;br/&gt;Nominatim / dados vias&quot;]
+    IBGE[&quot;IBGE&lt;br/&gt;administrativo&quot;]
+    GSP[&quot;GeoSampa / PMSP&lt;br/&gt;WMS ortofoto&quot;]
+    ESRI[&quot;Esri World Imagery&lt;br/&gt;tiles XYZ&quot;]
+    OWM[&quot;Open-Meteo / RainViewer&lt;br/&gt;TMP&quot;]
+  end
+
+  IDE[&quot;Cursor / IDE&lt;br/&gt;Remote SSH&quot;]
+
+  IDE --&gt;|git push| GH_REPO
+  GH_REPO --&gt; GH_ACT
+  GH_ACT --&gt;|npm test| GH_REPO
+  GH_ACT --&gt;|deploy estático| GH_PAGES
+
+  IDE --&gt;|HTTP browser| NG
+  DC --&gt; NG
+  DC --&gt; API
+  DC --&gt; PG
+  DC --&gt; GS
+  DC --&gt; TS
+  DC --&gt; MG
+  NG --&gt;|/api| API
+  NG --&gt;|/geoserver| GS
+  NG --&gt;|/tiles| TS
+
+  API --&gt;|SQL| PG
+  GS --&gt;|SQL| PG
+
+  API -.-&gt;|&quot;futuro: sink eventos&quot;| MG
+
+  IBGE --&gt;|import scripts| PG
+  OSM --&gt;|import scripts| PG
+  GSP --&gt;|build MBTiles / WMS| TS
+
+  API --&gt;|geocode online| OSM
+  NG --&gt;|tiles raster cliente| ESRI
+  API --&gt;|previsão TMP| OWM</code></pre>
+<p><strong>Legenda:</strong> setas sólidas = fluxo actual típico;
+tracejado = <strong>planeado</strong> (recepção de eventos no Mongo sem
+perder Postgres como fonte de verdade).</p>
+<hr />
+<h2 id="tabela-módulos-e-papel">Tabela — módulos e papel</h2>
+<table>
+<colgroup>
+<col style="width: 32%" />
+<col style="width: 68%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Módulo</th>
+<th>Papel no TabGis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>GitHub</strong></td>
+<td>Versionamento; <strong>Actions</strong> (CI <code>npm test</code>,
+<strong>Pages</strong> para site estático).</td>
+</tr>
+<tr class="even">
+<td><strong>PostgreSQL / PostGIS</strong></td>
+<td>Dados operacionais, landbase, <code>events</code>, topologia
+<code>tabgis_utilities_topo</code>,
+<code>config.translation</code>.</td>
+</tr>
+<tr class="odd">
+<td><strong>GeoServer</strong></td>
+<td>Serviço de mapas vectoriais (WMS/WFS), estilos SLD.</td>
+</tr>
+<tr class="even">
+<td><strong>GeoSampa</strong></td>
+<td>Fonte de ortofoto / dados municipais; pipeline offline
+documentado.</td>
+</tr>
+<tr class="odd">
+<td><strong>TileServer GL</strong></td>
+<td>Servir MBTiles (satélite local, GeoSampa offline).</td>
+</tr>
+<tr class="even">
+<td><strong>nginx</strong></td>
+<td>Frontend, proxy same-origin para API, GeoServer e tiles.</td>
+</tr>
+<tr class="odd">
+<td><strong>Node.js / API</strong></td>
+<td>REST, i18n, OMS, eventos, topologia, esquemático.</td>
+</tr>
+<tr class="even">
+<td><strong>MongoDB</strong></td>
+<td><strong>Pendente</strong> como destino de <strong>recepção</strong>
+de cópias de eventos / <code>event_report</code> (Postgres mantém-se
+canónico).</td>
+</tr>
+<tr class="odd">
+<td><strong>Regionalização</strong></td>
+<td>Tabela <code>config.translation</code> +
+<code>02_populate_translations.sql</code> (EN, PT, ES, IT).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="linguagens-utilizadas">Linguagens utilizadas</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Linguagem / formato</th>
+<th>Onde</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>JavaScript</strong> (Node + browser)</td>
+<td><code>backend/</code>, <code>frontend/main.js</code></td>
+</tr>
+<tr class="even">
+<td><strong>HTML / CSS</strong></td>
+<td><code>frontend/index.html</code>, <code>help.html</code>,
+<code>styles.css</code></td>
+</tr>
+<tr class="odd">
+<td><strong>SQL</strong></td>
+<td><code>infra/sql/*.sql</code></td>
+</tr>
+<tr class="even">
+<td><strong>Shell</strong></td>
+<td><code>infra/scripts/</code>, <code>scripts/</code></td>
+</tr>
+<tr class="odd">
+<td><strong>Python</strong></td>
+<td>Scripts de tiles / reparação (<code>infra/scripts/*.py</code>)</td>
+</tr>
+<tr class="even">
+<td><strong>YAML</strong></td>
+<td><code>docker-compose</code>, GitHub Actions</td>
+</tr>
+<tr class="odd">
+<td><strong>TypeScript</strong></td>
+<td><code>e2e/</code> (Playwright)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="deploy">Deploy</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 66%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Camada</th>
+<th>Documentação</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Docker Compose (homeserver)</td>
+<td><a href="./DEPLOY.md">DEPLOY.md</a>, <a
+href="./CONTEXT_STATE.md">CONTEXT_STATE.md</a></td>
+</tr>
+<tr class="even">
+<td>GitHub Pages</td>
+<td><a
+href="../.github/workflows/pages.yml">.github/workflows/pages.yml</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="mapas-offline-baseline-de-referência">Mapas offline — baseline
+de referência</h2>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 73%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Pacote</th>
+<th>Referência detalhada</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Satélite SP (MBTiles)</td>
+<td><a href="./CONTEXT_STATE.md">CONTEXT_STATE.md</a> (secção MBTiles) e
+<a href="./MAPS_AND_SOURCES.md">MAPS_AND_SOURCES.md</a></td>
+</tr>
+<tr class="even">
+<td>GeoSampa</td>
+<td><a
+href="./GeoSampa_offline_operacao.md">GeoSampa_offline_operacao.md</a></td>
+</tr>
+</tbody>
+</table>
+<p>Data de <strong>snapshot</strong> sugerida para relatórios: ver campo
+no topo de <a href="./MAPS_AND_SOURCES.md">MAPS_AND_SOURCES.md</a>.</p>
+</body>
+</html>

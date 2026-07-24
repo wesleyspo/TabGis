@@ -17,6 +17,8 @@ test('escadas de zoom monótonas', () => {
   assert.strictEqual(omsAggregateCellMetersFromZoom(10), 5500);
   assert.strictEqual(omsAggregateCellMetersFromZoom(11), 3500);
   assert.strictEqual(omsAggregateCellMetersFromZoom(12), 1800);
-  assert.strictEqual(omsAggregateCellMetersFromZoom(13), 900);
-  assert.strictEqual(omsAggregateCellMetersFromZoom(22), 900);
+  assert.strictEqual(omsAggregateCellMetersFromZoom(13), 1100);
+  assert.strictEqual(omsAggregateCellMetersFromZoom(14), 700);
+  assert.strictEqual(omsAggregateCellMetersFromZoom(15), 450);
+  assert.strictEqual(omsAggregateCellMetersFromZoom(22), 350);
 });

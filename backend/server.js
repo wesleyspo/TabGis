@@ -7,6 +7,13 @@ const { omsAggregateCellMetersFromZoom } = require('./lib/omsAggregate');
 const { geocodeQueryTooShort } = require('./lib/geocodeQuery');
 const { formatLocalStreetDisplayName } = require('./lib/localGeocodeFormat');
 const { createDefaultEventBus } = require('./lib/events/createEventBus');
+const { validateViewNodePatch } = require('./lib/schematic/validateViewNodePatch');
+const { eventRowToMongoShape } = require('./lib/events/eventRowToMongoShape');
+const {
+  validateSpanCreate,
+  validateSpanPatch,
+  lineStringGeoJson,
+} = require('./lib/topology/validateSpanWrite');
 
 /** Obrigatório pela política de uso do Nominatim (https://operations.osmfoundation.org/policies/nominatim/). */
 const NOMINATIM_USER_AGENT =
@@ -47,6 +54,93 @@ async function emitWithRequest(req, envelope) {
     correlationId: envelope.correlationId || req.correlationId,
     metadata: meta,
   });
+}
+
+async function listUsersWithGroup(poolLike) {
+  const { rows } = await poolLike.query(
+    `SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.access_type, u.status,
+            u.is_active, u.created_at,
+            g.id AS group_id, g.code AS group_code, g.name AS group_name
+     FROM security.users u
+     LEFT JOIN LATERAL (
+       SELECT gm.group_id
+       FROM security.user_group_member gm
+       WHERE gm.user_id = u.id
+       ORDER BY gm.assigned_at DESC
+       LIMIT 1
+     ) m ON TRUE
+     LEFT JOIN security.user_group g ON g.id = m.group_id
+     ORDER BY u.username`
+  );
+  return rows;
+}
+
+function getRequestUserId(req) {
+  const raw = req.get('x-tabgis-user-id');
+  if (!raw) return null;
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+async function getEffectiveAccess(userId) {
+  const id = Number(userId);
+  if (!Number.isFinite(id) || id < 1) return null;
+  const { rows } = await pool.query(
+    `SELECT u.id AS user_id, u.username, u.is_active,
+            g.id AS group_id, g.code AS group_code, g.name AS group_name, g.is_admin,
+            COALESCE(array_agg(p.code ORDER BY p.code) FILTER (WHERE p.code IS NOT NULL), '{}') AS privilege_codes
+     FROM security.users u
+     LEFT JOIN LATERAL (
+       SELECT gm.group_id
+       FROM security.user_group_member gm
+       WHERE gm.user_id = u.id
+       ORDER BY gm.assigned_at DESC
+       LIMIT 1
+     ) m ON TRUE
+     LEFT JOIN security.user_group g ON g.id = m.group_id
+     LEFT JOIN security.group_privilege gp ON gp.group_id = g.id
+     LEFT JOIN security.privilege p ON p.id = gp.privilege_id
+     WHERE u.id = $1
+     GROUP BY u.id, u.username, u.is_active, g.id, g.code, g.name, g.is_admin`,
+    [id]
+  );
+  if (!rows.length) return null;
+  const r = rows[0];
+  const codes = Array.isArray(r.privilege_codes) ? r.privilege_codes : [];
+  const privilegeSet = new Set(codes);
+  return {
+    user_id: Number(r.user_id),
+    username: r.username,
+    is_active: r.is_active !== false,
+    group_id: r.group_id != null ? Number(r.group_id) : null,
+    group_code: r.group_code || null,
+    group_name: r.group_name || null,
+    is_admin: r.is_admin === true,
+    privilege_codes: codes,
+    privileges: {
+      dms: r.is_admin === true || privilegeSet.has('module.dms'),
+      parameters: r.is_admin === true || privilegeSet.has('config.parameters'),
+      ref_types: r.is_admin === true || privilegeSet.has('config.ref_types'),
+      users: r.is_admin === true || privilegeSet.has('config.users'),
+    },
+  };
+}
+
+async function ensurePrivilege(req, res, privilegeCode) {
+  if (process.env.SECURITY_ENFORCE !== '1') return true;
+  const uid = getRequestUserId(req);
+  if (!uid) {
+    res.status(401).json({ error: 'Missing X-TabGis-User-Id for this operation' });
+    return false;
+  }
+  const access = await getEffectiveAccess(uid);
+  if (!access || access.is_active === false) {
+    res.status(403).json({ error: 'User is inactive or unknown' });
+    return false;
+  }
+  if (access.is_admin || access.privilege_codes.includes(privilegeCode)) return true;
+  res.status(403).json({ error: `Missing privilege: ${privilegeCode}` });
+  return false;
 }
 
 /**
@@ -163,6 +257,53 @@ app.get('/api/geocode-local', async (req, res) => {
   }
 });
 
+const OPEN_METEO_FORECAST_BASE =
+  process.env.OPEN_METEO_FORECAST_BASE || 'https://api.open-meteo.com/v1/forecast';
+
+/**
+ * Proxy de leitura para Open-Meteo (sem chave). O browser chama a API TabGis;
+ * o contentor contacta o serviço externo — útil quando o posto de trabalho não tem saída directa.
+ * @see https://open-meteo.com/en/terms
+ */
+app.get('/api/weather/open-meteo', async (req, res) => {
+  const latRaw = req.query.latitude ?? req.query.lat;
+  const lngRaw = req.query.longitude ?? req.query.lon;
+  const lat = latRaw !== undefined && String(latRaw).trim() !== '' ? Number(latRaw) : -23.55052;
+  const lng = lngRaw !== undefined && String(lngRaw).trim() !== '' ? Number(lngRaw) : -46.633308;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return res.status(400).json({ error: 'Invalid latitude or longitude' });
+  }
+  const upstream = new URL(OPEN_METEO_FORECAST_BASE);
+  upstream.searchParams.set('latitude', String(lat));
+  upstream.searchParams.set('longitude', String(lng));
+  upstream.searchParams.set(
+    'current',
+    'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,apparent_temperature'
+  );
+  upstream.searchParams.set('timezone', 'America/Sao_Paulo');
+  upstream.searchParams.set('wind_speed_unit', 'kmh');
+
+  const ac = new AbortController();
+  const to = setTimeout(() => ac.abort(), 15000);
+  try {
+    const r = await fetch(upstream.toString(), {
+      signal: ac.signal,
+      headers: { Accept: 'application/json' },
+    });
+    clearTimeout(to);
+    if (!r.ok) {
+      console.error('GET /api/weather/open-meteo upstream', r.status, upstream.hostname);
+      return res.status(502).json({ error: 'Open-Meteo returned an error status' });
+    }
+    const j = await r.json();
+    res.json(j);
+  } catch (error) {
+    clearTimeout(to);
+    console.error('GET /api/weather/open-meteo', error);
+    res.status(502).json({ error: 'Failed to reach Open-Meteo' });
+  }
+});
+
 app.get('/api/translations/:lang', async (req, res) => {
   try {
     const { lang } = req.params;
@@ -188,14 +329,10 @@ app.get('/api/translations/:lang', async (req, res) => {
   }
 });
 
-/** Utilizadores (security.users) */
+/** Utilizadores (security.users) + grupo activo (security.user_group_member) */
 app.get('/api/users', async (_req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT id, username, email, first_name, last_name, access_type, status, created_at
-       FROM security.users
-       ORDER BY username`
-    );
+    const rows = await listUsersWithGroup(pool);
     res.json(rows);
   } catch (error) {
     console.error('GET /api/users', error);
@@ -204,18 +341,35 @@ app.get('/api/users', async (_req, res) => {
 });
 
 app.post('/api/users', async (req, res) => {
+  const client = await pool.connect();
   try {
-    const { username, email, first_name, last_name, access_type } = req.body || {};
+    const { username, email, first_name, last_name, access_type, group_id } = req.body || {};
     if (!username || String(username).trim() === '') {
       return res.status(400).json({ error: 'username is required' });
     }
-    const { rows } = await pool.query(
+    await client.query('BEGIN');
+    const { rows } = await client.query(
       `INSERT INTO security.users (username, email, first_name, last_name, access_type)
        VALUES ($1, $2, $3, $4, COALESCE($5, 'CONSULTA'))
-       RETURNING id, username, email, first_name, last_name, access_type, status, created_at`,
+       RETURNING id, username, email, first_name, last_name, access_type, status, is_active, created_at`,
       [String(username).trim(), email || null, first_name || null, last_name || null, access_type || null]
     );
     const created = rows[0];
+    const gid = Number(group_id);
+    if (Number.isFinite(gid) && gid > 0) {
+      const gExists = await client.query(`SELECT id FROM security.user_group WHERE id = $1`, [gid]);
+      if (!gExists.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Invalid group_id' });
+      }
+      await client.query(
+        `INSERT INTO security.user_group_member (user_id, group_id)
+         VALUES ($1, $2)
+         ON CONFLICT (user_id, group_id) DO NOTHING`,
+        [created.id, gid]
+      );
+    }
+    await client.query('COMMIT');
     await emitWithRequest(req, {
       domain: 'security',
       eventType: 'security.user.created',
@@ -227,18 +381,263 @@ app.post('/api/users', async (req, res) => {
       },
       actorType: 'api',
     });
-    res.status(201).json(created);
+    const list = await listUsersWithGroup(pool);
+    const full = list.find((u) => Number(u.id) === Number(created.id)) || created;
+    res.status(201).json(full);
   } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (_) {
+      /* ignore */
+    }
     if (error.code === '23505') {
       return res.status(409).json({ error: 'Username already exists' });
     }
     console.error('POST /api/users', error);
     res.status(500).json({ error: 'Failed to create user' });
+  } finally {
+    client.release();
+  }
+});
+
+app.patch('/api/users/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+  const body = req.body || {};
+  const sets = [];
+  const vals = [];
+  if (Object.prototype.hasOwnProperty.call(body, 'is_active')) {
+    const isActive = !!body.is_active;
+    sets.push(`is_active = $${vals.length + 1}`);
+    vals.push(isActive);
+    sets.push(`status = $${vals.length + 1}`);
+    vals.push(isActive ? 'active' : 'inactive');
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'access_type')) {
+    const at = String(body.access_type || '').trim().toUpperCase();
+    if (!at) return res.status(400).json({ error: 'access_type cannot be empty' });
+    sets.push(`access_type = $${vals.length + 1}`);
+    vals.push(at);
+  }
+  if (sets.length === 0) {
+    return res.status(400).json({ error: 'No fields to update' });
+  }
+  vals.push(id);
+  try {
+    const { rows } = await pool.query(
+      `UPDATE security.users
+       SET ${sets.join(', ')}
+       WHERE id = $${vals.length}
+       RETURNING id`,
+      vals
+    );
+    if (!rows.length) return res.status(404).json({ error: 'User not found' });
+    await emitWithRequest(req, {
+      domain: 'security',
+      eventType: 'security.user.updated',
+      aggregateType: 'security.user',
+      aggregateId: String(id),
+      payload: {
+        is_active: body.is_active,
+        access_type: body.access_type,
+      },
+      actorType: 'api',
+    });
+    const list = await listUsersWithGroup(pool);
+    const full = list.find((u) => Number(u.id) === id);
+    res.json(full || { id });
+  } catch (error) {
+    console.error('PATCH /api/users/:id', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+app.patch('/api/users/:id/group', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+  const groupIdRaw = req.body ? req.body.group_id : null;
+  const groupId = groupIdRaw == null || groupIdRaw === '' ? null : Number(groupIdRaw);
+  if (groupId !== null && (!Number.isFinite(groupId) || groupId < 1)) {
+    return res.status(400).json({ error: 'Invalid group_id' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const u = await client.query(`SELECT id FROM security.users WHERE id = $1`, [id]);
+    if (!u.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (groupId !== null) {
+      const g = await client.query(`SELECT id FROM security.user_group WHERE id = $1`, [groupId]);
+      if (!g.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Group not found' });
+      }
+    }
+    await client.query(`DELETE FROM security.user_group_member WHERE user_id = $1`, [id]);
+    if (groupId !== null) {
+      await client.query(
+        `INSERT INTO security.user_group_member (user_id, group_id) VALUES ($1, $2)`,
+        [id, groupId]
+      );
+    }
+    await client.query('COMMIT');
+    await emitWithRequest(req, {
+      domain: 'security',
+      eventType: 'security.user.group.updated',
+      aggregateType: 'security.user',
+      aggregateId: String(id),
+      payload: {
+        group_id: groupId,
+      },
+      actorType: 'api',
+    });
+    const list = await listUsersWithGroup(pool);
+    const full = list.find((u2) => Number(u2.id) === id);
+    res.json(full || { id, group_id: groupId });
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (_) {
+      /* ignore */
+    }
+    console.error('PATCH /api/users/:id/group', error);
+    res.status(500).json({ error: 'Failed to update user group' });
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/security/privileges', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, code, label_pt, label_en, description
+       FROM security.privilege
+       ORDER BY code`
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('GET /api/security/privileges', error);
+    res.status(500).json({ error: 'Failed to list privileges' });
+  }
+});
+
+app.get('/api/security/groups', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT g.id, g.code, g.name, g.is_admin, g.is_system,
+              COALESCE(
+                jsonb_agg(
+                  jsonb_build_object(
+                    'id', p.id,
+                    'code', p.code,
+                    'label_pt', p.label_pt,
+                    'label_en', p.label_en
+                  )
+                  ORDER BY p.code
+                ) FILTER (WHERE p.id IS NOT NULL),
+                '[]'::jsonb
+              ) AS privileges
+       FROM security.user_group g
+       LEFT JOIN security.group_privilege gp ON gp.group_id = g.id
+       LEFT JOIN security.privilege p ON p.id = gp.privilege_id
+       GROUP BY g.id, g.code, g.name, g.is_admin, g.is_system
+       ORDER BY g.name`
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('GET /api/security/groups', error);
+    res.status(500).json({ error: 'Failed to list groups' });
+  }
+});
+
+app.get('/api/security/users/:id/effective-access', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+  try {
+    const access = await getEffectiveAccess(id);
+    if (!access) return res.status(404).json({ error: 'User not found' });
+    res.json(access);
+  } catch (error) {
+    console.error('GET /api/security/users/:id/effective-access', error);
+    res.status(500).json({ error: 'Failed to compute effective access' });
+  }
+});
+
+app.put('/api/security/groups/:id/privileges', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'config.users'))) return;
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid group id' });
+  }
+  const codes = Array.isArray(req.body?.privilege_codes)
+    ? req.body.privilege_codes.map((c) => String(c || '').trim()).filter(Boolean)
+    : null;
+  if (!codes) {
+    return res.status(400).json({ error: 'Expected privilege_codes[]' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const g = await client.query(`SELECT id, code, is_admin FROM security.user_group WHERE id = $1`, [id]);
+    if (!g.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    if (g.rows[0].is_admin) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Administrator group always has all privileges' });
+    }
+    const pRows = await client.query(
+      `SELECT id, code FROM security.privilege WHERE code = ANY($1::text[])`,
+      [codes]
+    );
+    if (pRows.rows.length !== codes.length) {
+      const found = new Set(pRows.rows.map((r) => r.code));
+      const missing = codes.filter((c) => !found.has(c));
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Unknown privilege codes: ${missing.join(', ')}` });
+    }
+    await client.query(`DELETE FROM security.group_privilege WHERE group_id = $1`, [id]);
+    for (const r of pRows.rows) {
+      await client.query(
+        `INSERT INTO security.group_privilege (group_id, privilege_id) VALUES ($1, $2)`,
+        [id, r.id]
+      );
+    }
+    await client.query('COMMIT');
+    await emitWithRequest(req, {
+      domain: 'security',
+      eventType: 'security.group.privileges.updated',
+      aggregateType: 'security.group',
+      aggregateId: String(id),
+      payload: { privilege_codes: codes },
+      actorType: 'api',
+    });
+    res.json({ ok: true });
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (_) {
+      /* ignore */
+    }
+    console.error('PUT /api/security/groups/:id/privileges', error);
+    res.status(500).json({ error: 'Failed to update group privileges' });
+  } finally {
+    client.release();
   }
 });
 
 /** Ordens — operations.work_order + equipa, responsável e bloqueio (eventos excluídos da lista OMS) */
-app.get('/api/work-orders', async (_req, res) => {
+app.get('/api/work-orders', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.oms'))) return;
   try {
     const { rows } = await pool.query(
       `SELECT wo.id, wo.order_code, wo.category, wo.order_type, wo.summary, wo.description, wo.status, wo.priority,
@@ -274,13 +673,15 @@ app.get('/api/work-orders', async (_req, res) => {
  * - Legado: group=municipio | bairro (vistas por nome administrativo).
  */
 app.get('/api/oms/work-orders/aggregate', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.oms'))) return;
   try {
     const zoomRaw = req.query.zoom;
     if (zoomRaw !== undefined && String(zoomRaw).trim() !== '') {
       const cellM = omsAggregateCellMetersFromZoom(zoomRaw);
       const { rows } = await pool.query(
         `SELECT cluster_id, orders_count, center_lat, center_lng,
-                first_started_at, last_updated_at, area_hint
+                first_started_at, last_updated_at, area_hint,
+                customers_sum, duration_hours_sum, priority_score_sum
          FROM operations.fn_oms_orders_spatial_clusters($1::double precision, 1)
          ORDER BY orders_count DESC, cluster_id`,
         [cellM]
@@ -312,7 +713,8 @@ app.get('/api/oms/work-orders/aggregate', async (req, res) => {
 /**
  * Rotas de campo de demonstração (mwm.demo_field_*) — equipas com CARRINHO / CARRO / MOTO.
  */
-app.get('/api/mwm/demo-routes', async (_req, res) => {
+app.get('/api/mwm/demo-routes', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.mwm'))) return;
   try {
     const { rows } = await pool.query(
       `SELECT r.id AS route_id, r.route_date::text AS route_date, r.label,
@@ -592,8 +994,9 @@ app.patch('/api/work-orders/:id/tasks/:task_id', async (req, res) => {
   }
 });
 
-/** Ordens canónicas OMS (leitura) — alinhado a docs/Database_Structure_Context.md */
-app.get('/api/oms/work-orders', async (_req, res) => {
+/** Ordens canónicas OMS (leitura) — alinhado a docs/mds/Database_Structure_Context.md */
+app.get('/api/oms/work-orders', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.oms'))) return;
   try {
     const { rows } = await pool.query(
       `SELECT wo.id, wo.order_number, wo.status, wo.type_id, wo.priority, wo.owner_id, wo.locked_by_id,
@@ -613,7 +1016,8 @@ app.get('/api/oms/work-orders', async (_req, res) => {
 });
 
 /** Equipas em campo — operations.team */
-app.get('/api/teams', async (_req, res) => {
+app.get('/api/teams', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.mwm'))) return;
   try {
     const { rows } = await pool.query(
       `SELECT t.id, t.team_code, t.name, t.leader_name, t.skill, t.team_type, t.owner_org, t.zone,
@@ -640,7 +1044,8 @@ const REF_DOMAIN_TYPE_TABLES = [
   'call_type',
 ];
 
-app.get('/api/ref/types', async (_req, res) => {
+app.get('/api/ref/types', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'config.ref_types'))) return;
   try {
     const out = {};
     for (const t of REF_DOMAIN_TYPE_TABLES) {
@@ -661,6 +1066,7 @@ app.get('/api/ref/types', async (_req, res) => {
  * Corpo: { "equipment_type": [{ "id": 1, "label_en": "…", "label_pt": "…" }], ... }
  */
 app.put('/api/ref/types', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'config.ref_types'))) return;
   const body = req.body;
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return res.status(400).json({ error: 'Expected JSON object keyed by table name' });
@@ -719,6 +1125,7 @@ app.put('/api/ref/types', async (req, res) => {
 
 /** Últimos registos de arquivo antes de DELETE (operations) */
 app.get('/api/audit/operations-archive', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.aud'))) return;
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 40, 200);
     const { rows } = await pool.query(
@@ -735,39 +1142,44 @@ app.get('/api/audit/operations-archive', async (req, res) => {
   }
 });
 
+/** Filtros HTTP partilhados por GET /api/events e GET /api/events/export. */
+function eventsHttpFilterClause(query) {
+  const cond = [];
+  const vals = [];
+  let n = 1;
+  if (query.domain) {
+    cond.push(`domain = $${n++}`);
+    vals.push(String(query.domain).trim().toLowerCase());
+  }
+  if (query.event_type) {
+    cond.push(`event_type = $${n++}`);
+    vals.push(String(query.event_type).trim());
+  }
+  if (query.aggregate_type) {
+    cond.push(`aggregate_type = $${n++}`);
+    vals.push(String(query.aggregate_type).trim());
+  }
+  if (query.aggregate_id) {
+    cond.push(`aggregate_id = $${n++}`);
+    vals.push(String(query.aggregate_id).trim());
+  }
+  if (query.since) {
+    cond.push(`occurred_at >= $${n++}::timestamptz`);
+    vals.push(String(query.since));
+  }
+  if (query.correlation_id) {
+    cond.push(`correlation_id = $${n++}::uuid`);
+    vals.push(String(query.correlation_id).trim());
+  }
+  return { cond, vals, nextParam: n };
+}
+
 /** Leitura do diário events (append-only). Filtros opcionais: domain, event_type, aggregate_type, aggregate_id, since (ISO). */
 app.get('/api/events', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.aud'))) return;
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 80, 500);
-    const cond = [];
-    const vals = [];
-    let n = 1;
-
-    if (req.query.domain) {
-      cond.push(`domain = $${n++}`);
-      vals.push(String(req.query.domain).trim().toLowerCase());
-    }
-    if (req.query.event_type) {
-      cond.push(`event_type = $${n++}`);
-      vals.push(String(req.query.event_type).trim());
-    }
-    if (req.query.aggregate_type) {
-      cond.push(`aggregate_type = $${n++}`);
-      vals.push(String(req.query.aggregate_type).trim());
-    }
-    if (req.query.aggregate_id) {
-      cond.push(`aggregate_id = $${n++}`);
-      vals.push(String(req.query.aggregate_id).trim());
-    }
-    if (req.query.since) {
-      cond.push(`occurred_at >= $${n++}::timestamptz`);
-      vals.push(String(req.query.since));
-    }
-    if (req.query.correlation_id) {
-      cond.push(`correlation_id = $${n++}::uuid`);
-      vals.push(String(req.query.correlation_id).trim());
-    }
-
+    const { cond, vals, nextParam } = eventsHttpFilterClause(req.query);
     vals.push(limit);
     const where = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
     const sql = `
@@ -777,13 +1189,524 @@ app.get('/api/events', async (req, res) => {
       FROM events.event
       ${where}
       ORDER BY occurred_at DESC, id DESC
-      LIMIT $${n}
+      LIMIT $${nextParam}
     `;
     const { rows } = await pool.query(sql, vals);
     res.json(rows);
   } catch (error) {
     console.error('GET /api/events', error);
     res.status(500).json({ error: 'Failed to list events (verifique se infra/sql/15_events_schema.sql foi aplicado)' });
+  }
+});
+
+/**
+ * Exportação cursada para ETL / replicação externa: ordenação estável por `id` ascendente.
+ * Query: after_id (opcional, default 0), limit (default 500, max 2000), mesmos filtros que GET /api/events,
+ * shape=mongo → cada evento como documento com _id = event_uuid (dedupe idempotente).
+ */
+app.get('/api/events/export', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.aud'))) return;
+  try {
+    const afterId = Math.max(0, parseInt(req.query.after_id, 10) || 0);
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit, 10) || 500), 2000);
+    const mongoShape = String(req.query.shape || '').toLowerCase() === 'mongo';
+    const { cond, vals, nextParam } = eventsHttpFilterClause(req.query);
+    cond.push(`id > $${nextParam++}`);
+    vals.push(afterId);
+    vals.push(limit);
+    const where = `WHERE ${cond.join(' AND ')}`;
+    const sql = `
+      SELECT id, event_uuid, occurred_at, recorded_at, schema_version, domain, event_type,
+             aggregate_type, aggregate_id, correlation_id, causation_id,
+             actor_type, actor_id, source, payload, metadata
+      FROM events.event
+      ${where}
+      ORDER BY id ASC
+      LIMIT $${nextParam}
+    `;
+    const { rows } = await pool.query(sql, vals);
+    const lastId = rows.length ? rows[rows.length - 1].id : afterId;
+    const events = mongoShape ? rows.map(eventRowToMongoShape) : rows;
+    res.json({
+      after_id: afterId,
+      next_after_id: lastId,
+      count: rows.length,
+      events,
+    });
+  } catch (error) {
+    console.error('GET /api/events/export', error);
+    res.status(500).json({
+      error: 'Failed to export events (verifique se infra/sql/15_events_schema.sql foi aplicado)',
+    });
+  }
+});
+
+/**
+ * Topologia PostGIS nativa (`postgis_topology`) — segmentos lineares da rede em `gis.network_span`.
+ * Documentação: docs/mds/TOPOLOGY_NATIVE_POSTGIS.md
+ */
+app.get('/api/topology/meta', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.oms'))) return;
+  try {
+    const { rows: topologies } = await pool.query(
+      `SELECT id, name, srid, precision
+       FROM topology.topology
+       WHERE name = 'tabgis_utilities_topo'`
+    );
+    if (!topologies.length) {
+      return res.json({
+        ok: true,
+        installed: false,
+        hint: 'Aplicar infra/sql/21_postgis_topology_utilities.sql na base PostGIS.',
+      });
+    }
+    const topo = topologies[0];
+    const { rows: layers } = await pool.query(
+      `SELECT layer_id, schema_name, table_name, feature_column, feature_type, level, child_id
+       FROM topology.layer
+       WHERE topology_id = $1
+       ORDER BY layer_id`,
+      [topo.id]
+    );
+    const { rows: primRows } = await pool.query(`
+      SELECT
+        (SELECT COUNT(*)::bigint FROM tabgis_utilities_topo.edge_data) AS edges,
+        (SELECT COUNT(*)::bigint FROM tabgis_utilities_topo.node) AS nodes,
+        (SELECT COUNT(*)::bigint FROM tabgis_utilities_topo.face) AS faces
+    `);
+    res.json({
+      ok: true,
+      installed: true,
+      topology: topo,
+      layers,
+      primitives: primRows[0] || null,
+    });
+  } catch (error) {
+    console.error('GET /api/topology/meta', error);
+    const code = error && error.code;
+    const hint =
+      code === '42P01'
+        ? 'CREATE EXTENSION postgis_topology; aplicar infra/sql/21_postgis_topology_utilities.sql.'
+        : 'Verificar extensão postgis_topology e logs da API.';
+    res.status(503).json({
+      ok: false,
+      error: 'Topology metadata unavailable',
+      hint,
+      detail: error.message,
+    });
+  }
+});
+
+app.get('/api/topology/spans', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.oms'))) return;
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
+    const { rows } = await pool.query(
+      `SELECT id, code, description, utility_domain,
+              equipment_from_id, equipment_to_id,
+              ST_AsGeoJSON(span_geom)::json AS span_geojson,
+              (topo_geom IS NOT NULL) AS has_topo_geom,
+              round((ST_Length(span_geom::geography))::numeric, 2) AS length_m_approx,
+              created_at
+       FROM gis.network_span
+       ORDER BY id
+       LIMIT $1`,
+      [limit]
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('GET /api/topology/spans', error);
+    res.status(503).json({
+      error:
+        'Failed to list network spans (crie extensão postgis_topology e aplique infra/sql/21_postgis_topology_utilities.sql)',
+      detail: error.message,
+    });
+  }
+});
+
+/** Camada TopoGeometry de gis.network_span (layer_id + tolerância da topologia). */
+async function getNetworkSpanTopoLayer(clientLike) {
+  const { rows } = await clientLike.query(
+    `SELECT l.layer_id, t.precision, t.name AS topology_name
+     FROM topology.layer l
+     INNER JOIN topology.topology t ON t.id = l.topology_id
+     WHERE t.name = 'tabgis_utilities_topo'
+       AND l.schema_name = 'gis'
+       AND l.table_name = 'network_span'
+       AND l.feature_column = 'topo_geom'`
+  );
+  return rows[0] || null;
+}
+
+const SPAN_RETURNING = `
+  id, code, description, utility_domain,
+  equipment_from_id, equipment_to_id,
+  ST_AsGeoJSON(span_geom)::json AS span_geojson,
+  (topo_geom IS NOT NULL) AS has_topo_geom,
+  round((ST_Length(span_geom::geography))::numeric, 2) AS length_m_approx,
+  metadata, created_at, updated_at`;
+
+app.get('/api/topology/spans/:id', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.oms'))) return;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid span id' });
+  }
+  try {
+    const { rows } = await pool.query(
+      `SELECT ${SPAN_RETURNING} FROM gis.network_span WHERE id = $1`,
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Span not found' });
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('GET /api/topology/spans/:id', error);
+    res.status(503).json({ error: 'Failed to load network span', detail: error.message });
+  }
+});
+
+/**
+ * Cria segmento linear da rede: INSERT + materialização de TopoGeometry
+ * (nós coincidentes fundidos pela tolerância da topologia). Emite
+ * `gis.topology.network_span.created`.
+ */
+app.post('/api/topology/spans', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.oms'))) return;
+  const parsed = validateSpanCreate(req.body);
+  if (!parsed.ok) {
+    return res.status(parsed.status).json({ error: parsed.error });
+  }
+  const s = parsed.span;
+  const client = await pool.connect();
+  try {
+    const layer = await getNetworkSpanTopoLayer(client);
+    if (!layer) {
+      return res.status(503).json({
+        error: 'Topology layer not installed',
+        hint: 'Aplicar infra/sql/21_postgis_topology_utilities.sql na base PostGIS.',
+      });
+    }
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `INSERT INTO gis.network_span
+         (code, description, utility_domain, equipment_from_id, equipment_to_id, span_geom, metadata)
+       VALUES ($1, $2, $3, $4, $5,
+               ST_SetSRID(ST_GeomFromGeoJSON($6), 4326),
+               COALESCE($7::jsonb, '{}'::jsonb))
+       RETURNING ${SPAN_RETURNING}`,
+      [
+        s.code,
+        s.description ?? null,
+        s.utility_domain ?? null,
+        s.equipment_from_id ?? null,
+        s.equipment_to_id ?? null,
+        lineStringGeoJson(s.coordinates),
+        s.metadata ? JSON.stringify(s.metadata) : null,
+      ]
+    );
+    const span = rows[0];
+    await client.query(
+      `UPDATE gis.network_span
+       SET topo_geom = topology.toTopoGeom(span_geom, 'tabgis_utilities_topo', $2, $3)
+       WHERE id = $1`,
+      [span.id, layer.layer_id, layer.precision]
+    );
+    await client.query('COMMIT');
+    span.has_topo_geom = true;
+    await emitWithRequest(req, {
+      domain: 'gis',
+      eventType: 'topology.network_span.created',
+      aggregateType: 'gis.network_span',
+      aggregateId: String(span.id),
+      payload: { span_id: Number(span.id), code: span.code, vertices: s.coordinates.length },
+      actorType: 'api',
+    });
+    res.status(201).json({ ok: true, span });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    if (error && error.code === '23505') {
+      return res.status(409).json({ error: `Span code already exists: ${s.code}` });
+    }
+    if (error && error.code === '23503') {
+      return res.status(400).json({ error: 'equipment_from_id / equipment_to_id must reference gis.equipment' });
+    }
+    console.error('POST /api/topology/spans', error);
+    res.status(500).json({ error: 'Failed to create network span', detail: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * Atualização parcial de segmento. `coordinates` retraça a geometria e
+ * re-materializa a TopoGeometry (limpa a anterior com clearTopoGeom).
+ * Emite `gis.topology.network_span.updated`.
+ */
+app.patch('/api/topology/spans/:id', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.oms'))) return;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid span id' });
+  }
+  const parsed = validateSpanPatch(req.body);
+  if (!parsed.ok) {
+    return res.status(parsed.status).json({ error: parsed.error });
+  }
+  const u = parsed.updates;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: existing } = await client.query(
+      `SELECT id, (topo_geom IS NOT NULL) AS has_topo_geom
+       FROM gis.network_span WHERE id = $1 FOR UPDATE`,
+      [id]
+    );
+    if (!existing.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Span not found' });
+    }
+    const sets = [];
+    const vals = [];
+    for (const field of ['description', 'utility_domain', 'equipment_from_id', 'equipment_to_id']) {
+      if (u[field] !== undefined) {
+        vals.push(u[field]);
+        sets.push(`${field} = $${vals.length}`);
+      }
+    }
+    if (u.metadata !== undefined) {
+      vals.push(JSON.stringify(u.metadata));
+      sets.push(`metadata = $${vals.length}::jsonb`);
+    }
+    if (u.coordinates !== undefined) {
+      vals.push(lineStringGeoJson(u.coordinates));
+      sets.push(`span_geom = ST_SetSRID(ST_GeomFromGeoJSON($${vals.length}), 4326)`);
+    }
+    sets.push('updated_at = now()');
+    vals.push(id);
+    const { rows } = await client.query(
+      `UPDATE gis.network_span SET ${sets.join(', ')}
+       WHERE id = $${vals.length}
+       RETURNING ${SPAN_RETURNING}`,
+      vals
+    );
+    if (u.coordinates !== undefined) {
+      const layer = await getNetworkSpanTopoLayer(client);
+      if (layer) {
+        // Retraçado: limpa relações da TopoGeometry anterior e re-materializa sobre a nova geometria.
+        await client.query(
+          `UPDATE gis.network_span
+           SET topo_geom = topology.toTopoGeom(span_geom, topology.clearTopoGeom(topo_geom), $2)
+           WHERE id = $1 AND topo_geom IS NOT NULL`,
+          [id, layer.precision]
+        );
+        await client.query(
+          `UPDATE gis.network_span
+           SET topo_geom = topology.toTopoGeom(span_geom, 'tabgis_utilities_topo', $2, $3)
+           WHERE id = $1 AND topo_geom IS NULL`,
+          [id, layer.layer_id, layer.precision]
+        );
+      }
+    }
+    await client.query('COMMIT');
+    await emitWithRequest(req, {
+      domain: 'gis',
+      eventType: 'topology.network_span.updated',
+      aggregateType: 'gis.network_span',
+      aggregateId: String(id),
+      payload: { span_id: id, updates: u },
+      actorType: 'api',
+    });
+    const { rows: fresh } = await pool.query(
+      `SELECT ${SPAN_RETURNING} FROM gis.network_span WHERE id = $1`,
+      [id]
+    );
+    res.json({ ok: true, span: fresh[0] || rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    if (error && error.code === '23503') {
+      return res.status(400).json({ error: 'equipment_from_id / equipment_to_id must reference gis.equipment' });
+    }
+    console.error('PATCH /api/topology/spans/:id', error);
+    res.status(500).json({ error: 'Failed to update network span', detail: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * Remove segmento: limpa a TopoGeometry (liberta relações nas primitivas) e
+ * apaga a linha — o trigger BEFORE DELETE (infra/sql/22) arquiva o snapshot em
+ * audit.operations_row_archive antes da remoção. Emite
+ * `gis.topology.network_span.deleted`.
+ */
+app.delete('/api/topology/spans/:id', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.oms'))) return;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid span id' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: existing } = await client.query(
+      `SELECT id, code FROM gis.network_span WHERE id = $1 FOR UPDATE`,
+      [id]
+    );
+    if (!existing.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Span not found' });
+    }
+    await client.query(
+      `UPDATE gis.network_span
+       SET topo_geom = topology.clearTopoGeom(topo_geom)
+       WHERE id = $1 AND topo_geom IS NOT NULL`,
+      [id]
+    );
+    await client.query(`DELETE FROM gis.network_span WHERE id = $1`, [id]);
+    await client.query('COMMIT');
+    await emitWithRequest(req, {
+      domain: 'gis',
+      eventType: 'topology.network_span.deleted',
+      aggregateType: 'gis.network_span',
+      aggregateId: String(id),
+      payload: { span_id: id, code: existing[0].code },
+      actorType: 'api',
+    });
+    res.json({ ok: true, deleted_id: id, code: existing[0].code });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('DELETE /api/topology/spans/:id', error);
+    res.status(500).json({ error: 'Failed to delete network span', detail: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * Vistas esquemáticas (unifilar / anotação de fluxo) — ver infra/sql/16_schematic_schema.sql
+ */
+app.get('/api/schematic/views', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.esq'))) return;
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, code, name, view_kind, description, metadata
+       FROM schematic.network_view
+       ORDER BY name, id`
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('GET /api/schematic/views', error);
+    res.status(500).json({
+      error:
+        'Failed to list schematic views (verifique se infra/sql/16_schematic_schema.sql foi aplicado)',
+    });
+  }
+});
+
+app.get('/api/schematic/views/:id', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.esq'))) return;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid view id' });
+  }
+  try {
+    const { rows: vrows } = await pool.query(
+      `SELECT id, code, name, view_kind, description, metadata
+       FROM schematic.network_view
+       WHERE id = $1`,
+      [id]
+    );
+    if (!vrows.length) {
+      return res.status(404).json({ error: 'View not found' });
+    }
+    const { rows: nodes } = await pool.query(
+      `SELECT n.id, n.view_id, n.seq_no, n.label, n.symbol_code, n.equipment_id, n.focus_lat, n.focus_lng, n.props,
+              e.location_desc AS equipment_location_desc,
+              COALESCE(et.label_pt, et.label_en) AS equipment_type_label,
+              et.code AS equipment_type_code,
+              CASE WHEN e.geom IS NOT NULL THEN ST_Y(e.geom) END AS equipment_lat,
+              CASE WHEN e.geom IS NOT NULL THEN ST_X(e.geom) END AS equipment_lng
+       FROM schematic.view_node n
+       LEFT JOIN gis.equipment e ON e.id = n.equipment_id
+       LEFT JOIN ref.equipment_type et ON et.id = e.type_id
+       WHERE n.view_id = $1
+       ORDER BY n.seq_no, n.id`,
+      [id]
+    );
+    const { rows: edges } = await pool.query(
+      `SELECT id, view_id, from_node_id, to_node_id, edge_kind, label, active_power_kw, reactive_power_kvar, props
+       FROM schematic.view_edge
+       WHERE view_id = $1
+       ORDER BY id`,
+      [id]
+    );
+    res.json({ view: vrows[0], nodes, edges });
+  } catch (error) {
+    console.error('GET /api/schematic/views/:id', error);
+    res.status(500).json({
+      error: 'Failed to load schematic (verifique se infra/sql/16_schematic_schema.sql foi aplicado)',
+    });
+  }
+});
+
+/**
+ * Actualiza nó de esquemático (rótulo e/ou par de coordenadas de foco). Emite `gis.schematic.view_node.updated`.
+ */
+app.patch('/api/schematic/views/:viewId/nodes/:nodeId', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.esq'))) return;
+  const viewId = parseInt(req.params.viewId, 10);
+  const nodeId = parseInt(req.params.nodeId, 10);
+  if (!Number.isFinite(viewId) || !Number.isFinite(nodeId) || viewId < 1 || nodeId < 1) {
+    return res.status(400).json({ error: 'Invalid view or node id' });
+  }
+  const parsed = validateViewNodePatch(req.body);
+  if (!parsed.ok) {
+    return res.status(parsed.status).json({ error: parsed.error });
+  }
+  const u = parsed.updates;
+  const sets = [];
+  const vals = [];
+  if (u.label !== undefined) {
+    sets.push(`label = $${vals.length + 1}`);
+    vals.push(u.label);
+  }
+  if (u.focus_lat !== undefined) {
+    sets.push(`focus_lat = $${vals.length + 1}`);
+    vals.push(u.focus_lat);
+    sets.push(`focus_lng = $${vals.length + 1}`);
+    vals.push(u.focus_lng);
+  }
+  const phId = vals.length + 1;
+  const phView = vals.length + 2;
+  vals.push(nodeId, viewId);
+  const sql = `UPDATE schematic.view_node
+    SET ${sets.join(', ')}
+    WHERE id = $${phId}::bigint AND view_id = $${phView}::bigint
+    RETURNING id, view_id, seq_no, label, symbol_code, equipment_id, focus_lat, focus_lng, props`;
+  const client = await pool.connect();
+  try {
+    const { rows } = await client.query(sql, vals);
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Node not found in this view' });
+    }
+    await emitWithRequest(req, {
+      domain: 'gis',
+      eventType: 'schematic.view_node.updated',
+      aggregateType: 'schematic.view_node',
+      aggregateId: String(nodeId),
+      payload: {
+        view_id: viewId,
+        node_id: nodeId,
+        updates: u,
+      },
+      actorType: 'api',
+    });
+    res.json({ ok: true, node: rows[0] });
+  } catch (error) {
+    console.error('PATCH /api/schematic/views/:viewId/nodes/:nodeId', error);
+    res.status(500).json({ error: 'Failed to update schematic node' });
+  } finally {
+    client.release();
   }
 });
 

@@ -52,6 +52,8 @@ Novos domínios: acrescentar a `DOMAINS` e documentar o prefixo de `event_type` 
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | `GET` | `/api/events` | Lista recente; query: `limit`, `domain`, `event_type`, `aggregate_type`, `aggregate_id`, `since` (ISO), `correlation_id` |
+| `GET` | `/api/events/export` | **ETL / replicação:** mesmos filtros que `/api/events`, mais `after_id` (default `0`) e `limit` (default `500`, máx. `2000`); ordenação **`id ASC`**; resposta `{ after_id, next_after_id, count, events }`. Com **`shape=mongo`**, cada elemento de `events` segue o formato documentado em §Compatibilidade com Mongo (`_id` = `event_uuid`). Privilégio: `module.aud` (com `SECURITY_ENFORCE=1`, igual a `/api/events`). |
+| `PATCH` | `/api/schematic/views/:viewId/nodes/:nodeId` | Actualiza rótulo e/ou par de coordenadas de foco do nó; emite evento com `event_type` **`schematic.view_node.updated`** e **`domain`** `gis` (requer privilégio `module.esq` quando `SECURITY_ENFORCE=1`) |
 
 Cabeçalho opcional em **todas** as mutações: `X-Correlation-ID` (UUID). Se omitido, a API gera um UUID por pedido e regista-o em `metadata.correlation_id` e na coluna `correlation_id` quando o sink persiste.
 
@@ -60,10 +62,14 @@ Cabeçalho opcional em **todas** as mutações: `X-Correlation-ID` (UUID). Se om
 | `event_type` | Quando |
 |----------------|--------|
 | `security.user.created` | `POST /api/users` |
+| `security.user.updated` | `PATCH /api/users/:id` (ex.: activar/desativar colaborador) |
+| `security.user.group.updated` | `PATCH /api/users/:id/group` |
+| `security.group.privileges.updated` | `PUT /api/security/groups/:id/privileges` |
 | `oms.work_order.updated` | `PATCH /api/work-orders/:id` |
 | `oms.work_order_task.created` | `POST /api/work-orders/:id/tasks` |
 | `oms.work_order_task.updated` | `PATCH /api/work-orders/:id/tasks/:task_id` |
 | `ref.types_batch.updated` | `PUT /api/ref/types` |
+| `schematic.view_node.updated` | `PATCH /api/schematic/views/:viewId/nodes/:nodeId` (domínio `gis` — vista esquemática / unifilar) |
 
 Outros domínios (DMS, IND, SMT, TMP, AUD, GIS, landbase) devem emitir **a partir de rotas REST** (ou de processos Node dedicados), com o mesmo contrato `emitWithRequest` / barramento.
 
@@ -81,4 +87,6 @@ A função SQL `events.append_event` existe para ser chamada **a partir do códi
 
 ## Compatibilidade com Mongo
 
-Um job de exportação pode fazer `SELECT event_uuid, occurred_at, domain, event_type, payload, metadata FROM events.event WHERE id > $cursor` e inserir documentos equivalentes numa coleção `event_report` ou `events`, usando `event_uuid` como chave idempotente.
+Um job de exportação pode chamar em ciclo **`GET /api/events/export?after_id=<cursor>&limit=500&shape=mongo`** (ou ler directamente `SELECT … FROM events.event WHERE id > $cursor ORDER BY id ASC`). Usar `next_after_id` da resposta como próximo `after_id` até `count === 0`. Inserir na coleção `event_report` ou `events` com **`_id` = `event_uuid`** (dedupe idempotente).
+
+Implementação de referência do mapeamento `shape=mongo`: `backend/lib/events/eventRowToMongoShape.js`.

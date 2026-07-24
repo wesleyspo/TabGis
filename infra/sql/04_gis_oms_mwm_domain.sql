@@ -1,6 +1,6 @@
 -- TabGis — domínio utilities: ref, audit.domain_event, gis, oms, mwm
--- Alinhado a docs/Database_Structure_Context.md (+ owner_id, locked_by_id em oms.work_order)
--- Ordem de aplicação: após 01–03 (ver docs/DEPLOY_POC.md)
+-- Alinhado a docs/mds/Database_Structure_Context.md (+ owner_id, locked_by_id em oms.work_order)
+-- Ordem de aplicação: após 01–03 (ver docs/mds/DEPLOY_POC.md)
 
 -- Bases já criadas com 03 antigo: garantir colunas em operations.work_order
 ALTER TABLE operations.work_order

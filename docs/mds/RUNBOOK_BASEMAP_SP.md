@@ -1,11 +1,11 @@
 # Runbook — Basemap Offline (São Paulo Centro)
 
-> **Atenção:** Este runbook é **legado / ensaios**. O fluxo oficial para produto em escala estadual está em `docs/RUNBOOK_BASEMAP_SP_ESTADO.md`.
+> **Atenção:** Este runbook é **legado / ensaios**. O fluxo oficial para produto em escala estadual está em `docs/mds/RUNBOOK_BASEMAP_SP_ESTADO.md`.
 
 Guia para carga localizada (capital, recorte Centro) e publicação no GeoServer.
 Útil para testes rápidos em área reduzida ou desenvolvimento isolado.
 
-**POC TabGis actual:** a interface completa (topbar, Busca WFS, painel Operação, proxy same-origin) assume o frontend servido por **nginx** em **`http://<host>:8088/`** com `infra/docker-compose.yml`. Estado da stack, SQL `01`–`03`, SLD do recorte alvo e i18n: `docs/CONTEXT_STATE.md` e `docs/DEPLOY_POC.md`.
+**POC TabGis actual:** a interface completa (topbar, Busca WFS, painel Operação, proxy same-origin) assume o frontend servido por **nginx** em **`http://<host>:8088/`** com `infra/docker-compose.yml`. Estado da stack, SQL `01`–`03`, SLD do recorte alvo e i18n: `docs/mds/CONTEXT_STATE.md` e `docs/mds/DEPLOY_POC.md`.
 
 ---
 

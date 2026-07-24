@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>RUNBOOK_BASEMAP_SP_ESTADO</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">RUNBOOK_BASEMAP_SP_ESTADO</h1>
+</header>
+<h1 id="runbook-basemap-offline-estado-de-são-paulo">Runbook — Basemap
+Offline (Estado de São Paulo)</h1>
+<p>Guia oficial para carga e publicação do landbase <strong>SP
+completo</strong> (escala estadual). Pipeline versionado e repetível —
+referência principal para o produto.</p>
+<blockquote>
+<p><strong>Deploy completo da stack:</strong> ver
+<code>docs/mds/DEPLOY_POC.md</code> <strong>Estado operacional
+actual:</strong> ver <code>docs/mds/CONTEXT_STATE.md</code></p>
+</blockquote>
+<hr />
+<h2 id="objectivo">1. Objectivo</h2>
+<ul>
+<li>Disponibilizar fundo cartográfico offline e livre para operação de
+utilities em todo o estado de SP</li>
+<li>Garantir reprodutibilidade (script único, sem passos manuais)</li>
+<li>Manter compatibilidade com GeoServer (WMS/WFS) e evolução futura
+para tiles vectoriais</li>
+</ul>
+<hr />
+<h2 id="pré-requisitos">2. Pré-requisitos</h2>
+<p>Stack activa (<code>db</code>, <code>geoserver</code>) via
+<code>infra/docker-compose.yml</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose <span class="at">-f</span> infra/docker-compose.yml up <span class="at">-d</span> db geoserver</span></code></pre></div>
+<p>Ferramentas no host: <code>psql</code>, <code>shp2pgsql</code>,
+<code>osm2pgsql</code>, <code>curl</code>, <code>python3</code></p>
+<hr />
+<h2 id="entradas-de-dados">3. Entradas de dados</h2>
+<table>
+<colgroup>
+<col style="width: 31%" />
+<col style="width: 27%" />
+<col style="width: 41%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ficheiro</th>
+<th>Origem</th>
+<th>Observação</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>data/raw/ibge/BR_UF_2024.zip</code></td>
+<td>IBGE</td>
+<td>Shapefile UF Brasil</td>
+</tr>
+<tr class="even">
+<td><code>data/raw/ibge/BR_Municipios_2024.zip</code></td>
+<td>IBGE</td>
+<td>Shapefile municípios Brasil</td>
+</tr>
+<tr class="odd">
+<td><code>data/raw/osm/sao-paulo-latest.osm.pbf</code></td>
+<td>Geofabrik</td>
+<td><strong>Preferido</strong> — extrato estadual</td>
+</tr>
+<tr class="even">
+<td><code>data/raw/osm/sudeste-latest.osm.pbf</code></td>
+<td>Geofabrik</td>
+<td><strong>Fallback automático</strong> — usado se o PBF estadual for
+inválido</td>
+</tr>
+</tbody>
+</table>
+<p>O script descarrega automaticamente os ficheiros IBGE se ausentes. O
+download do OSM deve ser feito manualmente (tamanho elevado):</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Extrato SP (~100 MB)</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-fL</span> <span class="at">-o</span> data/raw/osm/sao-paulo-latest.osm.pbf <span class="dt">\</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  https://download.geofabrik.de/south-america/brazil/sudeste/sao-paulo-latest.osm.pbf</span></code></pre></div>
+<hr />
+<h2 id="execução">4. Execução</h2>
+<p>Na raiz do repositório:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./infra/scripts/setup_landbase_sp_estado.sh</span></span></code></pre></div>
+<p>O script é idempotente — pode ser re-executado sem duplicar
+dados.</p>
+<hr />
+<h2 id="entregáveis">5. Entregáveis</h2>
+<h3 id="postgis-schema-landbase">PostGIS (schema
+<code>landbase</code>)</h3>
+<table>
+<colgroup>
+<col style="width: 34%" />
+<col style="width: 39%" />
+<col style="width: 26%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Tabela</th>
+<th>Conteúdo</th>
+<th>SRID</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>landbase.uf_sp</code></td>
+<td>Polígono UF SP (IBGE)</td>
+<td>EPSG:4674</td>
+</tr>
+<tr class="even">
+<td><code>landbase.municipios_sp</code></td>
+<td>Municípios com geometria intersectando UF SP</td>
+<td>EPSG:4674</td>
+</tr>
+<tr class="odd">
+<td><code>landbase.vias_sp</code></td>
+<td>Linhas OSM com tag <code>highway</code>, recortadas ao estado</td>
+<td>EPSG:4674</td>
+</tr>
+</tbody>
+</table>
+<p>Tabelas intermediárias <code>public.osm_sp_*</code> (prefixo
+<code>osm_sp</code>) geradas pelo <code>osm2pgsql</code>.</p>
+<h3 id="geoserver-workspace-base_sp">GeoServer (workspace
+<code>base_sp</code>)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Camada</th>
+<th>Estilo SLD</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>base_sp:uf_sp</code></td>
+<td><code>base_sp_uf_outline</code></td>
+</tr>
+<tr class="even">
+<td><code>base_sp:municipios_sp</code></td>
+<td><code>base_sp_municipios_outline</code></td>
+</tr>
+<tr class="odd">
+<td><code>base_sp:vias_sp</code></td>
+<td><code>base_sp_vias_zoom_scales</code></td>
+</tr>
+</tbody>
+</table>
+<p>Estilos SLD versionados em <code>infra/geoserver/styles/</code>.</p>
+<hr />
+<h2 id="recorte-prioritário-municípios-alvo-bairros-vias">5.1 Recorte
+prioritário (municípios-alvo, bairros, vias)</h2>
+<p>O landbase estadual (secção 5) cobre <strong>todo o estado</strong>.
+Para a POC TabGis usa-se um <strong>recorte metropolitano</strong> (24
+municípios) com camadas adicionais e estilos dedicados.</p>
+<table>
+<colgroup>
+<col style="width: 24%" />
+<col style="width: 75%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Passo</th>
+<th>Comando / referência</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Gerar tabelas e publicar camadas</td>
+<td><code>./infra/scripts/setup_municipios_alvo_sp.sh</code></td>
+</tr>
+<tr class="even">
+<td>Detalhe da lista de municípios e comportamento no mapa</td>
+<td><code>docs/mds/CONTEXT_STATE.md</code> → <em>Recorte
+prioritário</em> e <em>Frontend</em></td>
+</tr>
+</tbody>
+</table>
+<h3 id="postgis-além-das-tabelas-da-secção-5">PostGIS (além das tabelas
+da secção 5)</h3>
+<table>
+<colgroup>
+<col style="width: 44%" />
+<col style="width: 55%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Tabela</th>
+<th>Conteúdo</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>landbase.municipios_alvo_sp</code></td>
+<td>Polígonos dos 24 municípios-alvo</td>
+</tr>
+<tr class="even">
+<td><code>landbase.bairros_alvo_sp</code></td>
+<td>Bairros (OSM) intersectando os municípios-alvo</td>
+</tr>
+<tr class="odd">
+<td><code>landbase.vias_alvo_sp</code></td>
+<td>Vias públicas no mesmo recorte</td>
+</tr>
+</tbody>
+</table>
+<h3 id="geoserver-camadas-e-sld-em-repositório">GeoServer — camadas e
+SLD em repositório</h3>
+<table>
+<colgroup>
+<col style="width: 21%" />
+<col style="width: 57%" />
+<col style="width: 21%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Camada</th>
+<th>SLD versionado (repo)</th>
+<th>Notas</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>base_sp:municipios_alvo_sp</code></td>
+<td><code>infra/geoserver/styles/base_sp_municipios_alvo_highlight.sld</code></td>
+<td>Rótulos <code>nm_mun</code> visíveis nas escalas usadas na POC</td>
+</tr>
+<tr class="even">
+<td><code>base_sp:bairros_alvo_sp</code></td>
+<td><code>infra/geoserver/styles/base_sp_bairros_alvo.sld</code></td>
+<td>Preenchimento/contorno discretos; rótulos
+<code>municipio_nome</code> + <code>bairro_nome</code></td>
+</tr>
+<tr class="odd">
+<td><code>base_sp:vias_alvo_sp</code></td>
+<td>(estilo atribuído pelo script; alinhado a vias por zoom onde
+aplicável)</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Manutenção:</strong> alterações a estes <code>.sld</code> no
+Git <strong>não</strong> entram automaticamente no GeoServer após
+<code>git pull</code>. Republicar o XML na consola
+(<strong>Styles</strong> / camada) ou repetir o procedimento de
+publicação do teu ambiente. Sincronismo com toggles e zoom do cliente:
+<code>docs/mds/CONTEXT_STATE.md</code> (<em>Camadas alvo — zoom e
+toggles</em>, <em>Estilos GeoServer — recorte alvo</em>).</p>
+</blockquote>
+<h3 id="sanidade-bairros_alvo_sp-pós-regeneração">5.2 Sanidade
+<code>bairros_alvo_sp</code> (pós-regeneração)</h3>
+<p>Após <code>./infra/scripts/setup_municipios_alvo_sp.sh</code>, as
+geometrias OSM podem fazer com que o nome de <strong>outro
+município</strong> (ex.: Osasco) apareça como falso “bairro” num recorte
+(ex.: Cotia), poluindo o dropdown no cliente. A verificação versionada
+alinha o critério de correção em
+<code>infra/sql/19_fix_bairros_alvo_mapping.sql</code> e deve devolver
+<strong>0</strong> linhas.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Na raiz do repositório (ajusta PGPASSWORD / host se necessário)</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="va">PGPASSWORD</span><span class="op">=</span><span class="st">&quot;</span><span class="va">${DB_PASS</span><span class="op">:-</span>password123<span class="va">}</span><span class="st">&quot;</span> <span class="ex">psql</span> <span class="at">-h</span> <span class="st">&quot;</span><span class="va">${DB_HOST</span><span class="op">:-</span>localhost<span class="va">}</span><span class="st">&quot;</span> <span class="at">-p</span> <span class="st">&quot;</span><span class="va">${DB_PORT</span><span class="op">:-</span>5433<span class="va">}</span><span class="st">&quot;</span> <span class="dt">\</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-U</span> <span class="st">&quot;</span><span class="va">${DB_USER</span><span class="op">:-</span>tabgis_admin<span class="va">}</span><span class="st">&quot;</span> <span class="at">-d</span> <span class="st">&quot;</span><span class="va">${DB_NAME</span><span class="op">:-</span>tabgis_db<span class="va">}</span><span class="st">&quot;</span> <span class="at">-v</span> ON_ERROR_STOP=1 <span class="dt">\</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-f</span> infra/sql/20_sanity_bairros_alvo_sp.sql</span></code></pre></div>
+<ul>
+<li>Se o comando <strong>falhar</strong> (código de saída ≠ 0), listar
+as violações no output, aplicar
+<code>infra/sql/19_fix_bairros_alvo_mapping.sql</code> se for aceitável
+e voltar a correr a sanidade, ou ajustar a carga OSM. O frontend
+continua a filtrar nomes de município na lista, mas a fonte em PostGIS
+deve estar limpa para WFS/rotulagem.</li>
+</ul>
+<hr />
+<h2 id="validação">6. Validação</h2>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># WMS GetCapabilities</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-s</span> <span class="st">&quot;http://localhost:8080/geoserver/wms?service=WMS&amp;request=GetCapabilities&quot;</span> <span class="dt">\</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">|</span> <span class="fu">grep</span> <span class="at">-o</span> <span class="st">&#39;base_sp:[^&lt;]*&#39;</span> <span class="kw">|</span> <span class="fu">head</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Contagem PostGIS</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="va">PGPASSWORD</span><span class="op">=</span>password123 <span class="ex">psql</span> <span class="at">-h</span> localhost <span class="at">-p</span> 5433 <span class="at">-U</span> tabgis_admin <span class="at">-d</span> tabgis_db <span class="at">-c</span> <span class="dt">\</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;SELECT &#39;uf_sp&#39; AS tabela, COUNT(*) FROM landbase.uf_sp</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="st">   UNION ALL SELECT &#39;municipios_sp&#39;, COUNT(*) FROM landbase.municipios_sp</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="st">   UNION ALL SELECT &#39;vias_sp&#39;, COUNT(*) FROM landbase.vias_sp;&quot;</span></span></code></pre></div>
+<hr />
+<h2 id="escalabilidade">7. Escalabilidade</h2>
+<ul>
+<li>Para outro estado: alterar filtro <code>sigla_uf</code> em
+<code>landbase.uf_sp</code>, ajustar <code>SP_BBOX</code> (ou usar PBF
+do estado), re-executar</li>
+<li>Variáveis configuráveis: <code>DB_HOST</code>, <code>DB_PORT</code>,
+<code>DB_NAME</code>, <code>DB_USER</code>, <code>DB_PASS</code>,
+<code>GEOSERVER_URL</code>, <code>GS_USER</code>, <code>GS_PASS</code>,
+<code>OSM_SP</code>, <code>OSM_SUDESTE</code>, <code>SP_BBOX</code></li>
+</ul>
+</body>
+</html>

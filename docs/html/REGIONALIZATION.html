@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>REGIONALIZATION</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">REGIONALIZATION</h1>
+</header>
+<h1 id="regionalização-i18n">Regionalização (i18n)</h1>
+<h2 id="mecanismo">Mecanismo</h2>
+<table>
+<colgroup>
+<col style="width: 60%" />
+<col style="width: 40%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Componente</th>
+<th>Função</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>config.language</code></td>
+<td>Registo dos idiomas suportados (códigos <strong>en</strong>,
+<strong>pt</strong>, <strong>es</strong>, <strong>it</strong>).</td>
+</tr>
+<tr class="even">
+<td><code>config.translation</code></td>
+<td>Pares (<code>object_id</code>, <code>language_id</code>,
+<code>translated_text</code>) — chaves de UI e glossário.</td>
+</tr>
+<tr class="odd">
+<td><code>GET /api/translations/:lang</code></td>
+<td>API usada pelo <code>frontend/main.js</code> para carregar o mapa de
+chaves.</td>
+</tr>
+<tr class="even">
+<td><code>infra/sql/02_populate_translations.sql</code></td>
+<td>Carga idempotente (<code>ON CONFLICT DO UPDATE</code>) de todas as
+cadeias.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="tabela-de-idiomas-cadastro">Tabela de idiomas (cadastro)</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Código</th>
+<th>Uso típico</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>en</strong></td>
+<td>Inglês (referência técnica).</td>
+</tr>
+<tr class="even">
+<td><strong>pt</strong></td>
+<td>Português (interface padrão TabGis).</td>
+</tr>
+<tr class="odd">
+<td><strong>es</strong></td>
+<td>Espanhol.</td>
+</tr>
+<tr class="even">
+<td><strong>it</strong></td>
+<td>Italiano.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="glossário-técnico-recente-exemplos-de-chaves">Glossário técnico
+recente (exemplos de chaves)</h2>
+<table>
+<colgroup>
+<col style="width: 38%" />
+<col style="width: 61%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Chave</th>
+<th>Propósito</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>UI_GLOSSARY_LINEAR_NETWORK_SEGMENT</code></td>
+<td>Definição de <em>segmento linear da rede</em> (SIG).</td>
+</tr>
+<tr class="even">
+<td><code>UI_GLOSSARY_POSTGIS_TOPOLOGY</code></td>
+<td>Definição da extensão <code>postgis_topology</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>UI_HELP_STACK_POSTGIS_TOPOLOGY</code></td>
+<td>Ajuda: stack PostGIS + <code>gis.network_span</code>.</td>
+</tr>
+<tr class="even">
+<td><code>UI_HELP_API_TOPOLOGY</code></td>
+<td>Ajuda: endpoints <code>/api/topology/*</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Após alterar <code>02_populate_translations.sql</code>, reaplicar na
+PostGIS e <strong>reiniciar</strong> o contentor <code>api</code> para o
+cliente recarregar traduções.</p>
+</body>
+</html>

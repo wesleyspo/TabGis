@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>MAPS_AND_SOURCES</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">MAPS_AND_SOURCES</h1>
+</header>
+<h1 id="mapas-offline-e-origens-dos-dados">Mapas offline e origens dos
+dados</h1>
+<blockquote>
+<p><strong>Nota de actualização:</strong> os números concretos (tiles,
+zoom, tamanho em disco) devem coincidir com a secção <strong>MBTiles —
+satélite raster local</strong> em <a
+href="./CONTEXT_STATE.md">CONTEXT_STATE.md</a>. <strong>Snapshot deste
+documento:</strong> 14 de maio de 2026 (revisar após regenerar
+pacotes).</p>
+</blockquote>
+<h2 id="satélite-local-capital-sp">Satélite local (capital SP)</h2>
+<table>
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 88%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Campo</th>
+<th>Valor de referência (verificar em CONTEXT_STATE)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Ficheiro</td>
+<td><code>data/tiles/sp_satellite.mbtiles</code></td>
+</tr>
+<tr class="even">
+<td>Zoom nativo</td>
+<td>10–17</td>
+</tr>
+<tr class="odd">
+<td>Origem dos pixels</td>
+<td>Construção local via
+<code>infra/scripts/build_sp_satellite_mbtiles.sh</code> (fonte online
+no script — tipicamente tiles de satélite respeitando licença/OSM policy
+na geração)</td>
+</tr>
+<tr class="even">
+<td>Serviço</td>
+<td>TileServer GL (<code>/tiles/</code> atrás do nginx)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="geosampa-offline-ortofoto-pmsp">GeoSampa offline (ortofoto
+PMSP)</h2>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 73%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Aspecto</th>
+<th>Origem / procedimento</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Dados</td>
+<td>WMS GeoSampa / PMSP (uso conforme termos municipais)</td>
+</tr>
+<tr class="even">
+<td>Empacotamento</td>
+<td>Scripts em <code>infra/scripts/</code> — ver <a
+href="./GeoSampa_offline_tecnico.md">GeoSampa_offline_tecnico.md</a> e
+<a
+href="./GeoSampa_offline_operacao.md">GeoSampa_offline_operacao.md</a></td>
+</tr>
+<tr class="odd">
+<td>Serviço</td>
+<td>TileServer GL, registo em <code>data/tiles/config.json</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="vector-basemap-postgis-geoserver">Vector / basemap (PostGIS +
+GeoServer)</h2>
+<table>
+<colgroup>
+<col style="width: 65%" />
+<col style="width: 34%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Camada / tema</th>
+<th>Origem</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>UF, municípios SP estado, vias</td>
+<td>IBGE + OpenStreetMap (processamento em
+<code>infra/scripts/setup_landbase_sp_estado.sh</code> — ver <a
+href="./RUNBOOK_BASEMAP_SP_ESTADO.md">RUNBOOK_BASEMAP_SP_ESTADO.md</a>)</td>
+</tr>
+<tr class="even">
+<td>Municípios-alvo, bairros, vias alvo</td>
+<td>Recorte RMSP ampliada —
+<code>infra/scripts/setup_municipios_alvo_sp.sh</code></td>
+</tr>
+<tr class="odd">
+<td>SP Centro (legado)</td>
+<td><a href="./RUNBOOK_BASEMAP_SP.md">RUNBOOK_BASEMAP_SP.md</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="mapa-online-referência">Mapa online (referência)</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Camada</th>
+<th>Origem</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Satélite Esri World Imagery</td>
+<td>Tiles XYZ Esri no cliente (requer Internet; ver termos Esri).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="baseline-offline-referência-de-auditoria">Baseline offline
+(referência de auditoria)</h2>
+<table>
+<colgroup>
+<col style="width: 21%" />
+<col style="width: 38%" />
+<col style="width: 23%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Baseline</th>
+<th>Data do pacote</th>
+<th>Conteúdo</th>
+<th>Notas</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Satélite SP (capital)</td>
+<td><strong>2026-05-14</strong> (snapshot documental)</td>
+<td><code>sp_satellite.mbtiles</code>, ZMAX <strong>17</strong>,
+~<strong>175 306</strong> tiles, ~<strong>3 GB</strong></td>
+<td>Valores operacionais em <a
+href="./CONTEXT_STATE.md">CONTEXT_STATE.md</a> — secção <em>MBTiles —
+satélite raster local</em>; actualizar esta linha quando o pacote for
+regenerado.</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

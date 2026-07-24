@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>DEPLOY</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">DEPLOY</h1>
+</header>
+<h1 id="deploy-tabgis">Deploy TabGis</h1>
+<p>Este documento e a referencia principal de deploy para ambiente
+TabGis moderno.</p>
+<h2 id="ambiente-padrao">Ambiente padrao</h2>
+<ul>
+<li>Orquestracao: <code>infra/docker-compose.yml</code></li>
+<li>Frontend/proxy: <code>http://&lt;host&gt;:8088/</code></li>
+<li>GeoServer: <code>http://&lt;host&gt;:8080/geoserver/web</code></li>
+<li>TileServer: <code>http://&lt;host&gt;:8081/</code></li>
+</ul>
+<h2 id="sequencia-recomendada">Sequencia recomendada</h2>
+<ol type="1">
+<li>Subir stack:
+<ul>
+<li><code>docker compose -f infra/docker-compose.yml up -d</code></li>
+</ul></li>
+<li>Verificar containers:
+<ul>
+<li><code>docker ps --format "table {{.Names}}\t{{.Status}}"</code></li>
+</ul></li>
+<li>Validar frontend:
+<ul>
+<li>abrir <code>http://&lt;host&gt;:8088/</code></li>
+</ul></li>
+</ol>
+<h2 id="banco-e-scripts-sql">2. Banco e scripts SQL</h2>
+<p>Executar scripts versionados em <code>infra/sql/</code> na ordem
+indicada em <code>docs/mds/CONTEXT_STATE.md</code> (tabela <em>Scripts
+versionados</em>) ou, para o passo-a-passo alargado, em
+<code>docs/mds/DEPLOY_POC.md</code> (secção 2).</p>
+<p>Incluir <strong><code>infra/sql/15_events_schema.sql</code></strong>
+antes de depender de <code>GET /api/events</code>,
+<strong><code>GET /api/events/export</code></strong> ou de emissão de
+eventos na API (pode aplicar-se após <code>01_init_schemas.sql</code>;
+ver <code>docs/mds/EVENTS_ARCHITECTURE.md</code>).</p>
+<p>Para <strong>RBAC</strong> (grupos/privilégios na UI e enforcement
+opcional na API), aplicar
+<strong><code>infra/sql/18_security_groups_privileges.sql</code></strong>
+após <code>01</code>. Para <strong>esquemático</strong> REST/UI
+(<strong>ESQ</strong>):
+<strong><code>16_schematic_schema.sql</code></strong> e, se existir
+massa POC em <code>gis.equipment</code>,
+<strong><code>17_schematic_link_poc_equipment.sql</code></strong>.
+Opcional pós-pipeline de bairros:
+<strong><code>19_fix_bairros_alvo_mapping.sql</code></strong>,
+<strong><code>20_sanity_bairros_alvo_sp.sql</code></strong> (este último
+falha se ainda houver ruído «bairro = município»).</p>
+<p>Para <strong>topologia nativa de rede</strong>
+(<code>postgis_topology</code>, segmentos lineares
+<code>gis.network_span</code>, API <code>GET /api/topology/*</code>):
+<strong><code>infra/sql/21_postgis_topology_utilities.sql</code></strong>
+— ver <strong><code>docs/mds/TOPOLOGY_NATIVE_POSTGIS.md</code></strong>.
+Rótulos regionalizados: reaplicar também
+<strong><code>infra/sql/02_populate_translations.sql</code></strong>
+quando o glossário i18n mudar.</p>
+<h2 id="diagnostico-rapido">Diagnostico rapido</h2>
+<ul>
+<li>Preferir acesso via <code>:8088</code> para garantir same-origin
+(<code>/geoserver</code>, <code>/tiles</code>, <code>/api</code>).</li>
+<li>Em caso de recreacao do TileServer, reiniciar <code>web</code> para
+re-resolver DNS interno Docker.</li>
+</ul>
+<h2 id="referencias-complementares">Referencias complementares</h2>
+<ul>
+<li><code>docs/README.md</code> — home do índice de documentação
+(Markdown) e ligação a <code>docs/html/</code> e
+<code>docs/pdfs/</code></li>
+<li><code>docs/mds/ARCHITECTURE_BPMN.md</code> — diagrama de módulos
+(Mermaid) e deploy</li>
+<li><code>.github/workflows/pages.yml</code> — GitHub Pages (HTML gerado
+a partir de <code>docs/*.md</code> + ajuda)</li>
+<li><code>docs/mds/CONTEXT_STATE.md</code></li>
+<li><code>docs/mds/DEPLOY_POC.md</code> (legado com detalhes historicos
+e troubleshooting estendido)</li>
+</ul>
+</body>
+</html>

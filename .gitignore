@@ -2,10 +2,10 @@
 data/tiles/*.mbtiles
 data/tiles/*.mbtiles.tmp
 
-# Fontes brutas (OSM, IBGE, etc.) — reproduzir localmente; ver docs/DEPLOY.md
+# Fontes brutas (OSM, IBGE, etc.) — reproduzir localmente; ver docs/mds/DEPLOY.md
 data/raw/
 
-# Toolchain Node local (opcional; ver docs/AUTONOMY_RUNBOOK.md)
+# Toolchain Node local (opcional; ver docs/mds/AUTONOMY_RUNBOOK.md)
 .tools/
 
 infra/scripts/.venv/
@@ -13,3 +13,4 @@ __pycache__/
 *.pyc
 node_modules/
 autonomy-logs/
+_site/

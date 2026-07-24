@@ -32,7 +32,7 @@ Pode demorar muitas horas. Ao terminar, o script indica reinício do TileServer:
 docker compose -f infra/docker-compose.yml restart tileserver
 ```
 
-Se o `web` (nginx) resolver mal o hostname `tileserver`, reinicie também `web` (ver `docs/CONTEXT_STATE.md`).
+Se o `web` (nginx) resolver mal o hostname `tileserver`, reinicie também `web` (ver `docs/mds/CONTEXT_STATE.md`).
 
 ---
 

@@ -544,8 +544,8 @@
         o modo <strong>online</strong> versus <strong>offline</strong> e aponta para a documentação Markdown do repositório.
       </p>
       <p class="help-meta">
-        Fontes: <code>docs/Escopo_Projeto_TabGis.md</code>, <code>docs/CONTEXT_STATE.md</code>,
-        <code>docs/GeoSampa_offline_operacao.md</code>, <code>docs/GeoSampa_offline_tecnico.md</code>.
+        Fontes: <code>docs/mds/Escopo_Projeto_TabGis.md</code>, <code>docs/mds/CONTEXT_STATE.md</code>,
+        <code>docs/mds/GeoSampa_offline_operacao.md</code>, <code>docs/mds/GeoSampa_offline_tecnico.md</code>.
       </p>
     </header>
 
@@ -578,7 +578,7 @@
 
     <section class="help-section" id="stack">
       <h2><span class="help-num">2</span> Stack tecnológica</h2>
-      <p>Componentes open source usados na plataforma (detalhe de portas e SQL em <code>docs/CONTEXT_STATE.md</code>).</p>
+      <p>Componentes open source usados na plataforma (detalhe de portas e SQL em <code>docs/mds/CONTEXT_STATE.md</code>).</p>
       <div class="help-tags" aria-hidden="true">
         <span class="help-tag help-tag--data">PostGIS</span>
         <span class="help-tag help-tag--data">PostgreSQL 15</span>
@@ -597,7 +597,7 @@
         <div class="help-stack-group">
           <h3>Dados e mapas</h3>
           <ul>
-            <li><strong>PostGIS</strong> — schemas <code>landbase</code> (feições IBGE/OSM, municípios-alvo, bairros, vias), <code>config</code>, <code>security</code>, <code>audit</code>, <code>operations</code>, <code>ref</code>, <code>gis</code>, <code>oms</code>, <code>mwm</code>.</li>
+            <li><strong>PostGIS</strong> — schemas <code>landbase</code> (feições IBGE/OSM, municípios-alvo, bairros, vias), <code>config</code>, <code>security</code>, <code>audit</code>, <code>operations</code>, <code>ref</code>, <code>gis</code>, <code>oms</code>, <code>mwm</code>, <code>schematic</code> (unifilar), <code>events</code> (diário de integração), topologia nativa <code>tabgis_utilities_topo</code> e segmentos lineares da rede em <code>gis.network_span</code> — ver <code>TOPOLOGY_NATIVE_POSTGIS.md</code>.</li>
             <li><strong>GeoServer</strong> — workspace <code>base_sp</code>, camadas WMS/WFS, GetFeatureInfo, estilos em <code>infra/geoserver/styles/</code>.</li>
             <li><strong>TileServer GL</strong> — MBTiles raster (satélite SP, GeoSampa) via <code>/tiles/</code>.</li>
           </ul>
@@ -606,7 +606,7 @@
           <h3>Aplicação e integrações</h3>
           <ul>
             <li><strong>Frontend</strong> — HTML/CSS/JS (<code>frontend/index.html</code>, <code>main.js</code>, <code>styles.css</code>), tipografia Inter.</li>
-            <li><strong>API</strong> — traduções, utilizadores, ordens, geocodificação, tipos <code>ref.*</code>, equipas, agregados OMS, auditoria, rotas demo MWM.</li>
+            <li><strong>API</strong> — traduções, utilizadores e RBAC, ordens e folha OMS, geocodificação, tipos <code>ref.*</code>, equipas, agregados OMS, auditoria, rotas demo MWM, vistas esquemáticas (<code>/api/schematic/*</code>), metadados e segmentos lineares com leitura e edição (<code>GET/POST /api/topology/spans</code>, <code>GET/PATCH/DELETE /api/topology/spans/:id</code>), <code>GET /api/events</code> e export cursado <code>GET /api/events/export</code>.</li>
             <li><strong>Serviços externos (online)</strong> — tiles Esri World Imagery, Nominatim, Open-Meteo, RainViewer (radar).</li>
             <li><strong>MongoDB</strong> — reservado a eventos / <code>event_report</code> (evolução futura).</li>
             <li><strong>Playwright</strong> — testes E2E em <code>e2e/</code>.</li>
@@ -694,9 +694,9 @@
       </div>
       <div class="help-md-links">
         Markdown completo no GitHub (branch <code>main</code>):
-        <a href="https://github.com/wesleyspo/TabGis/blob/main/docs/GeoSampa_offline_operacao.md" target="_blank" rel="noopener noreferrer">GeoSampa_offline_operacao.md</a>
+        <a href="https://github.com/wesleyspo/TabGis/blob/main/docs/mds/GeoSampa_offline_operacao.md" target="_blank" rel="noopener noreferrer">GeoSampa_offline_operacao.md</a>
         ·
-        <a href="https://github.com/wesleyspo/TabGis/blob/main/docs/GeoSampa_offline_tecnico.md" target="_blank" rel="noopener noreferrer">GeoSampa_offline_tecnico.md</a>
+        <a href="https://github.com/wesleyspo/TabGis/blob/main/docs/mds/GeoSampa_offline_tecnico.md" target="_blank" rel="noopener noreferrer">GeoSampa_offline_tecnico.md</a>
       </div>
     </section>
 
@@ -719,7 +719,7 @@
         O interruptor ao lado (rótulo i18n <strong>«Foco no centro de controlo (~75&nbsp;%)»</strong>) alterna entre
         <code>app--oper-layout-split</code> (metade / metade) e <code>app--oper-layout-ccc</code> (grelha 2×2 com mais área para o painel).
         A topbar decorativa mostra só <strong>Mapa</strong> em tela cheia; com Operação aberta, os títulos <strong>Centro de Controle</strong> e <strong>Mapa</strong>
-        alinham-se às colunas no modo split (ver <code>docs/CONTEXT_STATE.md</code> — topbar 60px).
+        alinham-se às colunas no modo split (ver <code>docs/mds/CONTEXT_STATE.md</code> — topbar 60px).
       </p>
 
       <div class="help-wire-list" role="group" aria-label="Esquemas dos três modos de layout">
@@ -764,7 +764,7 @@
             <div class="help-wf-body">
               <div class="help-wf-panel">
                 Painel Operação
-                <span class="help-wf-tabs">OMS · MWM · DMS · IND · SMT · TMP · AUD</span>
+                <span class="help-wf-tabs">OMS · MWM · DMS · IND · SMT · ESQ · TMP · AUD</span>
               </div>
               <div class="help-wf-map">Mapa</div>
             </div>
@@ -823,6 +823,7 @@
         <li><strong>Clima</strong> — atalho (ícone sol + nuvem) para a guia TMP.</li>
         <li><strong>Busca</strong> — municípios e bairros (WFS); endereço (Nominatim ou PostGIS local).</li>
         <li><strong>Camadas</strong> — fundo raster (online / satélite local / GeoSampa offline), vias, limites, municípios-alvo, bairros; <em>pills</em> OMS/MWM/GIS/LAND.</li>
+        <li><strong>Rede técnica</strong> — «Segmentos lineares da rede» (camada WMS <code>base_sp:v_network_span_wms</code>): traçados de <code>gis.network_span</code> com topologia nativa PostGIS; edição via <code>POST/PATCH/DELETE /api/topology/spans</code> (arquivo pré-delete em auditoria e eventos <code>gis.topology.network_span.*</code>).</li>
         <li><strong>Configurações</strong> — idioma, visualização, utilizadores, tipos <code>ref</code>, traduções, esta ajuda.</li>
       </ul>
       <p class="help-note">Só um menu entre Busca, Camadas e Configurações fica aberto; clique fora da topbar fecha os painéis.</p>
@@ -849,14 +850,15 @@
     <section class="help-section" id="operacao">
       <h2><span class="help-num">8</span> Painel Operação</h2>
       <p>
-        Guias: <strong>OMS</strong>, <strong>MWM</strong>, <strong>DMS</strong>, <strong>IND</strong>, <strong>SMT</strong>, <strong>TMP</strong> (clima), <strong>AUD</strong>.
+        Guias: <strong>OMS</strong>, <strong>MWM</strong>, <strong>DMS</strong>, <strong>IND</strong>, <strong>SMT</strong>, <strong>ESQ</strong> (esquemático / unifilar), <strong>TMP</strong> (clima), <strong>AUD</strong>.
         Utilizadores: <strong>Configurações → Gerenciar utilizadores</strong> (não na barra de guias).
       </p>
       <ul>
         <li><strong>OMS</strong> — ordens e folha via REST.</li>
+        <li><strong>ESQ</strong> — vistas em <code>schematic.*</code>; leitura e edição de nós via API; «Ir para o mapa» usa foco do nó ou equipamento GIS quando ligado.</li>
         <li><strong>TMP</strong> — Open-Meteo (SP centro), radar RainViewer opcional; não substitui alertas oficiais (INMET/CPTEC).</li>
         <li><strong>Ir para o mapa</strong> — centra e activa vista operacional (bairros/vias conforme regras).</li>
-        <li>Outras guias podem estar em mock — ver <code>docs/CONTEXT_STATE.md</code>.</li>
+        <li>Outras guias podem estar em mock — ver <code>docs/mds/CONTEXT_STATE.md</code>.</li>
       </ul>
     </section>
 
@@ -869,6 +871,11 @@
       </ul>
       <h3>Traduções</h3>
       <p>Modal espelhado para chaves <code>config.translation</code> (EN/PT/ES/IT); API <code>GET /api/translations/:lang</code>.</p>
+      <p class="help-note">
+        Glossário técnico (sem duplo sentido coloquial): chaves <code>UI_GLOSSARY_LINEAR_NETWORK_SEGMENT</code>,
+        <code>UI_GLOSSARY_POSTGIS_TOPOLOGY</code>, <code>UI_HELP_STACK_POSTGIS_TOPOLOGY</code>, <code>UI_HELP_API_TOPOLOGY</code>
+        — cadastro em <code>infra/sql/02_populate_translations.sql</code>; reaplicar o ficheiro na PostGIS após alterações e reiniciar o contentor <code>api</code>.
+      </p>
       <h3>Utilizadores e <code>ref.*</code></h3>
       <p>
         <strong>Utilizadores:</strong> <code>GET</code>/<code>POST /api/users</code> sobre <code>security.users</code>.
@@ -883,13 +890,13 @@
         (opcional <code>PLAYWRIGHT_BASE_URL=…</code>).
       </p>
       <ul>
-        <li><a href="https://github.com/wesleyspo/TabGis/blob/main/docs/Escopo_Projeto_TabGis.md" target="_blank" rel="noopener noreferrer">Escopo_Projeto_TabGis.md</a> — objectivos e arquitectura.</li>
-        <li><a href="https://github.com/wesleyspo/TabGis/blob/main/docs/CONTEXT_STATE.md" target="_blank" rel="noopener noreferrer">CONTEXT_STATE.md</a> — estado da POC, portas, SQL, frontend.</li>
-        <li><a href="https://github.com/wesleyspo/TabGis/blob/main/docs/DEPLOY.md" target="_blank" rel="noopener noreferrer">DEPLOY.md</a> — deploy e ordem de carregamento.</li>
+        <li><a href="https://github.com/wesleyspo/TabGis/blob/main/docs/mds/Escopo_Projeto_TabGis.md" target="_blank" rel="noopener noreferrer">Escopo_Projeto_TabGis.md</a> — objectivos e arquitectura.</li>
+        <li><a href="https://github.com/wesleyspo/TabGis/blob/main/docs/mds/CONTEXT_STATE.md" target="_blank" rel="noopener noreferrer">CONTEXT_STATE.md</a> — estado da POC, portas, SQL, frontend.</li>
+        <li><a href="https://github.com/wesleyspo/TabGis/blob/main/docs/mds/DEPLOY.md" target="_blank" rel="noopener noreferrer">DEPLOY.md</a> — deploy e ordem de carregamento.</li>
         <li><a href="https://github.com/wesleyspo/TabGis/blob/main/frontend/README.md" target="_blank" rel="noopener noreferrer">frontend/README.md</a> — notas do cliente web.</li>
       </ul>
       <p class="help-note" style="margin-top: 20px;">
-        Para versões de camadas, tamanhos de MBTiles e procedimentos de build, use sempre <code>docs/CONTEXT_STATE.md</code> no clone ou no GitHub.
+        Para versões de camadas, tamanhos de MBTiles e procedimentos de build, use sempre <code>docs/mds/CONTEXT_STATE.md</code> no clone ou no GitHub.
       </p>
     </section>
   </div>

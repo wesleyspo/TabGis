@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>AUTONOMY_RUNBOOK</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">AUTONOMY_RUNBOOK</h1>
+</header>
+<h1 id="tabgis---runbook-de-execucao-autonoma">TabGis - Runbook de
+Execucao Autonoma</h1>
+<h2 id="objetivo">Objetivo</h2>
+<p>Executar uma janela longa de trabalho automatizado com checkpoints,
+sem interromper em falhas pontuais.</p>
+<h2 id="script-principal">Script principal</h2>
+<ul>
+<li><code>scripts/autonomy/run_10h.sh</code></li>
+<li><code>scripts/autonomy/run_window_10h.sh</code> (orquestrador por
+janela de 10 horas)</li>
+</ul>
+<h2 id="como-iniciar">Como iniciar</h2>
+<p>Da raiz do repositorio:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> scripts/autonomy/run_10h.sh</span></code></pre></div>
+<p>Para janela continua de 10h (ciclos repetidos):</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> scripts/autonomy/run_window_10h.sh</span></code></pre></div>
+<p>Até às <strong>07:00</strong> do relógio local (próxima
+ocorrência):</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> scripts/autonomy/run_until_0700.sh</span></code></pre></div>
+<h2 id="onde-ficam-os-artefatos">Onde ficam os artefatos</h2>
+<ul>
+<li>Pasta: <code>autonomy-logs/run_YYYYMMDD_HHMMSS/</code></li>
+<li>Arquivos principais:
+<ul>
+<li><code>timeline.log</code></li>
+<li><code>status_table.md</code></li>
+<li><code>final_report.md</code></li>
+<li><code>*.log</code> por etapa</li>
+</ul></li>
+</ul>
+<h2 id="comportamento">Comportamento</h2>
+<ul>
+<li>O pipeline e dividido em ondas.</li>
+<li>Cada etapa registra comando, status e exit code.</li>
+<li>Em falha, a execucao continua para nao perder a janela de
+autonomia.</li>
+</ul>
+<h2 id="stress-api-manual-ou-ci">Stress API (manual ou CI)</h2>
+<p>Script: <code>scripts/stress/stress_api.sh</code></p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="va">STRESS_BASE_URL</span><span class="op">=</span>http://127.0.0.1:8088 <span class="va">STRESS_ITERATIONS</span><span class="op">=</span>200 <span class="fu">bash</span> scripts/stress/stress_api.sh</span></code></pre></div>
+<p>Gera JSON em <code>autonomy-logs/stress_*.json</code> (ou defina
+<code>STRESS_REPORT_FILE</code>). O passo <strong>2.4</strong> de
+<code>run_10h.sh</code> executa uma carga leve por defeito
+(<code>STRESS_ITERATIONS=50</code>), usando
+<code>PLAYWRIGHT_BASE_URL</code> quando definida.</p>
+<p><code>STRESS_CONCURRENCY</code> (default 1): acima de 1, cada
+iteração dispara ondas de pedidos paralelos (round-robin nos quatro
+endpoints).</p>
+<h2 id="observacoes-operacionais">Observacoes operacionais</h2>
+<ul>
+<li>Se <code>npm</code> nao estiver instalado, as etapas de E2E sao
+marcadas como falha e o fluxo segue.</li>
+<li>O report final centraliza a trilha completa para auditoria de
+execucao.</li>
+</ul>
+</body>
+</html>

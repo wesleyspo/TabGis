@@ -2,7 +2,7 @@
 
 > **Convenção deste documento:** cada entidade é uma **tabela** com colunas **Campo**, **Tipo (PostgreSQL)**, **Comentário (inglês, US)** e **Comentário (português)**. Nomes de **schemas**, **tabelas** e **campos** em **inglês**.  
 > **Motor:** PostgreSQL 15+ / PostGIS. Campos `TYPE` / `STATUS` com domínio fechado exigem **tabela de controlo** correspondente (cadastro + auditoria), conforme regra global do modelo.  
-> **Diagramas:** [`Database_Structure_Context.html`](./Database_Structure_Context.html).
+> **Diagramas:** versão HTML gerada a partir deste MD em [`../html/Database_Structure_Context.html`](../html/Database_Structure_Context.html); diagrama interactivo legado em [`../html/Database_Structure_Context.diagram-legacy.html`](../html/Database_Structure_Context.diagram-legacy.html).
 
 ---
 
@@ -14,7 +14,7 @@
 | **`oms`** | **Chamadas** (*calls*), **feedbacks** de contato, **ordens** (*work orders*), **tarefas** (*tasks*), **eventos de rede** (*network events*), **interrupções ao consumidor** (*customer interruptions*). |
 | **`mwm`** | **Equipas** (*crews*), **turnos**, **atribuição equipa–ordem**, **trajectos** (tempo real / histórico). |
 
-**Schemas já existentes no projecto (fora desta partição):** `landbase` (fundo cartográfico), `config`, `security`, `audit`. A POC `operations.*` é subconjunto temporário até alinhar DDL com `oms` / `mwm`.
+**Schemas já existentes no projecto (fora desta partição):** `landbase` (fundo cartográfico), `config`, `security`, `audit`, **`events`** (diário append-only de integração — ver `docs/mds/EVENTS_ARCHITECTURE.md`), **`schematic`** (vistas unifilares / fluxo com foco geográfico), **`tabgis_utilities_topo`** (topologia PostGIS nativa — primitivas `edge_data`/`node`/…; ver `docs/mds/TOPOLOGY_NATIVE_POSTGIS.md`). A POC `operations.*` é subconjunto temporário até alinhar DDL com `oms` / `mwm`.
 
 ---
 
@@ -109,6 +109,24 @@
 | `geom` | `geometry(Geometry,4326)` | Equipment geometry (point or line). | Geometria PostGIS do ativo. |
 
 *Nota:* Estados `status_*` / `normal_status_*` devem referenciar tabelas de domínio (ex.: `ref.connection_state`) com o mesmo significado em todos os utilities.
+
+### 3.3 `gis.network_span` (segmento linear da rede + TopoGeometry)
+
+Entidade de **segmento linear da rede** (em inglês de dados: *network span*): continuidade física gerida pela extensão **`postgis_topology`**. DDL e dados demo: `infra/sql/21_postgis_topology_utilities.sql`. Vista legível: **`gis.v_network_span_readable`**.
+
+| Campo | Tipo | Comentário (EN) | Comentário (PT) |
+|-------|------|-----------------|-----------------|
+| `id` | `BIGSERIAL` | Primary key. | Chave primária. |
+| `code` | `VARCHAR(96)` | Unique business code for the span. | Código único do segmento linear. |
+| `description` | `TEXT` | Optional operator-facing note. | Nota opcional. |
+| `utility_domain` | `VARCHAR(16)` | Sector (electric, gas, water, …). | Sector utility. |
+| `equipment_from_id` | `BIGINT` | Optional upstream terminal equipment. | Equipamento terminal inicial (opcional). |
+| `equipment_to_id` | `BIGINT` | Optional downstream terminal equipment. | Equipamento terminal final (opcional). |
+| `span_geom` | `geometry(LineString,4326)` | Exchange geometry (WFS/GeoJSON). | Geometria interoperável. |
+| `topo_geom` | `topology.TopoGeometry` | Native topology reference (shared nodes). | Referência topológica nativa (nós partilhados). |
+| `event_id` | `BIGINT` | FK `audit.domain_event`; optional. | Última alteração de domínio (opcional). |
+| `metadata` | `JSONB` | Free-form span metadata. | Metadados livres. |
+| `created_at` | `TIMESTAMPTZ` | Row creation time. | Criação do registo. |
 
 ---
 
@@ -376,12 +394,27 @@ Tabela **analógica** por domínio (histórico append-only) e política de **arq
 | `access_type` | `VARCHAR(20)` | `ADMIN`, `CONSULTA`, `OPERACAO`. | Perfil de acesso. |
 | `status` | `VARCHAR(20)` | Session / account hint (`online`, `offline`, …). | Estado operacional. |
 | `created_at` | `TIMESTAMPTZ` | Row creation. | Criação do registo. |
+| `is_active` | `BOOLEAN` | Account enabled; used with RBAC groups (`security.user_group_member`). | Conta activa; usado com grupos RBAC. |
+
+Grupos e privilégios (`security.privilege`, `security.user_group`, `security.group_privilege`, `security.user_group_member`): script `infra/sql/18_security_groups_privileges.sql`.
 
 A tabela legada `security.user` é migrada para `security.users` via `infra/sql/01_init_schemas.sql` / `04_gis_oms_mwm_domain.sql`.
 
 ---
 
-## 7. POC `operations` (TabGis actual)
+## 7. Schema `schematic` (vistas esquemáticas — TabGis actual)
+
+DDL: `infra/sql/16_schematic_schema.sql`; ligação opcional de nós a inventário: `infra/sql/17_schematic_link_poc_equipment.sql`.
+
+| Tabela | Função |
+|--------|--------|
+| `schematic.network_view` | Vista lógica (unifilar, fluxo de potência ou híbrida); metadados JSON (ex.: tensão, código de alimentador). |
+| `schematic.view_node` | Nó ordenado (`seq_no`) no desenho; `focus_lat` / `focus_lng` para «Ir para o mapa»; `equipment_id` opcional → `gis.equipment`. |
+| `schematic.view_edge` | Aresta entre nós; campos qualitativos de P/Q (kW / kVAr) para anotação MVP. |
+
+---
+
+## 8. POC `operations` (TabGis actual)
 
 | `operations` | Mapa conceptual |
 |----------------|-----------------|
@@ -392,4 +425,4 @@ A tabela legada `security.user` é migrada para `security.users` via `infra/sql/
 
 ---
 
-*Documento orientado à tua partição **gis / oms / mwm** e às dependências originais entre consumidores, equipamentos, chamadas, ordens, tarefas, eventos de rede e equipas.*
+*Documento orientado à partição **gis / oms / mwm**, ao **`schematic`** operacional e às dependências entre consumidores, equipamentos, chamadas, ordens, tarefas, eventos de rede e equipas.*

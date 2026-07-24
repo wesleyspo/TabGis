@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test lib/geocodeQuery.test.js lib/localGeocodeFormat.test.js lib/omsAggregate.test.js lib/events/createEventBus.test.js lib/events/constants.test.js"
+    "test": "node --test lib/geocodeQuery.test.js lib/localGeocodeFormat.test.js lib/omsAggregate.test.js lib/events/createEventBus.test.js lib/events/constants.test.js lib/events/eventRowToMongoShape.test.js lib/schematic/validateViewNodePatch.test.js lib/topology/validateSpanWrite.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

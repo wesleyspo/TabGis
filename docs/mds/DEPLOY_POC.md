@@ -1,7 +1,7 @@
 # Deploy POC — TabGis (Linux + Docker)
 
 Guia único para subir a stack, carregar o landbase do **Estado de São Paulo** e expor o frontend.
-Complementa os runbooks de dados em `docs/RUNBOOK_BASEMAP_SP_ESTADO.md`.
+Complementa os runbooks de dados em `docs/mds/RUNBOOK_BASEMAP_SP_ESTADO.md`.
 
 ### Onde o código está versionado
 
@@ -11,7 +11,7 @@ Complementa os runbooks de dados em `docs/RUNBOOK_BASEMAP_SP_ESTADO.md`.
 | **Versão actual do marco V0** | **v0.1.0** (*tag* Git) + ficheiro `VERSION` na raiz |
 | **Cópia no servidor** | Caminho local do projecto (ex.: `/home/wesley/projects/TabGis` no homeserver) |
 
-Detalhes de SemVer, *tags* e o que fica fora do Git (MBTiles, `data/raw/`) estão em `docs/CONTEXT_STATE.md` → secção **Versionamento e código-fonte**.
+Detalhes de SemVer, *tags* e o que fica fora do Git (MBTiles, `data/raw/`) estão em `docs/mds/CONTEXT_STATE.md` → secção **Versionamento e código-fonte**.
 
 ---
 
@@ -87,7 +87,7 @@ Serviços iniciados:
 
 | Container | Função | Porta |
 |-----------|--------|-------|
-| `db` | PostgreSQL + PostGIS | 5432 |
+| `db` | PostgreSQL + PostGIS | **5433** (host; mapeado para 5432 no container) |
 | `geoserver` | WMS / WFS | 8080 |
 | `tileserver` | MBTiles raster (satélite local) | 8081 |
 | `api` | Node/Express — traduções (`/api/translations/:lang`) | 3000 |
@@ -119,7 +119,7 @@ docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d ta
 | `01_init_schemas.sql` | Schemas `landbase`, `config`, `security`, `audit`; parâmetros, traduções, idiomas; **`security.users`** (migração idempotente de `security.user`) |
 | `02_populate_translations.sql` | `INSERT … ON CONFLICT DO UPDATE` das chaves de UI (EN/PT/ES/IT) consumidas pelo frontend (`data-i18n`) e pela API |
 | `03_operations_schema.sql` | Schema `operations` (`team`, `work_order` com `owner_id` / `locked_by_id`, `team_order_displacement`, `team_route`), `audit.operations_row_archive`, triggers `BEFORE DELETE` |
-| `04_gis_oms_mwm_domain.sql` | Schemas `ref`, `gis`, `oms`, `mwm`; `audit.domain_event`; DDL em `docs/Database_Structure_Context.md`; dados mínimos |
+| `04_gis_oms_mwm_domain.sql` | Schemas `ref`, `gis`, `oms`, `mwm`; `audit.domain_event`; DDL em `docs/mds/Database_Structure_Context.md`; dados mínimos |
 | `05_operational_demo_data.sql` | Dados fictícios operacionais (utilizadores, equipas com posição, ordens) — idempotente |
 | `06_work_order_sheet_model.sql` | Folha OMS: colunas decisórias em `work_order`, tabelas `work_order_task` / `work_order_complaint`, dados de exemplo idempotentes |
 | `06_work_order_sheet_model_functions_triggers.sql` | Função `generate_work_order_code()` (YYYYMMDD + sequência diária America/São_Paulo), trigger de `order_code`, triggers de contagem de reclamações e arquivo pré-delete em tarefas/reclamações |
@@ -127,7 +127,7 @@ docker compose -f infra/docker-compose.yml exec -T db psql -U tabgis_admin -d ta
 
 **API (`api`):** após `02_populate_translations.sql`, reiniciar: `docker compose -f infra/docker-compose.yml restart api`. Após `04_gis_oms_mwm_domain.sql`, `06_*` ou alterações ao `backend/`, reconstruir: `docker compose -f infra/docker-compose.yml up -d --build api` (inclui `POST /api/work-orders/:id/tasks`, `PATCH /api/work-orders/:id/tasks/:task_id`).
 
-**SLD no GeoServer:** ficheiros versionados em `infra/geoserver/styles/*.sld`. Um `git pull` que altere estilos (ex.: recorte alvo — `base_sp_bairros_alvo.sld`, `base_sp_municipios_alvo_highlight.sld`) **não** actualiza o GeoServer sozinho: na consola **Styles**, substituir o XML do estilo ou repetir o fluxo de publicação do projecto. Detalhe das camadas e notas visuais: `docs/CONTEXT_STATE.md` (secção *Estilos GeoServer — recorte alvo*).
+**SLD no GeoServer:** ficheiros versionados em `infra/geoserver/styles/*.sld`. Um `git pull` que altere estilos (ex.: recorte alvo — `base_sp_bairros_alvo.sld`, `base_sp_municipios_alvo_highlight.sld`) **não** actualiza o GeoServer sozinho: na consola **Styles**, substituir o XML do estilo ou repetir o fluxo de publicação do projecto. Detalhe das camadas e notas visuais: `docs/mds/CONTEXT_STATE.md` (secção *Estilos GeoServer — recorte alvo*).
 
 ---
 
@@ -273,7 +273,7 @@ Portas a libertar para acesso de outros equipamentos:
 | **8080** | GeoServer admin directo | Opcional |
 | **8081** | TileServer directo | Diagnóstico |
 | **5173** | Dev server estático | Opcional |
-| **5432** | PostGIS | Só admin |
+| **5433** | PostGIS (mapeamento host; interno ao Docker continua 5432) | Só admin |
 
 ---
 
