@@ -20,7 +20,6 @@ Representar **segmentos lineares da rede** (conductores, tubagens, cabos, etc.) 
 
 ### O que ainda não é (marcos futuros)
 
-- **Limpeza de primitivas órfãs**: apagar um segmento liberta as *relações* (`clearTopoGeom`) mas as primitivas `edge_data`/`node` sem referência permanecem na topologia (comportamento nativo). Remoção fina exige `ST_RemEdgeModFace` / rotinas de manutenção dedicadas.
 - **Edição de geometria no mapa** (desenho interactivo no Leaflet); hoje a edição é via API REST.
 - **CRS projetado** para tolerância em metros constantes em toda a área — ver secção 5.
 
@@ -88,6 +87,7 @@ Requer o mesmo perfil que operações sobre ordens quando **`SECURITY_ENFORCE=1`
 | `POST` | `/api/topology/spans` | Cria segmento: `code` (obrigatório, imutável), `coordinates` (`[[lng,lat],…]`, ≥2 vértices), opcionais `description`, `utility_domain`, `equipment_from_id`, `equipment_to_id`, `metadata`. Insere `span_geom` e materializa `topo_geom` com `toTopoGeom` na mesma transacção. `409` em código duplicado. Emite **`gis.topology.network_span.created`**. |
 | `PATCH` | `/api/topology/spans/:id` | Atualização parcial; `coordinates` retraça a geometria (limpa a TopoGeometry anterior com `clearTopoGeom` e re-materializa). `code` é imutável. Emite **`gis.topology.network_span.updated`**. |
 | `DELETE` | `/api/topology/spans/:id` | Limpa a TopoGeometry, apaga a linha — o trigger BEFORE DELETE arquiva o snapshot em `audit.operations_row_archive` antes da remoção. Emite **`gis.topology.network_span.deleted`**. |
+| `POST` | `/api/topology/maintenance/prune` | Remove primitivas órfãs (arestas sem referência em `relation`, depois nós isolados) com `ST_RemEdgeModFace` / `ST_RemIsoNode`. Corpo opcional `{"dry_run": true}` só conta. Emite **`gis.topology.maintenance.pruned`** quando remove. Função: `gis.prune_orphan_topology_primitives` (`infra/sql/23`). |
 
 Validação dos corpos em **`backend/lib/topology/validateSpanWrite.js`** (lógica pura, testada com `node:test` — `npm test`).
 
@@ -136,6 +136,7 @@ Corrigir erros reportados antes de confiar em análises de continuidade em produ
 
 ## 5. Limitações e boas práticas
 
+0. **Primitivas órfãs**: o DELETE de um segmento não remove primitivas partilháveis de imediato — execute periodicamente `POST /api/topology/maintenance/prune` (ou `SELECT * FROM gis.prune_orphan_topology_primitives(false)`). No **dry-run**, a contagem de nós isolados subestima: nós só ficam isolados depois de removidas as arestas órfãs. Cada primitiva falhada é registada com `RAISE NOTICE` e a rotina continua.
 1. **Geografia vs geometria**: comprimentos na vista/API usam cast para **geografia** sobre 4326 — adequado para ordens de grandeza operacional; estudos de perfil eléctrico finos podem exigir modelo projetado.
 2. **Tolerância em graus**: redes muito extensas podem preferir uma topologia separada em **EPSG projectivo local** com `precision` em metros.
 3. **Redes não planares**: múltiplos circuitos sobrepostos podem exigir modelação avançada (várias camadas ou grafos além deste MVP).

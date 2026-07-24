@@ -1583,6 +1583,44 @@ app.delete('/api/topology/spans/:id', async (req, res) => {
 });
 
 /**
+ * Manutenção da topologia: remove primitivas órfãs (arestas/nós sem referência
+ * de TopoGeometry, tipicamente após DELETE de segmentos). Corpo opcional
+ * `{ "dry_run": true }` apenas conta, sem remover. No dry-run a contagem de nós
+ * isolados tende a subestimar (nós só ficam isolados após remover as arestas).
+ * Função SQL: gis.prune_orphan_topology_primitives (infra/sql/23).
+ * Emite `gis.topology.maintenance.pruned` quando remove de facto.
+ */
+app.post('/api/topology/maintenance/prune', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.oms'))) return;
+  const dryRun = req.body != null && req.body.dry_run === true;
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM gis.prune_orphan_topology_primitives($1)`,
+      [dryRun]
+    );
+    const result = rows[0] || {};
+    if (!dryRun && (result.edges_removed > 0 || result.nodes_removed > 0)) {
+      await emitWithRequest(req, {
+        domain: 'gis',
+        eventType: 'topology.maintenance.pruned',
+        aggregateType: 'gis.topology',
+        aggregateId: 'tabgis_utilities_topo',
+        payload: { ...result },
+        actorType: 'api',
+      });
+    }
+    res.json({ ok: true, dry_run: dryRun, ...result });
+  } catch (error) {
+    console.error('POST /api/topology/maintenance/prune', error);
+    res.status(503).json({
+      error:
+        'Failed to prune topology primitives (aplique infra/sql/23_topology_prune_orphan_primitives.sql)',
+      detail: error.message,
+    });
+  }
+});
+
+/**
  * Vistas esquemáticas (unifilar / anotação de fluxo) — ver infra/sql/16_schematic_schema.sql
  */
 app.get('/api/schematic/views', async (req, res) => {
