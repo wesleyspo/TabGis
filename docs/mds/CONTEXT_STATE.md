@@ -400,7 +400,7 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 |---|--------|--------|
 | L1 | Decisão arquitectura routing (pgRouting vs OSRM) + runbook | ✅ `OPERATIONS_MWM.md` §6 |
 | L2 | API deslocamento planeado/real (`team_order_displacement` PATCH) | ✅ `PATCH /api/mwm/displacements/:id` |
-| L3 | UI MWM: detalhe equipa + ordens atribuídas + linha temporal 48h | 🔶 Parcial (lista + overlay) |
+| L3 | UI MWM: detalhe equipa + ordens + rotas 48h + deslocamentos | ✅ `GET /api/mwm/teams/:id` + painel detalhe |
 | L4 | Posição «última conhecida» actualizável (PATCH equipa) | ✅ `PATCH /api/teams/:id` |
 
 ### Detalhes das entidades

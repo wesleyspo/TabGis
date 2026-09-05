@@ -1388,6 +1388,10 @@ function renderOperDetailTeam(t) {
     ["Zona", t.zone || "—"],
     ["Membros", t.member_count != null ? String(t.member_count) : "—"],
     ["Estado", teamStatusLabel(t.status)],
+    ["Últ. coordenadas",
+      (t.lat != null && t.lng != null)
+        ? `${Number(t.lat).toFixed(5)}, ${Number(t.lng).toFixed(5)}`
+        : "—"],
   ];
   const rows = lines
     .map(
@@ -1396,6 +1400,159 @@ function renderOperDetailTeam(t) {
     )
     .join("");
   body.innerHTML = `<h4 class="oper-detail-heading">${escapeHtml(title)}</h4><table class="oper-detail-table"><tbody>${rows}</tbody></table>`;
+}
+
+/**
+ * Carrega e renderiza o detalhe L3 de uma equipa (ordens + rotas 48h + deslocamentos).
+ * @param {{id?: number, team_code?: string}} t
+ */
+async function loadAndRenderOperDetailTeam(t) {
+  const body = operDetailBodyEl();
+  if (!body || !t) return;
+  const teamId = Number(t.id || t.team_id || 0);
+  if (!teamId) {
+    renderOperDetailTeam(t);
+    return;
+  }
+  body.innerHTML = `<h4 class="oper-detail-heading">${escapeHtml(
+    uiText("UI_OP_DETAIL_TEAM", "Equipa em campo")
+  )}</h4><p class="mock-hint oper-detail-empty">${escapeHtml(
+    uiText("UI_OP_STATUS_LOADING_TEAMS", "A carregar detalhe da equipa…")
+  )}</p>`;
+  try {
+    const res = await fetch(`/api/mwm/teams/${teamId}?hours=48`, {
+      headers: buildSessionHeaders(),
+    });
+    if (isForbiddenResponse(res)) {
+      body.innerHTML = `<p class="mock-hint oper-detail-empty">${escapeHtml(
+        uiText(
+          "UI_OP_MWM_ROUTES_48H_FORBIDDEN",
+          "Sem privilégio para consultar rotas operacionais (module.mwm)."
+        )
+      )}</p>`;
+      return;
+    }
+    if (!res.ok) throw new Error("team detail bad response");
+    const data = await res.json();
+    const team = data.team || {};
+    const lines = [
+      ["Equipa", team.team_code || "—"],
+      ["Líder", team.leader_name || "—"],
+      ["Skill", team.skill || "—"],
+      ["Tipo", team.team_type || "—"],
+      ["Unidade", team.owner_org || "—"],
+      ["Zona", team.zone || "—"],
+      ["Membros", team.member_count != null ? String(team.member_count) : "—"],
+      ["Estado", teamStatusLabel(team.status)],
+    ];
+    const baseRows = lines
+      .map(
+        ([k, v]) =>
+          `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(String(v))}</td></tr>`
+      )
+      .join("");
+
+    const orders = Array.isArray(data.orders) ? data.orders : [];
+    const orderRows = orders.length
+      ? orders
+          .map(
+            (o) =>
+              `<tr><td>${escapeHtml(o.order_code || `#${o.id}`)}</td><td>${escapeHtml(
+                o.summary || "—"
+              )}</td><td>${escapeHtml(o.status || "—")}</td><td>${escapeHtml(
+                o.priority || "—"
+              )}</td></tr>`
+          )
+          .join("")
+      : `<tr><td colspan="4" class="mock-hint">${escapeHtml(
+          uiText("UI_OP_DETAIL_TEAM_EMPTY", "Sem ordens atribuídas.")
+        )}</td></tr>`;
+
+    const routes = Array.isArray(data.routes) ? data.routes : [];
+    const routeRows = routes.length
+      ? routes
+          .map((r) => {
+            const km =
+              r.length_m_approx != null
+                ? `${(parseFloat(r.length_m_approx) / 1000).toFixed(2)} km`
+                : "—";
+            const src = r.source || "—";
+            return `<tr><td>${escapeHtml(formatTs(r.window_start))}</td><td>${escapeHtml(
+              formatTs(r.window_end)
+            )}</td><td>${escapeHtml(km)}</td><td>${escapeHtml(src)}</td></tr>`;
+          })
+          .join("")
+      : `<tr><td colspan="4" class="mock-hint">${escapeHtml(
+          uiText(
+            "UI_OP_DETAIL_TEAM_ROUTES_EMPTY",
+            "Sem rotas operacionais nas últimas 48 h."
+          )
+        )}</td></tr>`;
+
+    const displacements = Array.isArray(data.displacements)
+      ? data.displacements
+      : [];
+    const dispRows = displacements.length
+      ? displacements
+          .map((d) => {
+            const planned =
+              d.planned_departure_at || d.planned_arrival_at
+                ? formatTs(d.planned_departure_at)
+                : "—";
+            return `<tr><td>${escapeHtml(
+              d.work_order_id ? `#${d.work_order_id}` : "—"
+            )}</td><td>${escapeHtml(planned)}</td><td>${escapeHtml(
+              formatTs(d.actual_departure_at)
+            )}</td><td>${escapeHtml(d.notes || "—")}</td></tr>`;
+          })
+          .join("")
+      : `<tr><td colspan="4" class="mock-hint">${escapeHtml(
+          uiText("UI_OP_DETAIL_TEAM_EMPTY", "Sem deslocamentos.")
+        )}</td></tr>`;
+
+    const title = uiText("UI_OP_DETAIL_TEAM", "Equipa em campo");
+    body.innerHTML = `
+      <h4 class="oper-detail-heading">${escapeHtml(title)}</h4>
+      <table class="oper-detail-table"><tbody>${baseRows}</tbody></table>
+      <h4 class="oper-detail-heading" style="margin-top:12px">${escapeHtml(
+        uiText("UI_OP_DETAIL_TEAM_ORDERS", "Ordens atribuídas")
+      )}</h4>
+      <div class="oper-detail-scroll" style="max-height:160px;overflow:auto">
+        <table class="oper-detail-table"><thead><tr>
+          <th>Código</th><th>Resumo</th><th>Estado</th><th>Pri.</th>
+        </tr></thead><tbody>${orderRows}</tbody></table>
+      </div>
+      <h4 class="oper-detail-heading" style="margin-top:12px">${escapeHtml(
+        uiText("UI_OP_DETAIL_TEAM_ROUTES", "Rotas (48 h)")
+      )}</h4>
+      <div class="oper-detail-scroll" style="max-height:140px;overflow:auto">
+        <table class="oper-detail-table"><thead><tr>
+          <th>Início</th><th>Fim</th><th>Km</th><th>Source</th>
+        </tr></thead><tbody>${routeRows}</tbody></table>
+      </div>
+      <h4 class="oper-detail-heading" style="margin-top:12px">${escapeHtml(
+        uiText("UI_OP_DETAIL_TEAM_DISPL", "Deslocamentos")
+      )}</h4>
+      <div class="oper-detail-scroll" style="max-height:140px;overflow:auto">
+        <table class="oper-detail-table"><thead><tr>
+          <th>Ordem</th><th>Planeado</th><th>Real</th><th>Notes</th>
+        </tr></thead><tbody>${dispRows}</tbody></table>
+      </div>
+    `;
+    const lat = Number(team.lat);
+    const lng = Number(team.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      focusMapWithVias(lat, lng, MAP_FOCUS_ZOOM_TEAM);
+    }
+  } catch (e) {
+    console.error("loadAndRenderOperDetailTeam", e);
+    body.innerHTML = `<p class="mock-hint oper-detail-empty">${escapeHtml(
+      uiText(
+        "UI_OP_DETAIL_EMPTY",
+        "Falha ao carregar detalhe da equipa. Verifique a API MWM."
+      )
+    )}</p>`;
+  }
 }
 
 /**
@@ -3458,6 +3615,7 @@ async function loadTeamsFromApi() {
       `;
       tr.querySelector("td:nth-child(10)").appendChild(statusSpan);
       tr.classList.add("team-row-api");
+      tr.dataset.teamId = r.id != null ? String(r.id) : "";
       tr.dataset.teamCode = r.team_code ?? "";
       tr.dataset.leaderName = r.leader_name ?? "";
       tr.dataset.skill = r.skill ?? "";
@@ -3467,6 +3625,8 @@ async function loadTeamsFromApi() {
       tr.dataset.memberCount =
         r.member_count != null && r.member_count !== "" ? String(r.member_count) : "";
       tr.dataset.status = r.status ?? "";
+      tr.dataset.lat = hasPos ? String(lat) : "";
+      tr.dataset.lng = hasPos ? String(lng) : "";
       tr.setAttribute("role", "button");
       tr.tabIndex = 0;
       tbody.appendChild(tr);
@@ -3722,6 +3882,7 @@ async function openOrderSheetModal(orderId) {
 
 function teamRowToDetailObject(tr) {
   return {
+    id: tr.dataset.teamId != null && tr.dataset.teamId !== "" ? Number(tr.dataset.teamId) : null,
     team_code: tr.dataset.teamCode || "",
     leader_name: tr.dataset.leaderName || "",
     skill: tr.dataset.skill || "",
@@ -3733,6 +3894,8 @@ function teamRowToDetailObject(tr) {
         ? Number(tr.dataset.memberCount)
         : null,
     status: tr.dataset.status || "",
+    lat: tr.dataset.lat != null && tr.dataset.lat !== "" ? Number(tr.dataset.lat) : null,
+    lng: tr.dataset.lng != null && tr.dataset.lng !== "" ? Number(tr.dataset.lng) : null,
   };
 }
 
@@ -3789,7 +3952,7 @@ function teamRowToDetailObject(tr) {
 
     const teamRow = e.target.closest(".team-row-api");
     if (teamRow && !e.target.closest("button")) {
-      renderOperDetailTeam(teamRowToDetailObject(teamRow));
+      loadAndRenderOperDetailTeam(teamRowToDetailObject(teamRow));
       return;
     }
 
@@ -3816,7 +3979,7 @@ function teamRowToDetailObject(tr) {
     if (teamRow && !e.target.closest("button")) {
       if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();
-      renderOperDetailTeam(teamRowToDetailObject(teamRow));
+      loadAndRenderOperDetailTeam(teamRowToDetailObject(teamRow));
       return;
     }
     const row = e.target.closest?.(".order-row-api");

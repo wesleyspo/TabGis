@@ -58,6 +58,7 @@ Todas as rotas MWM exigem privilégio **`module.mwm`** quando `SECURITY_ENFORCE=
 | `GET` | `/api/mwm/team-routes` | Rotas operacionais `operations.team_route` na janela. Query: `hours` (1–168, **default 48**), `team_id` (opcional). Resposta: `{ hours, count, routes[] }` com `route_geojson`, `length_m_approx`. |
 | `GET` | `/api/mwm/displacements` | Deslocamentos equipa–ordem. Query: `team_id`, `work_order_id`, `limit` (≤500). |
 | `PATCH` | `/api/mwm/displacements/:id` | Actualiza horários planeados/real e `notes` (campos opcionais, null limpa). |
+| `GET` | `/api/mwm/teams/:id` | Detalhe equipa: ficha + ordens + rotas 48h + deslocamentos (L3). |
 
 Validação de query: **`backend/lib/mwm/parseTeamRoutesQuery.js`**; de patch: **`parseDisplacementPatch`** / **`parseTeamPatch`** (`node:test`).
 

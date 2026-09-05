@@ -1240,6 +1240,85 @@ app.get('/api/teams', async (req, res) => {
   }
 });
 
+/**
+ * Detalhe de equipa (L3): ficha + ordens atribuídas + rotas 48h + deslocamentos.
+ * GET /api/mwm/teams/:id
+ */
+app.get('/api/mwm/teams/:id', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.mwm'))) return;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid team id' });
+  }
+  try {
+    const { rows: teamRows } = await pool.query(
+      `SELECT t.id, t.team_code, t.name, t.leader_name, t.skill, t.team_type, t.owner_org, t.zone,
+              t.member_count, t.status, t.last_coordinate_at, t.last_updated_at,
+              ST_Y(t.last_known_geom) AS lat, ST_X(t.last_known_geom) AS lng
+       FROM operations.team t
+       WHERE t.id = $1`,
+      [id]
+    );
+    if (!teamRows.length) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+    const team = teamRows[0];
+    const hours = Math.min(
+      Math.max(1, parseInt(String(req.query.hours || '48'), 10) || 48),
+      168
+    );
+    const { rows: orders } = await pool.query(
+      `SELECT wo.id, wo.order_code, wo.summary, wo.status, wo.priority,
+              wo.assigned_team_id, wo.category, wo.order_type, wo.created_at, wo.updated_at
+       FROM operations.work_order wo
+       WHERE wo.assigned_team_id = $1
+         AND COALESCE(wo.category, '') <> 'event'
+       ORDER BY wo.updated_at DESC NULLS LAST, wo.id DESC
+       LIMIT 50`,
+      [id]
+    );
+    const { rows: routes } = await pool.query(
+      `SELECT tr.id AS route_id, tr.window_start, tr.window_end, tr.source, tr.recorded_at,
+              ST_AsGeoJSON(tr.route_geom)::json AS route_geojson,
+              round((ST_Length(tr.route_geom::geography))::numeric, 2) AS length_m_approx
+       FROM operations.team_route tr
+       WHERE tr.team_id = $1
+         AND tr.window_end >= (now() - ($2::int * INTERVAL '1 hour'))
+         AND tr.window_start <= now()
+       ORDER BY tr.window_end DESC, tr.id DESC
+       LIMIT 20`,
+      [id, hours]
+    );
+    const { rows: displacements } = await pool.query(
+      `SELECT d.id, d.work_order_id, d.planned_departure_at, d.planned_arrival_at,
+              d.actual_departure_at, d.actual_arrival_at, d.notes, d.created_at
+       FROM operations.team_order_displacement d
+       WHERE d.team_id = $1
+       ORDER BY d.planned_departure_at DESC NULLS LAST, d.id DESC
+       LIMIT 20`,
+      [id]
+    );
+    res.json({
+      team,
+      hours,
+      orders,
+      routes: routes.map((r) => ({
+        route_id: r.route_id,
+        window_start: r.window_start,
+        window_end: r.window_end,
+        source: r.source,
+        recorded_at: r.recorded_at,
+        length_m_approx: r.length_m_approx,
+        route_geojson: r.route_geojson,
+      })),
+      displacements,
+    });
+  } catch (error) {
+    console.error('GET /api/mwm/teams/:id', error);
+    res.status(500).json({ error: 'Failed to load team detail' });
+  }
+});
+
 
 /** GET /api/equipment/:id — ficha canónica GIS (E2). */
 app.get('/api/equipment/:id', async (req, res) => {
