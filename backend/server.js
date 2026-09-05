@@ -1240,6 +1240,64 @@ app.get('/api/teams', async (req, res) => {
   }
 });
 
+
+/** GET /api/equipment/:id — ficha canónica GIS (E2). */
+app.get('/api/equipment/:id', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.oms'))) return;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid equipment id' });
+  }
+  try {
+    const { rows } = await pool.query(
+      `SELECT e.id, e.type_id, e.network_type_id, e.network_level_id,
+              e.status_0, e.status_1, e.status_2, e.status_3,
+              e.location_desc, e.geom,
+              CASE WHEN e.geom IS NOT NULL THEN ST_Y(e.geom) END AS lat,
+              CASE WHEN e.geom IS NOT NULL THEN ST_X(e.geom) END AS lng,
+              et.code AS type_code,
+              et.label_pt AS type_label_pt,
+              et.label_en AS type_label_en
+       FROM gis.equipment e
+       LEFT JOIN ref.equipment_type et ON et.id = e.type_id
+       WHERE e.id = $1`,
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Equipment not found' });
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('GET /api/equipment/:id', error);
+    res.status(500).json({ error: 'Failed to load equipment' });
+  }
+});
+
+/** GET /api/consumers/:id — ficha canónica GIS (E2). */
+app.get('/api/consumers/:id', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.oms'))) return;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid consumer id' });
+  }
+  try {
+    const { rows } = await pool.query(
+      `SELECT c.id, c.account_number, c.status_id, c.type_id, c.equipment_id,
+              c.parent_equipment_id, c.last_name, c.first_name, c.email,
+              c.location_desc, c.street_name, c.street_type, c.house_number,
+              c.geom, c.utility_domain,
+              CASE WHEN c.geom IS NOT NULL THEN ST_Y(c.geom) END AS lat,
+              CASE WHEN c.geom IS NOT NULL THEN ST_X(c.geom) END AS lng
+       FROM gis.consumer c
+       WHERE c.id = $1`,
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Consumer not found' });
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('GET /api/consumers/:id', error);
+    res.status(500).json({ error: 'Failed to load consumer' });
+  }
+});
+
 /** Tabelas ref.* de tipos / estados usados pelo domínio GIS/OMS (leitura + edição de rótulos POC). */
 const REF_DOMAIN_TYPE_TABLES = [
   'equipment_type',

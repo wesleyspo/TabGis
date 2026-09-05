@@ -408,7 +408,7 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 | # | Tarefa | Estado |
 |---|--------|--------|
 | E1 | Padrão único de painel detalhe (OMS folha como modelo) | 🔶 Parcial |
-| E2 | `GET /api/equipment/:id`, `GET /api/consumers/:id` (ou agregador GIS) | ⏳ |
+| E2 | `GET /api/equipment/:id`, `GET /api/consumers/:id` (ou agregador GIS) | ✅ |
 | E3 | Ligação ordem ↔ equipamento ↔ consumidor na UI e no mapa | ⏳ |
 | E4 | Enriquecer ESQ com ficha de nó (equipamento + «Ir para o mapa») | 🔶 Parcial |
 

@@ -52,6 +52,8 @@ Todas as rotas MWM exigem privilégio **`module.mwm`** quando `SECURITY_ENFORCE=
 |--------|------|-----------|
 | `GET` | `/api/teams` | Lista `operations.team` com `lat`/`lng` da última posição. |
 | `PATCH` | `/api/teams/:id` | Actualiza última posição (`last_known_lat`/`last_known_lng`) ou `status` (active/inactive/paused). |
+| `GET` | `/api/equipment/:id` | Ficha GIS (E2; `module.oms`). |
+| `GET` | `/api/consumers/:id` | Ficha consumidor (E2; `module.oms`). |
 | `GET` | `/api/mwm/demo-routes` | Rotas demo (`mwm.demo_field_*`) dos últimos ~2 dias com array `points`. |
 | `GET` | `/api/mwm/team-routes` | Rotas operacionais `operations.team_route` na janela. Query: `hours` (1–168, **default 48**), `team_id` (opcional). Resposta: `{ hours, count, routes[] }` com `route_geojson`, `length_m_approx`. |
 | `GET` | `/api/mwm/displacements` | Deslocamentos equipa–ordem. Query: `team_id`, `work_order_id`, `limit` (≤500). |

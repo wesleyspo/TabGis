@@ -423,6 +423,13 @@ DDL: `infra/sql/16_schematic_schema.sql`; ligação opcional de nós a inventár
 | `operations.team_order_displacement` | → `mwm.crew_order_assignment` | `GET /api/mwm/displacements`, `PATCH /api/mwm/displacements/:id` |
 | `operations.team_route` | → `mwm.crew_route_history` | `GET /api/mwm/team-routes` (overlay 48h + mapa) |
 
+**Entidades GIS (E2):**
+
+| Tabela | API |
+|--------|-----|
+| `gis.equipment` | `GET /api/equipment/:id` |
+| `gis.consumer` | `GET /api/consumers/:id` |
+
 **Camada de UI (MWM):** lista de equipas + resumo de rotas 48h + overlay no mapa. Detalhe de ficha de ordem/equipa (E1) ainda em curso.
 
 ---
