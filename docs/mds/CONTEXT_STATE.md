@@ -13,7 +13,7 @@
 | Item | Estado |
 |------|--------|
 | **Último marco commitado** | **M5b** — rotas encaixadas em vias OSM + marcadores OMS (triângulo + «!») |
-| **Versão Git** | ver `git describe` — branch `main` (push após consolidação) |
+| **Versão Git** | `v0.1.0-24-g51f0376` — branch `main` (push origin/main) |
 | **Stack Docker** | Assumida operacional em `homeserver:8088` (`infra/docker-compose.yml`) |
 | **Trabalho local** | M5b (código + docs); L2 PATCH `/api/mwm/displacements/:id`; L4 PATCH `/api/teams/:id` (última posição); L1 decisão em `OPERATIONS_MWM.md` §6 |
 
@@ -390,7 +390,7 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 
 | # | Tarefa | Pilar | Estado |
 |---|--------|-------|--------|
-| 0 | Commit + push **M5b** e fixes mapa/OMS | — | ✅ código commitado |
+| 0 | Commit + push **M5b** e fixes mapa/OMS | — | ✅ commit `51f0376` + push |
 | 1 | Validar stack (`docker ps`, unitários, E2E smoke) após retoma | — | 🔶 Unitários 43 verdes; E2E a confirmar |
 | 2 | Actualizar `Database_Structure_Context.md` — mapa entidade↔API↔UI | Entidades | ✅ (secção 8) |
 
