@@ -25,10 +25,10 @@ TabGis e uma plataforma web para gestao operacional de redes de utilities com in
 - Trilhas de auditoria com politica de arquivo pre-delete no dominio operacional.
 
 ## Prioridades de evolucao
-1. Topologia de rede em PostGIS (nativa + mapa + desenho) e esquemático (**actual:** `docs/mds/TOPOLOGY_NATIVE_POSTGIS.md`, marcos em `docs/mds/MILESTONES.md`; esquemático **ESQ** — `docs/mds/CONTEXT_STATE.md`).
-2. Consolidacao de APIs de operacao e roteamento (M5).
-3. Simuladores de carga para validacao de stress.
-4. Endurecimento de seguranca e readiness de producao (M6).
+1. **Fase 2 — quatro pilares:** logística (MWM/rotas/deslocamentos), detalhes das entidades (fichas canónicas), dinamismo (`config`, `events`, integrações), auditoria (arquivo pré-delete + trilha exportável).
+2. Normalização técnica: Git/docs/schemas/UI placeholders (ver `CONTEXT_STATE.md` § Dívida técnica).
+3. Topologia de rede: edição de vértices existentes, CRS projectado onde necessário (`TOPOLOGY_NATIVE_POSTGIS.md`).
+4. Endurecimento de segurança e readiness de producao (M6).
 
 ## Fonte de estado
 Estado operacional detalhado: `docs/mds/CONTEXT_STATE.md`.

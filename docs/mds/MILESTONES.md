@@ -57,8 +57,16 @@ Cada marco deve deixar:
 
 | Campo | Valor |
 |-------|--------|
-| **Entrega** | `GET /api/mwm/team-routes?hours=` e `GET /api/mwm/displacements`; seed `24_mwm_team_routes_48h_demo.sql`; resumo 48h na aba MWM; docs `OPERATIONS_MWM.md` |
-| **Testes** | `lib/mwm/parseTeamRoutesQuery.test.js`; E2E «API MWM team-routes 48h» |
+| **Entrega** | `GET /api/mwm/team-routes?hours=` e `GET /api/mwm/displacements`; seed `24_mwm_team_routes_48h_demo.sql`; resumo 48h na aba MWM; overlay GeoJSON no mapa (ciano); docs `OPERATIONS_MWM.md` |
+| **Testes** | `lib/mwm/parseTeamRoutesQuery.test.js`; E2E team-routes + resumo UI MWM (9 smoke verdes) |
+| **Estado** | ✅ (2026-07-24) |
+
+## M5b — Rotas de equipa encaixadas em vias OSM
+
+| Campo | Valor |
+|-------|--------|
+| **Entrega** | `25_landbase_route_snap_vias.sql` (snap/patrulha); seed `24` reescrito — trajectórias sobre `landbase.vias_alvo_sp` (sem linhas rectas); fallback de patrulha se aderência &gt; 50 m |
+| **Sanidade** | `landbase.avg_distance_route_to_vias_m` — alvo &lt; 15 m por equipa |
 | **Estado** | ✅ (2026-07-24) |
 
 ## M6 — Endurecimento de segurança (produção)
@@ -67,6 +75,23 @@ Cada marco deve deixar:
 |-------|--------|
 | **Objectivo** | Credenciais, TLS, sessão real para além de `SECURITY_ENFORCE` + header |
 | **Estado** | ⏸ Fora do âmbito da fase actual |
+
+## M7 — Fase 2: logística · entidades · dinamismo · auditoria (em planeamento)
+
+| Campo | Valor |
+|-------|--------|
+| **Objectivo** | Normalização completa do produto operacional em torno dos quatro pilares (ver `CONTEXT_STATE.md` § Direcção estratégica) |
+| **Primeira entrega alvo** | Commit M5b + mapa OMS; decisão routing; padrão de ficha entidade |
+| **Estado** | 🔄 2026-09-04 — L1 decisão + L2/L4 API; commit M5b + push em curso |
+
+### Entregas em curso (M7)
+
+| # | Entrega | Estado |
+|---|--------|--------|
+| M5b | Rotas encaixadas em vias OSM | ✅ |
+| L1 | Decisão routing (pgRouting vs OSRM) | ✅ documentada |
+| L2 | PATCH `displacements` | ✅ |
+| L4 | PATCH `teams` (última posição) | ✅ |
 
 ---
 

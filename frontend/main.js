@@ -129,6 +129,10 @@ map.getPane("satellite").style.zIndex = "100";
 map.createPane("weatherRadar");
 map.getPane("weatherRadar").style.zIndex = "350";
 
+/** Vias OSM acima de bairros/municípios WMS — legível sobre satélite em zoom máximo. */
+map.createPane("roads");
+map.getPane("roads").style.zIndex = "450";
+
 // ── Definição das camadas ─────────────────────────────────────────────────
 
 /**
@@ -235,6 +239,9 @@ const viasAlvoLayer = L.tileLayer.wms(geoserverWms, {
   transparent: true,
   styles: "base_sp_vias_zoom_scales",
   version: "1.1.1",
+  pane: "roads",
+  maxZoom: map.getMaxZoom(),
+  tileSize: 512,
 });
 
 /** Segmentos lineares da rede — topologia nativa PostGIS (gis.network_span via vista WMS) */
@@ -255,7 +262,7 @@ const mwmOperationalRoutesGroup = L.layerGroup();
 /** Agregados por município / bairro (zoom afastado) */
 const omsAggregateMarkersGroup = L.layerGroup().addTo(map);
 
-/** Marcadores de ordens (cor = estado, raio ≈ tipo, traço ≈ equipe) */
+/** Marcadores de ordens (triângulo + «!»; verde = baixa prioridade, vermelho = alta) */
 const workOrderMarkersGroup = L.layerGroup().addTo(map);
 
 /** Zoom: até 10 → rótulo município na agregação; até `OMS_ZOOM_AGGREGATE_MAX` → grelha espacial + calor. */
@@ -2166,50 +2173,51 @@ function workOrderSeverityLevel(r) {
   return 1;
 }
 
-const WORK_ORDER_SEVERITY_FILLS = ["#64748b", "#2563eb", "#ca8a04", "#ea580c", "#dc2626"];
+/** Verde (baixa) → vermelho (alta) conforme severidade 0–4. */
+const WORK_ORDER_SEVERITY_FILLS = ["#22c55e", "#65a30d", "#eab308", "#f97316", "#dc2626"];
 
 function workOrderSeverityFillColor(r) {
   const lv = Math.max(0, Math.min(4, workOrderSeverityLevel(r)));
   return WORK_ORDER_SEVERITY_FILLS[lv];
 }
 
-/** Rótulo curto sob o triângulo (número de ocorrência / sufixo do código). */
-function workOrderOccurrenceLabel(r) {
-  const code = String(r.order_code || "").trim();
-  const all = code.match(/\d+/g);
-  if (all && all.length) {
-    const d = all[all.length - 1];
-    return d.length > 6 ? d.slice(-6) : d;
-  }
-  return r.id != null ? String(r.id) : "—";
-}
-
 /**
  * @param {string} fillCss
- * @param {string} label
- * @param {{ crew?: boolean }} opts
+ * @param {string} label — rótulo sob o triângulo (MWM); omitir para ocorrências OMS
+ * @param {{ crew?: boolean, occurrence?: boolean }} opts
  */
 function mapTriangleDivIcon(fillCss, label, opts) {
   const crew = Boolean(opts && opts.crew);
+  const occurrence = Boolean(opts && opts.occurrence);
   const triH = crew ? 13 : 15;
-  const w = 36;
-  const h = triH + 13;
-  const esc = escapeHtml(String(label ?? "—").slice(0, 8));
-  const html =
-    `<div class="map-tri-marker${crew ? " map-tri-marker--crew" : ""}" style="--map-tri-fill:${fillCss}">` +
-    `<div class="map-tri-marker__tri"></div><span class="map-tri-marker__lbl">${esc}</span></div>`;
+  const w = occurrence ? 22 : 36;
+  const h = occurrence ? triH : triH + 13;
+  const anchorY = triH;
+
+  let html;
+  if (occurrence) {
+    html =
+      `<div class="map-tri-marker map-tri-marker--occurrence" style="--map-tri-fill:${fillCss}">` +
+      `<div class="map-tri-marker__tri-wrap">` +
+      `<div class="map-tri-marker__tri"></div>` +
+      `<span class="map-tri-marker__bang" aria-hidden="true">!</span></div></div>`;
+  } else {
+    const esc = escapeHtml(String(label ?? "—").slice(0, 8));
+    html =
+      `<div class="map-tri-marker${crew ? " map-tri-marker--crew" : ""}" style="--map-tri-fill:${fillCss}">` +
+      `<div class="map-tri-marker__tri"></div><span class="map-tri-marker__lbl">${esc}</span></div>`;
+  }
+
   return L.divIcon({
     className: "map-tri-marker-wrap",
     html,
     iconSize: [w, h],
-    iconAnchor: [Math.round(w / 2), triH],
+    iconAnchor: [Math.round(w / 2), anchorY],
   });
 }
 
 function workOrderTriangleDivIcon(r) {
-  const fill = workOrderSeverityFillColor(r);
-  const label = workOrderOccurrenceLabel(r);
-  return mapTriangleDivIcon(fill, label, { crew: false });
+  return mapTriangleDivIcon(workOrderSeverityFillColor(r), "", { occurrence: true });
 }
 
 function rebuildWorkOrderMarkers(rows) {
@@ -4423,9 +4431,11 @@ map.on("zoomend", () => {
 
   const checkboxVias = document.getElementById("vias_alvo_sp");
   const temVias = map.hasLayer(viasAlvoLayer);
-  if (zoom < cfg.viasDisableBelow && temVias) {
+  const viasMin = Math.min(cfg.viasEnableMin, cfg.viasDisableBelow);
+  if (zoom < viasMin && temVias) {
     map.removeLayer(viasAlvoLayer);
-    if (checkboxVias) checkboxVias.checked = false;
+  } else if (zoom >= cfg.viasEnableMin && checkboxVias?.checked && !temVias) {
+    viasAlvoLayer.addTo(map);
   }
   refreshSelectedMunicipioFocusLabel();
   refreshSelectedBairroFocusLabel();
@@ -4515,7 +4525,7 @@ console.log("Dica Dev: Usa a função copyBboxToClipboard() na consola para obte
  * Valida o nível de zoom antes de ativar camadas densas para evitar pedidos
  * pesados e poluição visual. Reverte o toggle e avisa o utilizador se inválido.
  */
-function enforceZoomValidation(event, layer, layerName, minZoom, maxZoom = 20) {
+function enforceZoomValidation(event, layer, layerName, minZoom, maxZoom = map.getMaxZoom()) {
   if (event.target.checked) {
     const z = map.getZoom();
     if (z < minZoom || z > maxZoom) {
@@ -4712,13 +4722,13 @@ document.getElementById("municipios_alvo_sp").addEventListener("change", (event)
 // Camadas com restrição de zoom
 document.getElementById("bairros_alvo_sp").addEventListener("change", (event) => {
   const cfg = getEffectiveLayerZoomCfg();
-  enforceZoomValidation(event, bairrosAlvoLayer, "Bairros", cfg.bairrosEnableMin, 20);
+  enforceZoomValidation(event, bairrosAlvoLayer, "Bairros", cfg.bairrosEnableMin);
   refreshSelectedBairroFocusLabel();
 });
 
 document.getElementById("vias_alvo_sp").addEventListener("change", (event) => {
   const cfg = getEffectiveLayerZoomCfg();
-  enforceZoomValidation(event, viasAlvoLayer, "Vias", cfg.viasEnableMin, 20);
+  enforceZoomValidation(event, viasAlvoLayer, "Vias", cfg.viasEnableMin);
 });
 
 // ── Botões de navegação rápida ────────────────────────────────────────────

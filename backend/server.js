@@ -19,6 +19,8 @@ const {
   parseTeamRoutesQuery,
   parseDisplacementsQuery,
 } = require('./lib/mwm/parseTeamRoutesQuery');
+const { parseDisplacementPatch } = require('./lib/mwm/parseDisplacementPatch');
+const { parseTeamPatch } = require('./lib/mwm/parseTeamPatch');
 
 /** Obrigatório pela política de uso do Nominatim (https://operations.osmfoundation.org/policies/nominatim/). */
 const NOMINATIM_USER_AGENT =
@@ -830,6 +832,123 @@ app.get('/api/mwm/displacements', async (req, res) => {
   } catch (error) {
     console.error('GET /api/mwm/displacements', error);
     res.status(500).json({ error: 'Failed to list displacements' });
+  }
+});
+
+/**
+ * Actualização parcial de deslocamento (horários planeados/real + notes).
+ * PATCH /api/mwm/displacements/:id
+ */
+app.patch('/api/mwm/displacements/:id', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.mwm'))) return;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid displacement id' });
+  }
+  const parsed = parseDisplacementPatch(req.body);
+  if (!parsed.ok) {
+    return res.status(parsed.status).json({ error: parsed.error });
+  }
+  const u = parsed.updates;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE operations.team_order_displacement
+       SET planned_departure_at = CASE WHEN $2::boolean THEN $3::timestamptz ELSE planned_departure_at END,
+           planned_arrival_at = CASE WHEN $4::boolean THEN $5::timestamptz ELSE planned_arrival_at END,
+           actual_departure_at = CASE WHEN $6::boolean THEN $7::timestamptz ELSE actual_departure_at END,
+           actual_arrival_at = CASE WHEN $8::boolean THEN $9::timestamptz ELSE actual_arrival_at END,
+           notes = CASE WHEN $10::boolean THEN $11::text ELSE notes END
+       WHERE id = $1
+       RETURNING id, team_id, work_order_id, planned_departure_at, planned_arrival_at,
+                 actual_departure_at, actual_arrival_at, notes, created_at`,
+      [
+        id,
+        Object.prototype.hasOwnProperty.call(u, 'planned_departure_at'),
+        u.planned_departure_at ?? null,
+        Object.prototype.hasOwnProperty.call(u, 'planned_arrival_at'),
+        u.planned_arrival_at ?? null,
+        Object.prototype.hasOwnProperty.call(u, 'actual_departure_at'),
+        u.actual_departure_at ?? null,
+        Object.prototype.hasOwnProperty.call(u, 'actual_arrival_at'),
+        u.actual_arrival_at ?? null,
+        Object.prototype.hasOwnProperty.call(u, 'notes'),
+        u.notes ?? null,
+      ]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Displacement not found' });
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('PATCH /api/mwm/displacements/:id', error);
+    res.status(500).json({ error: 'Failed to update displacement' });
+  }
+});
+
+/**
+ * Actualização de última posição de equipa (L4) e status.
+ * PATCH /api/teams/:id
+ * Campos: last_known_lat, last_known_lng, status.
+ */
+app.patch('/api/teams/:id', async (req, res) => {
+  if (!(await ensurePrivilege(req, res, 'module.mwm'))) return;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid team id' });
+  }
+  const parsed = parseTeamPatch(req.body);
+  if (!parsed.ok) {
+    return res.status(parsed.status).json({ error: parsed.error });
+  }
+  const u = parsed.updates;
+  try {
+    const { rows: existing } = await pool.query(
+      `SELECT id, last_known_geom FROM operations.team WHERE id = $1 FOR UPDATE`,
+      [id]
+    );
+    if (!existing.length) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+    let lat = null;
+    let lng = null;
+    if (Object.prototype.hasOwnProperty.call(u, 'last_known_lat') || Object.prototype.hasOwnProperty.call(u, 'last_known_lng')) {
+      const { rows: geomRows } = await pool.query(
+        `SELECT ST_X(last_known_geom) AS lng, ST_Y(last_known_geom) AS lat
+         FROM operations.team WHERE id = $1`,
+        [id]
+      );
+      const oldLat = geomRows[0] && geomRows[0].lat != null ? Number(geomRows[0].lat) : NaN;
+      const oldLng = geomRows[0] && geomRows[0].lng != null ? Number(geomRows[0].lng) : NaN;
+      lat = Object.prototype.hasOwnProperty.call(u, 'last_known_lat')
+        ? u.last_known_lat
+        : oldLat;
+      lng = Object.prototype.hasOwnProperty.call(u, 'last_known_lng')
+        ? u.last_known_lng
+        : oldLng;
+    }
+    const sets = [];
+    const vals = [];
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      vals.push(lat, lng);
+      sets.push(`last_known_geom = ST_SetSRID(ST_MakePoint($${vals.length - 1}, $${vals.length}), 4326)`);
+    }
+    if (Object.prototype.hasOwnProperty.call(u, 'status')) {
+      vals.push(u.status);
+      sets.push(`status = $${vals.length}`);
+    }
+    if (!sets.length) {
+      return res.status(400).json({ error: 'No updatable fields' });
+    }
+    sets.push('last_updated_at = now()');
+    vals.push(id);
+    const { rows } = await pool.query(
+      `UPDATE operations.team SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING id, team_code, name, last_coordinate_at, last_updated_at, status`,
+      vals
+    );
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('PATCH /api/teams/:id', error);
+    res.status(500).json({ error: 'Failed to update team' });
   }
 });
 

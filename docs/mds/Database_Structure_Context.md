@@ -416,12 +416,14 @@ DDL: `infra/sql/16_schematic_schema.sql`; ligação opcional de nós a inventár
 
 ## 8. POC `operations` (TabGis actual)
 
-| `operations` | Mapa conceptual |
-|----------------|-----------------|
-| `operations.team` | → `mwm.crew` |
-| `operations.work_order` | → `oms.work_order` (POC inclui `owner_id`, `locked_by_id` → `security.users`) |
-| `operations.team_order_displacement` | → `mwm.crew_order_assignment` |
-| `operations.team_route` | → `mwm.crew_route_history` |
+| `operations` | Mapa conceptual | APIs UI / REST |
+|----------------|-----------------|----------------|
+| `operations.team` | → `mwm.crew` | `GET /api/teams`, `PATCH /api/teams/:id` (última posição + status) |
+| `operations.work_order` | → `oms.work_order` (POC inclui `owner_id`, `locked_by_id` → `security.users`) | `GET/PATCH /api/work-orders` |
+| `operations.team_order_displacement` | → `mwm.crew_order_assignment` | `GET /api/mwm/displacements`, `PATCH /api/mwm/displacements/:id` |
+| `operations.team_route` | → `mwm.crew_route_history` | `GET /api/mwm/team-routes` (overlay 48h + mapa) |
+
+**Camada de UI (MWM):** lista de equipas + resumo de rotas 48h + overlay no mapa. Detalhe de ficha de ordem/equipa (E1) ainda em curso.
 
 ---
 

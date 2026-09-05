@@ -606,7 +606,7 @@
           <h3>Aplicação e integrações</h3>
           <ul>
             <li><strong>Frontend</strong> — HTML/CSS/JS (<code>frontend/index.html</code>, <code>main.js</code>, <code>styles.css</code>), tipografia Inter.</li>
-            <li><strong>API</strong> — traduções, utilizadores e RBAC, ordens e folha OMS, geocodificação, tipos <code>ref.*</code>, equipas, agregados OMS, auditoria, rotas demo MWM, <strong>rotas operacionais 48h</strong> (<code>GET /api/mwm/team-routes</code>) e deslocamentos (<code>GET /api/mwm/displacements</code>), vistas esquemáticas (<code>/api/schematic/*</code>), topologia com leitura/edição/prune (<code>/api/topology/*</code>), <code>GET /api/events</code> e export cursado <code>GET /api/events/export</code>.</li>
+            <li><strong>API</strong> — traduções, utilizadores e RBAC, ordens e folha OMS, geocodificação, tipos <code>ref.*</code>, equipas, agregados OMS, auditoria, rotas demo MWM, <strong>rotas operacionais 48h</strong> (<code>GET /api/mwm/team-routes</code>) e deslocamentos (<code>GET /api/mwm/displacements</code>; <code>PATCH</code> de horários e notes), última posição de equipa (<code>PATCH /api/teams/:id</code>), vistas esquemáticas (<code>/api/schematic/*</code>), topologia com leitura/edição/prune (<code>/api/topology/*</code>), <code>GET /api/events</code> e export cursado <code>GET /api/events/export</code>.</li>
             <li><strong>Serviços externos (online)</strong> — tiles Esri World Imagery, Nominatim, Open-Meteo, RainViewer (radar).</li>
             <li><strong>MongoDB</strong> — reservado a eventos / <code>event_report</code> (evolução futura).</li>
             <li><strong>Playwright</strong> — testes E2E em <code>e2e/</code>.</li>

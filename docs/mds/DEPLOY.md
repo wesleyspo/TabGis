@@ -26,7 +26,7 @@ Para **RBAC** (grupos/privilégios na UI e enforcement opcional na API), aplicar
 
 Para **topologia nativa de rede** (`postgis_topology`, segmentos lineares `gis.network_span`, API `/api/topology/*`): aplicar em ordem **`infra/sql/21_postgis_topology_utilities.sql`**, **`infra/sql/22_topology_span_write_support.sql`**, **`infra/sql/23_topology_prune_orphan_primitives.sql`** — ver **`docs/mds/TOPOLOGY_NATIVE_POSTGIS.md`** e marcos em **`docs/mds/MILESTONES.md`**. Publicar a camada WMS: `bash infra/scripts/publish_network_span_layer.sh`. Rótulos regionalizados: reaplicar também **`infra/sql/02_populate_translations.sql`** quando o glossário i18n mudar.
 
-Para **rotas operacionais 48h / deslocamentos MWM** (`operations.team_route`, `team_order_displacement`): **`infra/sql/24_mwm_team_routes_48h_demo.sql`** — ver **`docs/mds/OPERATIONS_MWM.md`**.
+Para **rotas operacionais 48h / deslocamentos MWM** (`operations.team_route`, `team_order_displacement`): aplicar **`infra/sql/25_landbase_route_snap_vias.sql`** e **`infra/sql/24_mwm_team_routes_48h_demo.sql`** — rotas encaixadas em `landbase.vias_alvo_sp` (ver **`docs/mds/OPERATIONS_MWM.md`**).
 
 ## Diagnostico rapido
 - Preferir acesso via `:8088` para garantir same-origin (`/geoserver`, `/tiles`, `/api`).

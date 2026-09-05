@@ -75,7 +75,7 @@
           <ogc:Filter>
             <ogc:PropertyIsEqualTo><ogc:PropertyName>highway</ogc:PropertyName><ogc:Literal>tertiary</ogc:Literal></ogc:PropertyIsEqualTo>
           </ogc:Filter>
-          <LineSymbolizer><Stroke><CssParameter name="stroke">#d9d9d9</CssParameter><CssParameter name="stroke-width">2.7</CssParameter></Stroke></LineSymbolizer>
+          <LineSymbolizer><Stroke><CssParameter name="stroke">#707070</CssParameter><CssParameter name="stroke-width">3.2</CssParameter></Stroke></LineSymbolizer>
         </Rule>
         <Rule>
           <Name>tertiary</Name>
@@ -83,9 +83,9 @@
           <ogc:Filter>
             <ogc:PropertyIsEqualTo><ogc:PropertyName>highway</ogc:PropertyName><ogc:Literal>tertiary</ogc:Literal></ogc:PropertyIsEqualTo>
           </ogc:Filter>
-          <LineSymbolizer><Stroke><CssParameter name="stroke">#ffffff</CssParameter><CssParameter name="stroke-width">1.6</CssParameter></Stroke></LineSymbolizer>
+          <LineSymbolizer><Stroke><CssParameter name="stroke">#f5f5f5</CssParameter><CssParameter name="stroke-width">1.9</CssParameter></Stroke></LineSymbolizer>
         </Rule>
-        <!-- residential / living_street -->
+        <!-- residential / living_street — contorno escuro para legibilidade sobre satélite em zoom máximo -->
         <Rule>
           <Name>residential-casing</Name>
           <MaxScaleDenominator>150000</MaxScaleDenominator>
@@ -95,7 +95,7 @@
               <ogc:PropertyIsEqualTo><ogc:PropertyName>highway</ogc:PropertyName><ogc:Literal>living_street</ogc:Literal></ogc:PropertyIsEqualTo>
             </ogc:Or>
           </ogc:Filter>
-          <LineSymbolizer><Stroke><CssParameter name="stroke">#d9d9d9</CssParameter><CssParameter name="stroke-width">2.4</CssParameter></Stroke></LineSymbolizer>
+          <LineSymbolizer><Stroke><CssParameter name="stroke">#4a4a4a</CssParameter><CssParameter name="stroke-width">3.2</CssParameter></Stroke></LineSymbolizer>
         </Rule>
         <Rule>
           <Name>residential</Name>
@@ -106,7 +106,7 @@
               <ogc:PropertyIsEqualTo><ogc:PropertyName>highway</ogc:PropertyName><ogc:Literal>living_street</ogc:Literal></ogc:PropertyIsEqualTo>
             </ogc:Or>
           </ogc:Filter>
-          <LineSymbolizer><Stroke><CssParameter name="stroke">#ffffff</CssParameter><CssParameter name="stroke-width">1.4</CssParameter></Stroke></LineSymbolizer>
+          <LineSymbolizer><Stroke><CssParameter name="stroke">#f0f0f0</CssParameter><CssParameter name="stroke-width">1.8</CssParameter></Stroke></LineSymbolizer>
         </Rule>
         <!-- service / unclassified / road -->
         <Rule>
@@ -119,7 +119,7 @@
               <ogc:PropertyIsEqualTo><ogc:PropertyName>highway</ogc:PropertyName><ogc:Literal>road</ogc:Literal></ogc:PropertyIsEqualTo>
             </ogc:Or>
           </ogc:Filter>
-          <LineSymbolizer><Stroke><CssParameter name="stroke">#cfcfcf</CssParameter><CssParameter name="stroke-width">1.8</CssParameter></Stroke></LineSymbolizer>
+          <LineSymbolizer><Stroke><CssParameter name="stroke">#525252</CssParameter><CssParameter name="stroke-width">2.4</CssParameter></Stroke></LineSymbolizer>
         </Rule>
         <Rule>
           <Name>service</Name>
@@ -131,14 +131,20 @@
               <ogc:PropertyIsEqualTo><ogc:PropertyName>highway</ogc:PropertyName><ogc:Literal>road</ogc:Literal></ogc:PropertyIsEqualTo>
             </ogc:Or>
           </ogc:Filter>
-          <LineSymbolizer><Stroke><CssParameter name="stroke">#f5f5f5</CssParameter><CssParameter name="stroke-width">1.1</CssParameter></Stroke></LineSymbolizer>
+          <LineSymbolizer><Stroke><CssParameter name="stroke">#ececec</CssParameter><CssParameter name="stroke-width">1.4</CssParameter></Stroke></LineSymbolizer>
         </Rule>
-        <!-- demais tipos OSM (ElseFilter) -->
+        <!-- demais tipos OSM (ElseFilter) — visível em zoom de rua (100%) -->
+        <Rule>
+          <Name>other-roads-casing</Name>
+          <MaxScaleDenominator>40000</MaxScaleDenominator>
+          <ElseFilter/>
+          <LineSymbolizer><Stroke><CssParameter name="stroke">#595959</CssParameter><CssParameter name="stroke-width">2.0</CssParameter></Stroke></LineSymbolizer>
+        </Rule>
         <Rule>
           <Name>other-roads</Name>
           <MaxScaleDenominator>40000</MaxScaleDenominator>
           <ElseFilter/>
-          <LineSymbolizer><Stroke><CssParameter name="stroke">#cfcfcf</CssParameter><CssParameter name="stroke-width">0.8</CssParameter></Stroke></LineSymbolizer>
+          <LineSymbolizer><Stroke><CssParameter name="stroke">#e8e8e8</CssParameter><CssParameter name="stroke-width">1.2</CssParameter></Stroke></LineSymbolizer>
         </Rule>
       </FeatureTypeStyle>
 

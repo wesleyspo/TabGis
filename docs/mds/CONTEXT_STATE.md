@@ -4,6 +4,59 @@
 > Este ficheiro é a fonte de verdade do estado operacional do TabGis.
 > Actualize-o sempre que um componente mudar de estado.
 
+**Última actualização de retoma:** 2026-09-04 — M5b commitado + L2/L4 MWM (PATCH deslocamentos e última posição) + decisão de routing (L1).
+
+---
+
+## Retoma — onde paramos
+
+| Item | Estado |
+|------|--------|
+| **Último marco commitado** | **M5b** — rotas encaixadas em vias OSM + marcadores OMS (triângulo + «!») |
+| **Versão Git** | ver `git describe` — branch `main` (push após consolidação) |
+| **Stack Docker** | Assumida operacional em `homeserver:8088` (`infra/docker-compose.yml`) |
+| **Trabalho local** | M5b (código + docs); L2 PATCH `/api/mwm/displacements/:id`; L4 PATCH `/api/teams/:id` (última posição); L1 decisão em `OPERATIONS_MWM.md` §6 |
+
+### Entregas recentes (sessão 2026-09-04)
+
+- **Logística (MWM):** funções `landbase.route_line_snapped_to_vias` e seed `24` — rotas de equipa seguem `landbase.vias_alvo_sp` (sem linhas rectas).
+- **Mapa:** vias WMS com `maxZoom` alinhado, pane `roads`, SLD com contornos escuros sobre satélite; marcadores OMS em triângulo com «!».
+- **API logística:** `PATCH /api/mwm/displacements/:id`, `PATCH /api/teams/:id` (última posição + status).
+- **Routing (L1):** decisão documentada — pgRouting preferido vs OSRM/Valhalla; runbook em `OPERATIONS_MWM.md` §6.
+
+---
+
+## Direcção estratégica — Fase 2 (prioridade de produto)
+
+A partir da retoma, a base do TabGis organiza-se em **quatro pilares**. O basemap (landbase, GeoServer, satélite) mantém-se como infraestrutura; o **valor operacional** concentra-se abaixo.
+
+| Pilar | Significado no TabGis | Já existe (base) | Próximo foco |
+|-------|----------------------|------------------|--------------|
+| **Logística** | Deslocamentos, rotas temporais, equipas em campo, encadeamento ordem↔equipa↔via | `operations.team`, `team_route`, `team_order_displacement`; APIs `/api/mwm/*`; snap em vias (`25`+`24`); rotas demo | Routing real (pgRouting ou serviço dedicado); actualização de posição; janelas temporais configuráveis; UI MWM unificada com mapa |
+| **Detalhes das entidades** | Ficha completa e canónica por objecto de domínio (ordem, equipa, equipamento, consumidor, nó esquemático) | Folha OMS (`work_order` + tarefas/reclamações); `ref.*`; `gis.equipment` / `gis.consumer`; PATCH esquemático; GetFeatureInfo | Painéis de detalhe consistentes (mesmo padrão OMS→MWM→GIS); APIs `GET` por entidade; ligações explícitas entidade↔geometria↔evento |
+| **Dinamismo** | Parâmetros, tipos e comportamento alteráveis sem redeploy; eventos propagáveis | `config.parameter`, `config.translation`, `PUT /api/ref/types`; diário `events.event` + export; Open-Meteo TMP | Sink/webhook de eventos; refresh UI pós-mutação; integração BOTs / Ollama (decisão); reduzir mocks (DMS/IND/SMT) ou ligar a dados reais |
+| **Auditoria** | Nada crítico se perde; tudo rastreável antes de DELETE e em mutações | `audit.operations_row_archive` (triggers); `audit.domain_event`; aba **AUD**; `GET /api/events` + export Mongo-shape | AUD operacional (filtros, ligação ordem↔arquivo); correlacionar `events.*` com `domain_event`; cobertura audit em `gis.*` / MWM writes |
+
+> **Regra de ouro (mantida):** esquemático estático/sequencial com **«Ir para o Mapa»**; utilities genérico (não só electricidade); stack open source.
+
+---
+
+## Dívida técnica — normalização pendente
+
+Trabalho de **limpeza e normalização** a executar antes ou em paralelo às features da Fase 2:
+
+| Área | Problema | Acção recomendada |
+|------|----------|-------------------|
+| **Git** | Commits locais M5b + L2/L4; push `origin/main` | Commit M5b + push quando estável |
+| **Documentação** | Duplicatas `docs/` vs `docs/mds/`; HTML/PDF gerados | Uma fonte: `docs/mds/`; gerar HTML/PDF só via CI/Pages |
+| **Compose** | `docker-compose.yml` na raiz (pgRouting/kartoza) vs `infra/docker-compose.yml` | Marcar raiz como experimental no README; runbooks só `infra/` |
+| **Schemas** | Sobreposição `operations.*` vs `oms`/`mwm`/`gis`/`ref` | Documentar mapa entidade↔tabela em `Database_Structure_Context.md`; convergir APIs para modelo canónico |
+| **UI Operação** | DMS, IND, SMT = placeholders | Remover mock visual ou implementar MVP mínimo ligado a `events`/equipamentos |
+| **MongoDB** | Container legado; trilha canónica em Postgres `events` | Manter Mongo opcional; documentar desactivação em deploy mínimo |
+| **Routing** | Snap heurístico em vias; pgRouting **decidido** (runbook em OPERATIONS_MWM §6) | Implementar `operations.route_via_pgRouting` + re-seed |
+| **Segurança** | `SECURITY_ENFORCE` + header; credenciais dev em compose | Marco M6 quando Fase 2 estabilizar |
+| **Testes** | 43 unit; E2E smoke; sem cobertura MWM POST/PATCH | E2E overlay rotas + sanidade SQL; regressão marcadores OMS; PATCH L2/L4 |
+
 ---
 
 ## Ambiente de execução
@@ -139,7 +192,8 @@ Script de geração: `infra/scripts/setup_municipios_alvo_sp.sh`
 | `infra/sql/21_postgis_topology_utilities.sql` | Extensão `postgis_topology`; topologia `tabgis_utilities_topo`; `gis.network_span` (segmentos lineares) + `TopoGeometry`; dados demo `TOPO_DEMO_SEG_*` | `docs/mds/TOPOLOGY_NATIVE_POSTGIS.md` |
 | `infra/sql/22_topology_span_write_support.sql` | Edição REST de `gis.network_span`: coluna `updated_at`; trigger BEFORE DELETE → `audit.operations_row_archive`; vista de publicação `gis.v_network_span_wms` | `docs/mds/TOPOLOGY_NATIVE_POSTGIS.md` |
 | `infra/sql/23_topology_prune_orphan_primitives.sql` | `gis.prune_orphan_topology_primitives(dry_run)`: remove arestas órfãs (`ST_RemEdgeModFace`) e nós isolados (`ST_RemIsoNode`) da topologia; exposta em `POST /api/topology/maintenance/prune` | `docs/mds/TOPOLOGY_NATIVE_POSTGIS.md` §5 |
-| `infra/sql/24_mwm_team_routes_48h_demo.sql` | Seed idempotente `operations.team_route` (source `demo_seed_48h`, janela 48h) + deslocamentos equipa–ordem em falta | `docs/mds/OPERATIONS_MWM.md` |
+| `infra/sql/24_mwm_team_routes_48h_demo.sql` | Seed idempotente `operations.team_route` (source `demo_seed_48h`, janela 48h, **encaixe em vias**) + deslocamentos equipa–ordem | `docs/mds/OPERATIONS_MWM.md` |
+| `infra/sql/25_landbase_route_snap_vias.sql` | Funções `landbase.route_line_snapped_to_vias`, `snap_point_to_nearest_via`, `route_patrol_nearest_via` | `docs/mds/OPERATIONS_MWM.md` |
 | `infra/scripts/apply_poc_test_mass.sh` | Executa o SQL 14 contra o contentor `db` (`psql`) | — |
 | `infra/scripts/repair_geosampa_mbtiles.py` | Reparação incremental do MBTiles GeoSampa (só tiles em falta na tabela `tiles`) | `docs/mds/GeoSampa_offline_tecnico.md` |
 | `infra/scripts/repair_geosampa_offline_mbtiles.sh` | Wrapper venv para a reparação; típico em background: `nohup … >> /tmp/geosampa_repair.log &` | `docs/mds/GeoSampa_offline_operacao.md` |
@@ -230,7 +284,7 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 - **Classe** `.app.has-left-panel` no contentor raiz; `aside#left-panel` + `#map` dentro de `.split-main-row`.
 - **Ordem das guias (tab bar):** 1) **OMS**, 2) **MWM**, 3) **DMS**, 4) **IND**, 5) **SMT**, 6) **ESQ** (esquemático / unifilar: `GET /api/schematic/views`, `GET /api/schematic/views/:id`, edição `PATCH .../nodes/:nodeId`; botão **Ir para o mapa** por nó usa foco do nó ou geometria de `gis.equipment` quando aplicável), 7) **TMP** (clima: cartões Open-Meteo + opcional **radar RainViewer** e **círculo de referência** no mapa Leaflet, controlos na própria guia), 8) **AUD**. A guia **Utilizadores** foi **retirada da barra**: a gestão de `security.users` passou para **Configurações → Gerenciar utilizadores** (modal). OMS consome `/api/work-orders` (e folha); utilizadores consomem `/api/users` a partir desse modal.
 - **Cabeçalho do painel:** sem linha separada «Operação»; primeira linha = grelha de guias + botão fechar (`.operacao-top`).
-- **Conteúdo:** tabelas e detalhe de ordens (OMS), equipas/rotas demo (MWM), política de auditoria (AUD); textos com `data-i18n` (prefixo `UI_OP_*`).
+- **Conteúdo:** tabelas e detalhe de ordens (OMS), equipas/rotas demo (MWM), política de auditoria (AUD); textos com `data-i18n` (prefixo `UI_OP_*`). **Mapa OMS (zoom detalhe):** ocorrências em **triângulo com «!»** — cor **verde → vermelho** conforme prioridade (`workOrderSeverityLevel` / `priority_score`).
 - **Tipos de domínio (`ref.*`):** não há guia no painel; edição de `label_en` / `label_pt` (códigos fixos) em **Configurações → Tipos de domínio (ref)** com **`GET`/`PUT /api/ref/types`** (ambiente dev sem autenticação por rota).
 - **`SECURITY_ENFORCE=1`:** rotas OMS, MWM, AUD, ESQ e **topologia** (`/api/topology/*`, privilégio **`module.oms`**) e outras com `ensurePrivilege` devolvem **401/403** sem utilizador válido ou sem privilégio (ex.: **`module.esq`** para esquemático).
 
@@ -249,7 +303,8 @@ docker compose -f infra/docker-compose.yml restart tileserver web
 ### Camadas alvo — zoom e toggles
 
 - **Rede técnica:** toggle **«Segmentos lineares da rede»** (`#network_span_layer`) liga a camada WMS `base_sp:v_network_span_wms` (estilo `gis_network_span`); botão **«Desenhar segmento»** (`#network_span_draw_btn`) cria vértices no mapa e grava com `POST /api/topology/spans` (código auto se omitido); GetFeatureInfo inclui a camada; i18n `UI_LAYER_*NETWORK*` / `UI_NETWORK_SPAN_DRAW_*`; E2E cobre toggle WMS e desenho.
-- **Threshold:** zoom Leaflet **≥ 12** trata-se de «vista de detalhe».
+- **Threshold:** zoom Leaflet **≥ 13** para vias (`VIAS_LAYER_MIN_ZOOM`); **≥ 12** para bairros («vista de detalhe»).
+- **Vias em zoom máximo (indicador ~100%):** camada WMS com `maxZoom` alinhado ao mapa (20), `tileSize` 512, pane `roads` (z-index acima de bairros); SLD `base_sp_vias_zoom_scales` com contornos escuros para legibilidade sobre satélite; ao aproximar zoom a camada **não** desmarca o toggle — repõe-se automaticamente quando `zoom ≥ 13`.
 - **Comportamento:** se a checkbox **Bairros** (`#bairros_alvo_sp`) está **marcada** em zoom ≥ 12, mostra-se `bairrosAlvoLayer` e remove-se `municipiosAlvoLayer` da vista (checkbox municípios-alvo desmarcada). Se **desmarcada**, mantêm-se municípios-alvo visíveis e bairros fora — útil para ver **rótulos de município** sem poluição dos bairros.
 - **Zoom &lt; 12:** bairros removidos, municípios-alvo repostos por defeito.
 
@@ -329,16 +384,63 @@ Para continuar o desenvolvimento neste repositório a partir de outro notebook:
 
 ---
 
-## Próximos passos
+## Próximos passos (Fase 2 — por pilar)
 
-| Prioridade | Tarefa | Estado |
-|------------|--------|--------|
-| 1 | Upgrade satélite MBTiles para ZMAX=17 (1,2 m/px) | **✅ Operacional** |
-| 2 | UI Operação + schema `operations` + arquivo `audit.operations_row_archive` | **✅ Estrutura base + mock UI** |
-| 3 | Modelagem explícita da topologia de rede (PostGIS Topology nativo) | **✅ Edição + mapa + desenho:** API REST completa; WMS/WFS; desenho interactivo Leaflet; prune de órfãos; pendente edição de vértices de segmentos existentes e CRS projectado |
-| 4 | APIs/backend para edição, ordens, rotas 48h e diário `events` (exportável a Mongo/externo) | **✅ M5 (rotas/deslocamentos):** `GET /api/mwm/team-routes`, `GET /api/mwm/displacements` + seed `24`; eventos/export já operacionais; sink/webhook externo continua opcional |
-| 5 | Vista esquemática (schema `schematic`, REST, guia **ESQ**, «Ir para o mapa») | **✅ POC** (SVG escada + PATCH nó; endurecer com auth real além de `SECURITY_ENFORCE`) |
-| 6 | Endurecimento de segurança (credenciais, TLS, sessão) | Fora do âmbito desta fase |
+### Fase imediata (consolidar retoma)
+
+| # | Tarefa | Pilar | Estado |
+|---|--------|-------|--------|
+| 0 | Commit + push **M5b** e fixes mapa/OMS | — | ✅ código commitado |
+| 1 | Validar stack (`docker ps`, unitários, E2E smoke) após retoma | — | 🔶 Unitários 43 verdes; E2E a confirmar |
+| 2 | Actualizar `Database_Structure_Context.md` — mapa entidade↔API↔UI | Entidades | ✅ (secção 8) |
+
+### Logística
+
+| # | Tarefa | Estado |
+|---|--------|--------|
+| L1 | Decisão arquitectura routing (pgRouting vs OSRM) + runbook | ✅ `OPERATIONS_MWM.md` §6 |
+| L2 | API deslocamento planeado/real (`team_order_displacement` PATCH) | ✅ `PATCH /api/mwm/displacements/:id` |
+| L3 | UI MWM: detalhe equipa + ordens atribuídas + linha temporal 48h | 🔶 Parcial (lista + overlay) |
+| L4 | Posição «última conhecida» actualizável (PATCH equipa) | ✅ `PATCH /api/teams/:id` |
+
+### Detalhes das entidades
+
+| # | Tarefa | Estado |
+|---|--------|--------|
+| E1 | Padrão único de painel detalhe (OMS folha como modelo) | 🔶 Parcial |
+| E2 | `GET /api/equipment/:id`, `GET /api/consumers/:id` (ou agregador GIS) | ⏳ |
+| E3 | Ligação ordem ↔ equipamento ↔ consumidor na UI e no mapa | ⏳ |
+| E4 | Enriquecer ESQ com ficha de nó (equipamento + «Ir para o mapa») | 🔶 Parcial |
+
+### Dinamismo
+
+| # | Tarefa | Estado |
+|---|--------|--------|
+| D1 | Documentar contrato `events.append_event` para módulos externos | ✅ `EVENTS_ARCHITECTURE.md` |
+| D2 | Webhook/sink opcional pós-mutação (ordem, topologia, MWM) | ⏳ |
+| D3 | Refresh automático grelha OMS / overlay MWM após PATCH | ⏳ |
+| D4 | `config.parameter` exposto na UI (subset operacional) | ⏳ |
+
+### Auditoria
+
+| # | Tarefa | Estado |
+|---|--------|--------|
+| A1 | Triggers pré-delete em todas as tabelas `operations` críticas | ✅ Base |
+| A2 | Aba AUD: pesquisa em `operations_row_archive` + ligação à ordem | 🔶 Parcial |
+| A3 | Export `GET /api/events/export` testado em pipeline externo | 🔶 Parcial |
+| A4 | Eventos de domínio alinhados a mutações REST (topologia, ordens) | 🔶 Parcial |
+
+### Marcos históricos (Fase 1 — concluídos)
+
+| Marco | Resumo | Estado |
+|-------|--------|--------|
+| M1–M3 | Topologia PostGIS nativa + REST + prune | ✅ |
+| M4 | Desenho de segmentos no mapa | ✅ |
+| M5 | APIs rotas 48h + deslocamentos MWM | ✅ |
+| M5b | Rotas encaixadas em vias OSM | ✅ código + commit (2026-09-04) |
+| M6 | Segurança produção (TLS, sessão) | ⏸ Adiado |
+
+Detalhe dos marcos: `docs/mds/MILESTONES.md`.
 
 ---
 
